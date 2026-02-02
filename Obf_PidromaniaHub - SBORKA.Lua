@@ -97,7 +97,7 @@ local BOSSES = {
 {"Thug Boss", -1493, 6, 8},
 {"Loan Shark Boss", -553.70, 1.49, -2088.94},
 {"The Custodian", -989.97, -1472.43, 6025.40},
-{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13},
+{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13}, -- исправлено: было "-352.043.52"
 {"The Arbitrator", -498.26, -1503.60, 5515.60}
 }
 }
@@ -160,6 +160,10 @@ local BOSS_FARMS = {
 },
 [12632324801] = {
 {"Captain Sweet the Forever Child", Vector3.new(2940, -815, -1949)}
+},
+-- === НОВАЯ ЗАПИСЬ ДЛЯ 18 ЭТАЖА ===
+[94066307314492] = {
+{"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)} -- ← ТВОИ КООРДИНАТЫ
 }
 }
 
@@ -326,78 +330,69 @@ end
 
 -- === ОБЩАЯ ФУНКЦИЯ ФАРМА ===
 local function startGenericFarm(bossName, farmPos)
-    currentFarmMode = bossName
-    initGUI()
-    updateIndicator(false)
-    teleport(farmPos)
-    wait(0.3)
-    freezePlayer()
-
-    spawn(function()
-        local placeId = game.PlaceId
-        local isFloor14 = (placeId == 4733293091)
-        local isFloor13 = (placeId == 5136611550)
-
-        while currentFarmMode == bossName do
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then break end
-
-            local mobsFolder = findMobsFolder()
-            local foundAny = false
-
-            if mobsFolder then
-                for _, mob in ipairs(mobsFolder:GetChildren()) do
-                    if mob:IsA("Model") then
-                        local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
-                        if torso and torso:IsA("BasePart") then
-                            local shouldProcess = false
-
-                            if isFloor14 then
-                                -- ЦИЛИНДРИЧЕСКАЯ ЗОНА: радиус 15, высота вниз 40
-                                local delta = torso.Position - farmPos
-                                local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
-                                local verticalDelta = delta.Y  -- положительное = выше, отрицательное = ниже
-
-                                if horizontalDist <= 20 and verticalDelta >= -40 and verticalDelta <= 0 then
-                                    shouldProcess = true
-                                end
-                            else
-                                -- СТАНДАРТНЫЙ РАДИУС
-                                local searchRadius = isFloor13 and 50 or 30
-                                if (torso.Position - farmPos).Magnitude <= searchRadius then
-                                    shouldProcess = true
-                                end
-                            end
-
-                            if shouldProcess then
-                                foundAny = true
-                                torso.Anchored = true
-                                torso.CanCollide = false
-                                local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
-                                torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
-
-                                if not isFloor14 then
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
-            updateIndicator(foundAny)
-
-            if isFloor14 then
-                wait(2.5)
-            else
-                wait(0.1)
-            end
-        end
-
-        unfreezePlayer()
-        updateIndicator(false)
-    end)
+	currentFarmMode = bossName
+	initGUI()
+	updateIndicator(false)
+	teleport(farmPos)
+	wait(0.3)
+	freezePlayer()
+	spawn(function()
+		local placeId = game.PlaceId
+		local isFloor14 = (placeId == 4733293091)
+		local isFloor18 = (placeId == 94066307314492) -- ← ДОБАВЛЕНО
+		local isFloor13 = (placeId == 5136611550)
+		while currentFarmMode == bossName do
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not hrp then break end
+			local mobsFolder = findMobsFolder()
+			local foundAny = false
+			if mobsFolder then
+				for _, mob in ipairs(mobsFolder:GetChildren()) do
+					if mob:IsA("Model") then
+						local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
+						if torso and torso:IsA("BasePart") then
+							local shouldProcess = false
+							-- ЦИЛИНДРИЧЕСКАЯ ЗОНА ДЛЯ 14 И 18 ЭТАЖЕЙ
+							if isFloor14 or isFloor18 then
+								local delta = torso.Position - farmPos
+								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
+								local verticalDelta = delta.Y
+								if horizontalDist <= 15 and verticalDelta >= -30 and verticalDelta <= 0 then
+									shouldProcess = true
+								end
+							else
+								local searchRadius = isFloor13 and 50 or 30
+								if (torso.Position - farmPos).Magnitude <= searchRadius then
+									shouldProcess = true
+								end
+							end
+							if shouldProcess then
+								foundAny = true
+								torso.Anchored = true
+								torso.CanCollide = false
+								local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
+								torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
+								if not (isFloor14 or isFloor18) then
+									break
+								end
+							end
+						end
+					end
+				end
+			end
+			updateIndicator(foundAny)
+			-- ЗАДЕРЖКА: 3 СЕКУНДЫ ДЛЯ 14 И 18 ЭТАЖЕЙ
+			if isFloor14 or isFloor18 then
+				wait(3)
+			else
+				wait(0.1)
+			end
+		end
+		unfreezePlayer()
+		updateIndicator(false)
+	end)
 end
+
 local function stopAllFarms()
 	currentFarmMode = nil
 	unfreezePlayer()
@@ -825,9 +820,11 @@ local function startMaterialFarm()
 		end
 	end)
 end
+
 local function stopMaterialFarm()
 	materialFarmActive = false
 end
+
 local function showMaterialFarm()
 	clearContent()
 	local title = Instance.new("TextLabel")
