@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
+-- === ДАННЫЕ УРОВНЕЙ И БОССОВ ===
 local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
@@ -28,6 +29,7 @@ local FLOORS = {
 {18,  "Early Crownvein: Arena",    117852524597461}
 }
 
+-- === BOSSES FOR TELEPORTS (UNCHANGED) ===
 local BOSSES = {
 [4734865416] = {
 {"Shadesworn the Corrupted", 414, -1174, -461},
@@ -100,6 +102,7 @@ local BOSSES = {
 }
 }
 
+-- === BOSS FARMS ===
 local BOSS_FARMS = {
 [4734865416] = {
 {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
@@ -143,23 +146,24 @@ local BOSS_FARMS = {
 {"The Tormented Soul", Vector3.new(-82.75, 2319.43, -97.59)}
 },
 [4733293091] = {
-{"Leader Grimm", Vector3.new(8128, 2685, 939)},
-{"Super Luo", Vector3.new(2355, 1716, 2364)},
-{"Elder Celatid", Vector3.new(1859, 1714, -2208)},
-{"Young Celestia", Vector3.new(-1407, -1462, 1203)}
+{"Leader Grimm", Vector3.new(8091.00, 2675.98, 678.44)},
+{"Super Luo", Vector3.new(2451.71, 1746.34, 2114.21)},
+{"Elder Celatid", Vector3.new(1833.24, 1762.81, -2241.65)},
+{"Young Celestia", Vector3.new(-1555.34, -1322.91, 1577.24)}
 },
 [11987483716] = {
 {"Raios, Sortiliena and Golgorosso", Vector3.new(458, 30, -1211)}
 },
 [11987539001] = {
 {"Leader Goblin", Vector3.new(-1751, 181, 2608)},
-{"Two-Headed Giant", Vector3.new(2742, 225, 7207)}
+{"Two-Headed Giant", Vector3.new(2742, 225, 7207)} -- убрано "and autofarm"
 },
 [12632324801] = {
 {"Captain Sweet the Forever Child", Vector3.new(2940, -815, -1949)}
 }
 }
 
+-- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 local isFrozen = false
 local freezePosition = nil
 local freezeConnection = nil
@@ -170,6 +174,7 @@ local individualFreezeConnection = nil
 local screenGui = nil
 local indicator = nil
 
+-- === ФУНКЦИИ ===
 local function teleport(pos)
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then
@@ -232,6 +237,7 @@ local function findMobsFolder()
 	return folder
 end
 
+-- === ГЛОБАЛЬНЫЙ ФРИЗ ===
 local function toggleFreeze()
 	isFrozen = not isFrozen
 	if isFrozen then
@@ -247,9 +253,11 @@ local function toggleFreeze()
 					end
 				end)
 			else
+				warn("HumanoidRootPart не найден для фриза!")
 				isFrozen = false
 			end
 		else
+			warn("Персонаж не загружен!")
 			isFrozen = false
 		end
 	else
@@ -260,6 +268,7 @@ local function toggleFreeze()
 	end
 end
 
+-- === ВОСКРЕШЕНИЕ ===
 local function cleanupResurrection()
 	for _, conn in ipairs(resurrectionConnections) do
 		if conn and conn.Disconnect then
@@ -315,46 +324,80 @@ local function setupResurrection()
 	end
 end
 
+-- === ОБЩАЯ ФУНКЦИЯ ФАРМА ===
 local function startGenericFarm(bossName, farmPos)
-	currentFarmMode = bossName
-	initGUI()
-	updateIndicator(false)
-	teleport(farmPos)
-	wait(0.3)
-	freezePlayer()
-	spawn(function()
-		while currentFarmMode == bossName do
-			local mobsFolder = findMobsFolder()
-			local found = false
-			if mobsFolder then
-				for _, mob in ipairs(mobsFolder:GetChildren()) do
-					if mob:IsA("Model") then
-						local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
-						if torso and torso:IsA("BasePart") then
-							local dist = (torso.Position - farmPos).Magnitude
-							if dist <= 10 then
-								found = true
-								local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-								if hrp then
-									torso.Anchored = true
-									torso.CanCollide = false
-									local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
-									torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
-								end
-								break
-							end
-						end
-					end
-				end
-			end
-			updateIndicator(found)
-			wait(0.1)
-		end
-		unfreezePlayer()
-		updateIndicator(false)
-	end)
-end
+    currentFarmMode = bossName
+    initGUI()
+    updateIndicator(false)
+    teleport(farmPos)
+    wait(0.3)
+    freezePlayer()
 
+    spawn(function()
+        local placeId = game.PlaceId
+        local isFloor14 = (placeId == 4733293091)
+        local isFloor13 = (placeId == 5136611550)
+
+        while currentFarmMode == bossName do
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then break end
+
+            local mobsFolder = findMobsFolder()
+            local foundAny = false
+
+            if mobsFolder then
+                for _, mob in ipairs(mobsFolder:GetChildren()) do
+                    if mob:IsA("Model") then
+                        local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
+                        if torso and torso:IsA("BasePart") then
+                            local shouldProcess = false
+
+                            if isFloor14 then
+                                -- ЦИЛИНДРИЧЕСКАЯ ЗОНА: радиус 15, высота вниз 40
+                                local delta = torso.Position - farmPos
+                                local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
+                                local verticalDelta = delta.Y  -- положительное = выше, отрицательное = ниже
+
+                                if horizontalDist <= 20 and verticalDelta >= -40 and verticalDelta <= 0 then
+                                    shouldProcess = true
+                                end
+                            else
+                                -- СТАНДАРТНЫЙ РАДИУС
+                                local searchRadius = isFloor13 and 50 or 30
+                                if (torso.Position - farmPos).Magnitude <= searchRadius then
+                                    shouldProcess = true
+                                end
+                            end
+
+                            if shouldProcess then
+                                foundAny = true
+                                torso.Anchored = true
+                                torso.CanCollide = false
+                                local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
+                                torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
+
+                                if not isFloor14 then
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            updateIndicator(foundAny)
+
+            if isFloor14 then
+                wait(2.5)
+            else
+                wait(0.1)
+            end
+        end
+
+        unfreezePlayer()
+        updateIndicator(false)
+    end)
+end
 local function stopAllFarms()
 	currentFarmMode = nil
 	unfreezePlayer()
@@ -363,6 +406,7 @@ local function stopAllFarms()
 	end
 end
 
+-- === GUI ===
 local screenGuiMain = Instance.new("ScreenGui")
 screenGuiMain.Name = "PidromaniaHub"
 screenGuiMain.ResetOnSpawn = false
@@ -418,6 +462,7 @@ minimizedFrame.InputBegan:Connect(function(input)
 	end
 end)
 
+-- HEADER
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
 header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -468,6 +513,7 @@ minimizeBtn.MouseButton1Click:Connect(function()
 	minimizedFrame.Visible = true
 end)
 
+-- ПАНЕЛИ
 local leftPanel = Instance.new("Frame")
 leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
 leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
@@ -502,6 +548,7 @@ local cornerContent = Instance.new("UICorner")
 cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
 cornerContent.Parent = contentContainer
 
+-- МЕНЮ
 local menuItems = {}
 local function createMenuItem(name, icon)
 	local btn = Instance.new("TextButton")
@@ -537,6 +584,7 @@ local function clearContent()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 end
 
+-- FLOOR
 local function showFloors()
 	clearContent()
 	local title = Instance.new("TextLabel")
@@ -572,6 +620,7 @@ local function showFloors()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * (35 * 1.5) + (40 * 1.5))
 end
 
+-- TELEPORTS
 local function showBosses()
 	clearContent()
 	local currentPlaceId = game.PlaceId
@@ -633,7 +682,11 @@ local function showBosses()
 				local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 				if hrp then
 					hrp.CFrame = CFrame.new(x, y, z)
+				else
+					warn("HumanoidRootPart не найден!")
 				end
+			else
+				warn("Персонаж не существует!")
 			end
 		end)
 		btn.Parent = contentContainer
@@ -641,6 +694,7 @@ local function showBosses()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, #bosses * (35 * 1.5) + (40 * 1.5))
 end
 
+-- BOSS FARM
 local function showBossFarms()
 	clearContent()
 	local currentPlaceId = game.PlaceId
@@ -746,8 +800,8 @@ local function showBossFarms()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
+-- MATERIAL FARM
 local materialFarmActive = false
-
 local function startMaterialFarm()
 	if materialFarmActive then return end
 	materialFarmActive = true
@@ -771,11 +825,9 @@ local function startMaterialFarm()
 		end
 	end)
 end
-
 local function stopMaterialFarm()
 	materialFarmActive = false
 end
-
 local function showMaterialFarm()
 	clearContent()
 	local title = Instance.new("TextLabel")
@@ -786,7 +838,6 @@ local function showMaterialFarm()
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 14 * 1.5
 	title.Parent = contentContainer
-
 	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 		local switchFrame = Instance.new("Frame")
 		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -849,7 +900,6 @@ local function showMaterialFarm()
 			updateToggle()
 		end
 	end
-
 	local toggleFrame, _ = createToggleSwitch(
 		contentContainer,
 		"Автофарм всех материалов",
@@ -863,10 +913,10 @@ local function showMaterialFarm()
 		end
 	)
 	toggleFrame.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
-
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 70 * 1.5)
 end
 
+-- TOOLS
 local function showConvenience()
 	clearContent()
 	local title = Instance.new("TextLabel")
@@ -957,6 +1007,7 @@ local function showConvenience()
 	resSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
 	local autofarmSwitch, setAutofarmState = createToggleSwitch(contentContainer, "Автобосс-фарм", false, function(enabled)
 		if enabled then
+			warn("Старый автобосс временно отключен. Используйте новые фармы.")
 			setAutofarmState(false)
 		end
 	end)
@@ -964,6 +1015,7 @@ local function showConvenience()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 3)
 end
 
+-- ВЫБОР ВКЛАДКИ
 local function selectButton(btn)
 	for _, b in ipairs(menuItems) do
 		b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
@@ -995,6 +1047,7 @@ end)
 selectButton(floorBtn)
 showFloors()
 
+-- Горячая клавиша G
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.G then
@@ -1008,6 +1061,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
+-- ==================================================
+-- ESP С ИМЕНЕМ И УРОВНЕМ
+-- ==================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
 	Camera = Workspace:GetPropertyChangedSignal("CurrentCamera"):Wait()
