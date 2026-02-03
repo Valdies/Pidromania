@@ -121,7 +121,7 @@ local BOSS_FARMS = {
 {"Uakmaroth, the Demon Lord", Vector3.new(-1532.07, 1914.88, -384.36)}
 },
 [4736984932] = {
-{"Storm Atronach", Vector3.new(-5823.41, -306.12, 9285.34)}
+{"Storm Atronach", Vector3.new(-5849, -368, 9330)}
 },
 [4737916764] = {
 {"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)}
@@ -1163,7 +1163,7 @@ local function updateEsp(player)
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
 	esp.name.Visible = true
 	if player.Name == "ArRoWeNn" then
-		esp.level.Text = "Lvl: Immortal"
+		esp.level.Text = "Lvl: Immortal".. tostring(level)
 		esp.level.Color = Color3.fromRGB(255, 215, 0)
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
