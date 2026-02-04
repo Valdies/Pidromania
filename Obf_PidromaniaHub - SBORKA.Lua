@@ -11,7 +11,7 @@ local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
 {3,   "Swamp Lands",               4735703075},
-{4,   "Desert Land",               4735718710},
+{4,   "Desert Land",               4735718710}, 
 {5,   "Icy Caverns",               4736649014},
 {6,   "Hellfire Wasteland",        4736759720},
 {7,   "Luminara Grove",            4736984932},
@@ -36,6 +36,7 @@ local BOSSES = {
 {"Illfang The Kobold Lord", -1003, 1928, -727}
 },
 [4735703075] = {
+{"Mine Ore", -6.24, 27.97, 945.08},
 {"Mob farm: in pit", -352.25, -15.14, 1049.83},
 {"Lord Slug", 988, 2500, 591}
 },
@@ -97,7 +98,7 @@ local BOSSES = {
 {"Thug Boss", -1493, 6, 8},
 {"Loan Shark Boss", -553.70, 1.49, -2088.94},
 {"The Custodian", -989.97, -1472.43, 6025.40},
-{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13}, -- исправлено: было "-352.043.52"
+{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13}, 
 {"The Arbitrator", -498.26, -1503.60, 5515.60}
 }
 }
@@ -163,7 +164,8 @@ local BOSS_FARMS = {
 },
 -- === НОВАЯ ЗАПИСЬ ДЛЯ 18 ЭТАЖА ===
 [94066307314492] = {
-{"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)} -- ← ТВОИ КООРДИНАТЫ
+{"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)}, -- ← ТВОИ КООРДИНАТЫ
+{"Loan Shark Boss", Vector3.new(-511.47, 26.79, -2234.82)}
 }
 }
 
@@ -181,7 +183,7 @@ local indicator = nil
 -- === ФУНКЦИИ ===
 local function teleport(pos)
 	local char = player.Character
-	if char and char:FindFirstChild("HumanoidRootPart") then
+	if char and char:FindFirstChild("HumanoidRootPart") then AncestryChanged()
 		char.HumanoidRootPart.CFrame = CFrame.new(pos)
 	end
 end
