@@ -6,7 +6,6 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
--- === ДАННЫЕ УРОВНЕЙ И БОССОВ ===
 local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
@@ -29,7 +28,6 @@ local FLOORS = {
 {18,  "Early Crownvein: Arena",    117852524597461}
 }
 
--- === BOSSES FOR TELEPORTS (UNCHANGED) ===
 local BOSSES = {
 [4734865416] = {
 {"Shadesworn the Corrupted", 414, -1174, -461},
@@ -103,7 +101,6 @@ local BOSSES = {
 }
 }
 
--- === BOSS FARMS ===
 local BOSS_FARMS = {
 [4734865416] = {
 {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
@@ -169,7 +166,6 @@ local BOSS_FARMS = {
 }
 }
 
--- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 local isFrozen = false
 local freezePosition = nil
 local freezeConnection = nil
@@ -180,7 +176,6 @@ local individualFreezeConnection = nil
 local screenGui = nil
 local indicator = nil
 
--- === ФУНКЦИИ ===
 local function teleport(pos)
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then AncestryChanged()
@@ -243,7 +238,6 @@ local function findMobsFolder()
 	return folder
 end
 
--- === ГЛОБАЛЬНЫЙ ФРИЗ ===
 local function toggleFreeze()
 	isFrozen = not isFrozen
 	if isFrozen then
@@ -274,7 +268,6 @@ local function toggleFreeze()
 	end
 end
 
--- === ВОСКРЕШЕНИЕ ===
 local function cleanupResurrection()
 	for _, conn in ipairs(resurrectionConnections) do
 		if conn and conn.Disconnect then
@@ -330,7 +323,6 @@ local function setupResurrection()
 	end
 end
 
--- === ОБЩАЯ ФУНКЦИЯ ФАРМА ===
 local function startGenericFarm(bossName, farmPos)
 	currentFarmMode = bossName
 	initGUI()
@@ -355,7 +347,7 @@ local function startGenericFarm(bossName, farmPos)
 						if torso and torso:IsA("BasePart") then
 							local shouldProcess = false
 							-- ЦИЛИНДРИЧЕСКАЯ ЗОНА ДЛЯ 14 И 18 ЭТАЖЕЙ
-							if isFloor14 or isFloor18 then
+							if isFloor14 or isFloor13 or isFloor18 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 								local verticalDelta = delta.Y
@@ -384,7 +376,7 @@ local function startGenericFarm(bossName, farmPos)
 			end
 			updateIndicator(foundAny)
 			-- ЗАДЕРЖКА: 3 СЕКУНДЫ ДЛЯ 14 И 18 ЭТАЖЕЙ
-			if isFloor14 or isFloor18 then
+			if isFloor14 or isFloor13 or isFloor18 then
 				wait(3)
 			else
 				wait(0.1)
@@ -403,7 +395,6 @@ local function stopAllFarms()
 	end
 end
 
--- === GUI ===
 local screenGuiMain = Instance.new("ScreenGui")
 screenGuiMain.Name = "PidromaniaHub"
 screenGuiMain.ResetOnSpawn = false
@@ -459,7 +450,6 @@ minimizedFrame.InputBegan:Connect(function(input)
 	end
 end)
 
--- HEADER
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
 header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -545,7 +535,6 @@ local cornerContent = Instance.new("UICorner")
 cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
 cornerContent.Parent = contentContainer
 
--- МЕНЮ
 local menuItems = {}
 local function createMenuItem(name, icon)
 	local btn = Instance.new("TextButton")
@@ -691,7 +680,6 @@ local function showBosses()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, #bosses * (35 * 1.5) + (40 * 1.5))
 end
 
--- BOSS FARM
 local function showBossFarms()
 	clearContent()
 	local currentPlaceId = game.PlaceId
@@ -797,7 +785,6 @@ local function showBossFarms()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
--- MATERIAL FARM
 local materialFarmActive = false
 local function startMaterialFarm()
 	if materialFarmActive then return end
@@ -915,7 +902,6 @@ local function showMaterialFarm()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 70 * 1.5)
 end
 
--- TOOLS
 local function showConvenience()
 	clearContent()
 	local title = Instance.new("TextLabel")
@@ -1046,7 +1032,6 @@ end)
 selectButton(floorBtn)
 showFloors()
 
--- Горячая клавиша G
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.G then
@@ -1060,9 +1045,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- ==================================================
--- ESP С ИМЕНЕМ И УРОВНЕМ
--- ==================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
 	Camera = Workspace:GetPropertyChangedSignal("CurrentCamera"):Wait()
@@ -1218,3 +1200,4 @@ game:BindToClose(function()
 	end
 	cleanupResurrection()
 end)
+
