@@ -167,10 +167,11 @@ local BOSS_FARMS = {
 {"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)}, -- ← ТВОИ КООРДИНАТЫ
 {"MobFarm Loan Shark Henchman", Vector3.new(-429.08, 17.57, -2199.57)},   
 {"MobFarm VIP Scout", Vector3.new(-452.86, 31.93, 1394.72)}, 
+{"Thug Boss", Vector3.new(-1477.77, 34.66, -224.00)},
 {"Loan Shark Boss", Vector3.new(-511.47, 26.79, -2234.82)},
 {"Eidolon the Gilded Omen", Vector3.new(-159.32, 1045.93, 1695.05)}, 
+{"The Custodian", Vector3.new(-975.23, -1477.30, 5912.75)}, 
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
-
 }
 }
 
