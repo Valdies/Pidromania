@@ -1,3 +1,5 @@
+-- === [ВСТАВЬТЕ ЭТОТ КОД ВМЕСТО СТАРОГО] ===
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
@@ -11,7 +13,7 @@ local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
 {3,   "Swamp Lands",               4735703075},
-{4,   "Desert Land",               4735718710}, 
+{4,   "Desert Land",               4735718710},
 {5,   "Icy Caverns",               4736649014},
 {6,   "Hellfire Wasteland",        4736759720},
 {7,   "Luminara Grove",            4736984932},
@@ -98,7 +100,7 @@ local BOSSES = {
 {"Thug Boss", -1493, 6, 8},
 {"Loan Shark Boss", -553.70, 1.49, -2088.94},
 {"The Custodian", -989.97, -1472.43, 6025.40},
-{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13}, 
+{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13},
 {"The Arbitrator", -498.26, -1503.60, 5515.60}
 }
 }
@@ -165,14 +167,14 @@ local BOSS_FARMS = {
 {"Captain Sweet the Forever Child", Vector3.new(2940, -815, -1949)}
 },
 [94066307314492] = {
-{"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)}, -- ← ТВОИ КООРДИНАТЫ
-{"MobFarm Loan Shark Henchman", Vector3.new(-429.08, 17.57, -2199.57)},   
-{"MobFarm VIP Scout", Vector3.new(-452.86, 31.93, 1394.72)}, 
-{"MobFarm 1-st game", Vector3.new(-653.05, -1314.71, 5011.60)}, 
+{"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)},
+{"MobFarm Loan Shark Henchman", Vector3.new(-429.08, 17.57, -2199.57)},
+{"MobFarm VIP Scout", Vector3.new(-452.86, 31.93, 1394.72)},
+{"MobFarm 1-st game", Vector3.new(-653.05, -1314.71, 5011.60)},
 {"Thug Boss", Vector3.new(-1477.77, 34.66, -224.00)},
 {"Loan Shark Boss", Vector3.new(-511.47, 26.79, -2234.82)},
-{"Eidolon the Gilded Omen", Vector3.new(-159.32, 1045.93, 1695.05)}, 
-{"The Custodian", Vector3.new(-975.23, -1477.30, 5912.75)}, 
+{"Eidolon the Gilded Omen", Vector3.new(-159.32, 1045.93, 1695.05)},
+{"The Custodian", Vector3.new(-975.23, -1477.30, 5912.75)},
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
 }
 }
@@ -349,7 +351,7 @@ local function startGenericFarm(bossName, farmPos)
 	spawn(function()
 		local placeId = game.PlaceId
 		local isFloor14 = (placeId == 4733293091)
-		local isFloor18 = (placeId == 94066307314492) -- ← ДОБАВЛЕНО
+		local isFloor18 = (placeId == 94066307314492)
 		local isFloor13 = (placeId == 5136611550)
 		while currentFarmMode == bossName do
 			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -362,7 +364,6 @@ local function startGenericFarm(bossName, farmPos)
 						local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
 						if torso and torso:IsA("BasePart") then
 							local shouldProcess = false
-							-- ЦИЛИНДРИЧЕСКАЯ ЗОНА ДЛЯ 14 И 18 ЭТАЖЕЙ
 							if isFloor14 or isFloor18 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
@@ -391,7 +392,6 @@ local function startGenericFarm(bossName, farmPos)
 				end
 			end
 			updateIndicator(foundAny)
-			-- ЗАДЕРЖКА: 3 СЕКУНДЫ ДЛЯ 14 И 18 ЭТАЖЕЙ
 			if isFloor14 or isFloor18 then
 				wait(3)
 			else
@@ -805,8 +805,11 @@ local function showBossFarms()
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
 end
 
--- MATERIAL FARM
+-- === MATERIAL & FISH FARM ===
 local materialFarmActive = false
+local fishFarmActive = false
+
+-- Material Farm
 local function startMaterialFarm()
 	if materialFarmActive then return end
 	materialFarmActive = true
@@ -835,16 +838,39 @@ local function stopMaterialFarm()
 	materialFarmActive = false
 end
 
+-- Fish Farm
+local function startFishFarm()
+	if fishFarmActive then return end
+	fishFarmActive = true
+	spawn(function()
+		while fishFarmActive do
+			pcall(function()
+				local RepStor = game:GetService("ReplicatedStorage")
+				if RepStor:FindFirstChild("CatchFish") then
+					RepStor.CatchFish:FireServer(10)
+				end
+			end)
+			task.wait(60) -- 4 минуты
+		end
+	end)
+end
+
+local function stopFishFarm()
+	fishFarmActive = false
+end
+
+-- UI for Material + Fish Farm
 local function showMaterialFarm()
 	clearContent()
 	local title = Instance.new("TextLabel")
-	title.Text = "Material Farm"
+	title.Text = "Material & Fish Farm"
 	title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
 	title.BackgroundTransparency = 1
 	title.TextColor3 = Color3.fromRGB(200, 200, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 14 * 1.5
 	title.Parent = contentContainer
+
 	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 		local switchFrame = Instance.new("Frame")
 		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -907,9 +933,11 @@ local function showMaterialFarm()
 			updateToggle()
 		end
 	end
-	local toggleFrame, _ = createToggleSwitch(
+
+	-- Material Toggle
+	local matToggle, _ = createToggleSwitch(
 		contentContainer,
-		"Автофарм всех материалов",
+		"Автофарм всех руд на этаже",
 		materialFarmActive,
 		function(enabled)
 			if enabled then
@@ -919,8 +947,24 @@ local function showMaterialFarm()
 			end
 		end
 	)
-	toggleFrame.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 70 * 1.5)
+	matToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
+
+	-- Fish Toggle
+	local fishToggle, _ = createToggleSwitch(
+		contentContainer,
+		"Авто-ловля рыбы (10 каждые 1 минуту)",
+		fishFarmActive,
+		function(enabled)
+			if enabled then
+				startFishFarm()
+			else
+				stopFishFarm()
+			end
+		end
+	)
+	fishToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
+
+	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 2)
 end
 
 -- TOOLS
@@ -934,6 +978,7 @@ local function showConvenience()
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 14 * 1.5
 	title.Parent = contentContainer
+
 	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 		local switchFrame = Instance.new("Frame")
 		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -996,6 +1041,7 @@ local function showConvenience()
 			updateToggle()
 		end
 	end
+
 	local freezeSwitch, setFreezeState = createToggleSwitch(contentContainer, "Фриз игрока на месте", isFrozen, function(enabled)
 		if enabled then
 			toggleFreeze()
@@ -1004,6 +1050,7 @@ local function showConvenience()
 		end
 	end)
 	freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
+
 	local resSwitch, setResState = createToggleSwitch(contentContainer, "Воскрешение на месте смерти", resurrectionActive, function(enabled)
 		if enabled then
 			setupResurrection()
@@ -1012,6 +1059,7 @@ local function showConvenience()
 		end
 	end)
 	resSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
+
 	local autofarmSwitch, setAutofarmState = createToggleSwitch(contentContainer, "Автобосс-фарм", false, function(enabled)
 		if enabled then
 			warn("Старый автобосс временно отключен. Используйте новые фармы.")
@@ -1019,6 +1067,7 @@ local function showConvenience()
 		end
 	end)
 	autofarmSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5 + 35 * 1.5)
+
 	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 3)
 end
 
@@ -1034,18 +1083,22 @@ floorBtn.MouseButton1Click:Connect(function()
 	selectButton(floorBtn)
 	showFloors()
 end)
+
 teleportsBtn.MouseButton1Click:Connect(function()
 	selectButton(teleportsBtn)
 	showBosses()
 end)
+
 bossFarmBtn.MouseButton1Click:Connect(function()
 	selectButton(bossFarmBtn)
 	showBossFarms()
 end)
+
 materialFarmBtn.MouseButton1Click:Connect(function()
 	selectButton(materialFarmBtn)
 	showMaterialFarm()
 end)
+
 toolsBtn.MouseButton1Click:Connect(function()
 	selectButton(toolsBtn)
 	showConvenience()
@@ -1173,7 +1226,7 @@ local function updateEsp(player)
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
 	esp.name.Visible = true
 	if player.Name == "ArRoWeNn" then
-		esp.level.Text = "Lvl: Immortal".. tostring(level)
+		esp.level.Text = "Lvl: Immortal"
 		esp.level.Color = Color3.fromRGB(255, 215, 0)
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
@@ -1212,17 +1265,4 @@ RunService.RenderStepped:Connect(function()
 	for _, player in ipairs(Players:GetPlayers()) do
 		updateEsp(player)
 	end
-end)
-
-game:BindToClose(function()
-	for _, player in ipairs(Players:GetPlayers()) do
-		removeEsp(player)
-	end
-	if freezeConnection then
-		freezeConnection:Disconnect()
-	end
-	if individualFreezeConnection then
-		individualFreezeConnection:Disconnect()
-	end
-	cleanupResurrection()
 end)
