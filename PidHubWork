@@ -158,7 +158,7 @@ local BOSS_FARMS = {
 {"Two-Headed Giant", Vector3.new(2742, 225, 7207)}
 },
 [12632324801] = {
-{"Captain Sweet the Forever Child", Vector3.new(2940, -815, -1949)}
+{"Captain Sweet the Forever Child", Vector3.new(2993.59, -833.45, -1959.57)}
 },
 [94066307314492] = {
 {"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)},
@@ -172,7 +172,7 @@ local BOSS_FARMS = {
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
 },
 [117852524597461] = {
-{"Frontman", Vector3.new(-40.02, 62.37, -161.41)},
+{"Frontman", Vector3.new(-37.41, 62.37, -163.14)},
 }
 }
 local isFrozen = false
@@ -465,6 +465,7 @@ local function startGenericFarm(bossName, farmPos)
 		local isFloor14 = (placeId == 4733293091)
 		local isFloor18 = (placeId == 94066307314492)
 		local isFloor13 = (placeId == 5136611550)
+		local isFloor17 = (placeId == 12632324801)
 		while currentFarmMode == bossName do
 			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 			if not hrp then break end
@@ -476,7 +477,7 @@ local function startGenericFarm(bossName, farmPos)
 						local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
 						if torso and torso:IsA("BasePart") then
 							local shouldProcess = false
-							if isFloor14 or isFloor18 then
+							if isFloor14 or isFloor18 or isFloor17 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 								local verticalDelta = delta.Y
