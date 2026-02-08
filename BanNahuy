@@ -1,0 +1,120 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local canSpawn = true
+local fakeChar = nil
+local followConnection = nil
+local kickScheduled = false
+
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	humanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+end)
+
+local function spawnFakeAdminAndKick()
+	if not canSpawn or kickScheduled then return end
+	canSpawn = false
+	kickScheduled = true
+	local userId = 207160289
+	local success, model = pcall(function()
+		return Players:CreateHumanoidModelFromUserId(userId)
+	end)
+	if not success or not model then
+		canSpawn = true
+		kickScheduled = false
+		return
+	end
+	fakeChar = model
+	fakeChar.Name = "Zu"
+	if fakeChar:FindFirstChild("HumanoidRootPart") then
+		fakeChar.PrimaryPart = fakeChar.HumanoidRootPart
+	elseif fakeChar:FindFirstChild("Torso") then
+		fakeChar.Torso.Anchored = false
+		fakeChar.PrimaryPart = fakeChar.Torso
+	else
+		for _, v in ipairs(fakeChar:GetChildren()) do
+			if v:IsA("BasePart") then
+				fakeChar.PrimaryPart = v
+				break
+			end
+		end
+	end
+	if not fakeChar.PrimaryPart then
+		fakeChar:Destroy()
+		canSpawn = true
+		kickScheduled = false
+		return
+	end
+	local charCFrame = humanoidRootPart.CFrame
+	local offset = charCFrame.LookVector * 5 + Vector3.new(0, 1, 0)
+	fakeChar:SetPrimaryPartCFrame(CFrame.lookAt(charCFrame.Position + offset, charCFrame.Position))
+	fakeChar.Parent = Workspace
+	local head = fakeChar:FindFirstChild("Head")
+	if head then
+		local bubble = Instance.new("BillboardGui")
+		bubble.Size = UDim2.new(0, 120, 0, 40)
+		bubble.StudsOffset = Vector3.new(0, 3, 0)
+		bubble.AlwaysOnTop = true
+		bubble.LightInfluence = 0
+		bubble.ResetOnSpawn = false
+		bubble.Adornee = head
+		local frame = Instance.new("Frame")
+		frame.BackgroundTransparency = 0.2
+		frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+		frame.BorderSizePixel = 0
+		frame.Size = UDim2.new(1, 0, 1, 0)
+		frame.Parent = bubble
+		local text = Instance.new("TextLabel")
+		text.BackgroundTransparency = 1
+		text.Size = UDim2.new(1, -10, 1, -10)
+		text.Position = UDim2.new(0, 5, 0, 5)
+		text.Text = "cheating?"
+		text.Font = Enum.Font.GothamSemibold
+		text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		text.TextScaled = true
+		text.TextWrapped = true
+		text.TextXAlignment = Enum.TextXAlignment.Center
+		text.Parent = frame
+		bubble.Parent = fakeChar
+		task.delay(4, function()
+			if bubble and bubble.Parent then bubble:Destroy() end
+		end)
+	end
+	followConnection = RunService.Heartbeat:Connect(function()
+		if not (fakeChar and fakeChar.Parent and character and humanoidRootPart and humanoidRootPart.Parent) then
+			if followConnection then
+				followConnection:Disconnect()
+				followConnection = nil
+			end
+			return
+		end
+		local cf = humanoidRootPart.CFrame
+		local offset = cf.LookVector * 5 + Vector3.new(0, 1, 0)
+		fakeChar:SetPrimaryPartCFrame(CFrame.lookAt(cf.Position + offset, cf.Position))
+	end)
+	task.delay(4, function()
+		if followConnection then
+			followConnection:Disconnect()
+			followConnection = nil
+		end
+		if fakeChar and fakeChar.Parent then
+			fakeChar:Destroy()
+			fakeChar = nil
+		end
+		player:Kick("Your account was flagged multiple times for breaking rules, kick/warned, and is now banned!\nIf you'd like to dispute, you may open from ban-appeal-tickets on our Discord (rv6JQ2d)")
+		canSpawn = true
+		kickScheduled = false
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.G then
+		spawnFakeAdminAndKick()
+	end
+end)
