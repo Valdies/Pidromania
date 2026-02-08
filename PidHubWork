@@ -170,6 +170,9 @@ local BOSS_FARMS = {
 {"Eidolon the Gilded Omen", Vector3.new(-159.32, 1045.93, 1695.05)},
 {"The Custodian", Vector3.new(-975.23, -1477.30, 5912.75)},
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
+},
+[117852524597461] = {
+{"Frontman", Vector3.new(-37.41, 62.37, -163.14)},
 }
 }
 local isFrozen = false
