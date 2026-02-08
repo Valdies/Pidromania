@@ -1,0 +1,67 @@
+-- Roblox Lua: телепортация ТУЛОВИЩА БЛИЖАЙШЕГО моба к игроку
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- Ищем папку Mobs
+local function findMobsFolder()
+    local folder = Workspace:FindFirstChild("Mobs")
+    if not folder then
+        for _, child in ipairs(Workspace:GetDescendants()) do
+            if child.Name == "Mobs" and child:IsA("Folder") then
+                return child
+            end
+        end
+    end
+    return folder
+end
+
+-- Находим ближайший моб и его туловище
+local function getNearestMobTorso()
+    local mobsFolder = findMobsFolder()
+    if not mobsFolder then return nil end
+
+    local nearestTorso = nil
+    local minDist = math.huge
+
+    for _, mob in ipairs(mobsFolder:GetChildren()) do
+        if mob:IsA("Model") then
+            local torso = mob:FindFirstChild("HumanoidRootPart")
+                       or mob:FindFirstChild("UpperTorso")
+                       or mob:FindFirstChild("Torso")
+            if torso and torso:IsA("BasePart") then
+                local dist = (torso.Position - hrp.Position).Magnitude
+                if dist < minDist then
+                    minDist = dist
+                    nearestTorso = torso
+                end
+            end
+        end
+    end
+
+    return nearestTorso, minDist
+end
+
+-- Обработчик нажатия B
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.B then
+        local torso, dist = getNearestMobTorso()
+        if torso then
+            torso.Anchored = true
+            torso.CanCollide = false
+            -- Телепортируем прямо перед игроком
+            local targetPos = hrp.Position + hrp.CFrame.LookVector * 3
+            torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
+            print("✅ Туловище ближайшего моба ('" .. torso.Parent.Name .. "', дистанция: " .. string.format("%.1f", dist) .. ") телепортировано к тебе!")
+        else
+            warn("Нет мобов с туловищем в папке Mobs!")
+        end
+    end
+end)
+
+print("🎯 Готово! Нажми [B], чтобы телепортировать туловище ближайшего моба к себе.")
