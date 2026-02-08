@@ -1,10 +1,10 @@
 local whitelistedUserIds = {
-    [2964047089] = true, -- Кент (@VanAstrales)
-    [9103392112] = true, -- Ты (@huesos880055535)
-    [493337194]  = true, -- Кокосик (@Minikokosich)
-    [4607304028] = true, -- Саня (@ArRoWeNn)
-    [3270959865] = true, -- Влад (@luken_god)
-    [7947437575] = true  -- Вика (@CuRLyCHeBuRaSHKa)
+    [2964047089] = true,
+    [9103392112] = true,
+    [493337194]  = true,
+    [4607304028] = true,
+    [3270959865] = true,
+    [7947437575] = true 
 }
 
 local Players = game:GetService("Players")
@@ -18,3 +18,4 @@ else
     -- Загрузка "BanNahuy" для остальных
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
 end
+
