@@ -1,4 +1,3 @@
--- === [ВСТАВЬТЕ ЭТОТ КОД ВМЕСТО СТАРОГО] ===
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
@@ -6,8 +5,6 @@ local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
-
--- === ДАННЫЕ УРОВНЕЙ И БОССОВ ===
 local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
@@ -29,8 +26,6 @@ local FLOORS = {
 {18,  "Early Crownvein",           94066307314492},
 {18,  "Early Crownvein: Arena",    117852524597461}
 }
-
--- === BOSSES FOR TELEPORTS (UNCHANGED) ===
 local BOSSES = {
 [4734865416] = {
 {"Shadesworn the Corrupted", 414, -1174, -461},
@@ -177,8 +172,6 @@ local BOSS_FARMS = {
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
 }
 }
-
--- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 local isFrozen = false
 local freezePosition = nil
 local freezeConnection = nil
@@ -188,12 +181,8 @@ local currentFarmMode = nil
 local individualFreezeConnection = nil
 local screenGui = nil
 local indicator = nil
-
--- === PLAYER LIST GUI (NEW) ===
 local playerListGui = nil
 local playerListUpdateLoop = nil
-
--- === ФУНКЦИИ ===
 local function teleport(pos)
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then
@@ -255,8 +244,6 @@ local function findMobsFolder()
 	end
 	return folder
 end
-
--- === PLAYER LEVEL (SHARED) ===
 local function getPlayerLevel(plr)
 	local stats = plr:FindFirstChild("PlayerStats")
 	if stats then
@@ -284,8 +271,6 @@ local function getPlayerLevel(plr)
 	end
 	return "?"
 end
-
--- === PLAYER LIST GUI CREATION (ОБНОВЛЁННАЯ ВЕРСИЯ) ===
 local playerListGui = nil
 local playerListUpdateLoop = nil
 
@@ -340,7 +325,7 @@ local function createPlayerListGui()
 				local level = getPlayerLevel(plr)
 				local txt = string.format("%s — [%s]", plr.Name, tostring(level))
 				local lbl = Instance.new("TextLabel")
-				lbl.Size = UDim2.new(1, -8, 0, 24) -- чуть выше строка под больший шрифт
+				lbl.Size = UDim2.new(1, -8, 0, 24)
 				lbl.Position = UDim2.new(0, 4, 0, y)
 				lbl.BackgroundTransparency = 1
 				lbl.Text = txt
@@ -350,7 +335,7 @@ local function createPlayerListGui()
 				lbl.TextXAlignment = Enum.TextXAlignment.Left
 				lbl.TextTruncate = Enum.TextTruncate.AtEnd
 				lbl.Parent = scroll
-				y += 28 -- чуть больше отступ между строками
+				y += 28
 			end
 		end
 		scroll.CanvasSize = UDim2.new(0, 0, 0, y)
@@ -380,8 +365,6 @@ local function destroyPlayerListGui()
 		playerListGui = nil
 	end
 end
-
--- === ГЛОБАЛЬНЫЙ ФРИЗ ===
 local function toggleFreeze()
 	isFrozen = not isFrozen
 	if isFrozen then
@@ -411,8 +394,6 @@ local function toggleFreeze()
 		end
 	end
 end
-
--- === ВОСКРЕШЕНИЕ ===
 local function cleanupResurrection()
 	for _, conn in ipairs(resurrectionConnections) do
 		if conn and conn.Disconnect then
