@@ -172,7 +172,7 @@ local BOSS_FARMS = {
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
 },
 [117852524597461] = {
-{"Frontman", Vector3.new(-37.41, 62.37, -163.14)},
+{"Frontman", Vector3.new(-40.02, 62.37, -161.41)},
 }
 }
 local isFrozen = false
