@@ -12,7 +12,7 @@ local function showJoinNotification(playerName)
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 480, 0, 110)
 	frame.Position = UDim2.new(1, 0, 1, -120)
-	frame.BackgroundTransparency = 0.65
+	frame.BackgroundTransparency = 0
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	frame.BorderSizePixel = 0
 	frame.Parent = notificationGui
