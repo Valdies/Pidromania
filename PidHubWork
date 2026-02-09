@@ -1,7 +1,3 @@
--- Pidromania Hub: Sword Blox Online — Multi-Language Edition
--- Поддержка: Русский (по умолчанию), Украинский, English (US)
--- Вкладка "Settings" добавлена
-
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
@@ -39,6 +35,7 @@ local translations = {
 		languageLabel = "Язык интерфейса:",
 		lang_ru = "Русский",
 		lang_uk = "Українська",
+		lang_kk = "Қазақ",
 		lang_en = "English (US)"
 	},
 	uk = {
@@ -66,7 +63,36 @@ local translations = {
 		languageLabel = "Мова інтерфейсу:",
 		lang_ru = "Російська",
 		lang_uk = "Українська",
+		lang_kk = "Қазақ",
 		lang_en = "English (US)"
+	},
+	kk = {
+    	hubTitle = "Pidromania Hub: Sword Blox Online",
+    	byAuthor = "by @Pidromania",
+    	floor = "Қабат",
+    	teleports = "Телепорттар",
+    	bossFarm = "Босс фармі",
+    	materialFarm = "Ресурстарды фармдау",
+   		tools = "Құралдар",
+   		settings = "Параметрлер",
+    	selectFloor = "Қабатты таңдаңыз:",
+    	unknownFloor = "Қате: белгісіз қабат",
+    	noBosses = "Бұл қабатта босстар жоқ",
+    	bossesOfFloor = "Қабат %d (%s) босстары:",
+    	bossFarms = "Босс фармдары:",
+    	noFarms = "Бұл қабатта фармдар жоқ",
+    	matAndFish = "Ресурс пен балық фармі",
+    	autoOre = "Қабаттағы барлық рудаларды автофармдау",
+    	autoFish = "Авто-балық аулау (әр минут сайын 10)",
+    	freezeToggle = "Ойыншыны орнында тоқтату",
+    	respawnToggle = "Өлген жерде қайта туу",
+    	playerListToggle = "Сервердегі ойыншылар тізімі",
+    	autofarmToggle = "Авто-босс фармі",
+    	languageLabel = "Интерфейс тілі:",
+    	lang_ru = "Орыс",
+    	lang_uk = "Украин",
+    	lang_kk = "Қазақ",
+    	lang_en = "Ағылшын (АҚШ)"
 	},
 	en = {
 		hubTitle = "Pidromania Hub: Sword Blox Online",
@@ -93,6 +119,7 @@ local translations = {
 		languageLabel = "Interface language:",
 		lang_ru = "Russian",
 		lang_uk = "Ukrainian",
+		lang_kk = "Қазақ",
 		lang_en = "English (US)"
 	}
 }
@@ -103,7 +130,7 @@ end
 
 -- === ДАННЫЕ ИГРЫ ===
 local FLOORS = {
-{1,   "Town Of Beginnings",       4733293382},
+{1,   "Town Of Beginnings",        4733293382},
 {2,   "Swordsman Fields",          4734865416},
 {3,   "Swamp Lands",               4735703075},
 {4,   "Desert Land",               4735718710},
@@ -1214,6 +1241,7 @@ local function rebuildGUI()
 		local langs = {
 			{ code = "ru", name = T("lang_ru") },
 			{ code = "uk", name = T("lang_uk") },
+			{ code = "kk", name = T("lang_kk") },
 			{ code = "en", name = T("lang_en") }
 		}
 
