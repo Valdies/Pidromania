@@ -1,3 +1,7 @@
+-- Pidromania Hub: Sword Blox Online — Multi-Language Edition
+-- Поддержка: Русский (по умолчанию), Украинский, English (US)
+-- Вкладка "Settings" добавлена
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
@@ -5,6 +9,99 @@ local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
+
+-- === ЛОКАЛИЗАЦИЯ ===
+local currentLang = "ru" -- по умолчанию
+
+local translations = {
+	ru = {
+		hubTitle = "Pidromania Hub: Sword Blox Online",
+		byAuthor = "by @Pidromania",
+		floor = "Этаж",
+		teleports = "Телепорты",
+		bossFarm = "Фарм боссов",
+		materialFarm = "Фарм ресурсов",
+		tools = "Инструменты",
+		settings = "Настройки",
+		selectFloor = "Выберите этаж:",
+		unknownFloor = "Ошибка: неизвестный этаж",
+		noBosses = "На этом этаже нет боссов",
+		bossesOfFloor = "Боссы этажа %d (%s):",
+		bossFarms = "Фарм боссов:",
+		noFarms = "Нет доступных фармов на этом этаже",
+		matAndFish = "Фарм ресурсов и рыбы",
+		autoOre = "Автофарм всех руд на этаже",
+		autoFish = "Авто-ловля рыбы (10 каждые 1 минуту)",
+		freezeToggle = "Фриз игрока на месте",
+		respawnToggle = "Воскрешение на месте смерти",
+		playerListToggle = "Список геев на сервере",
+		autofarmToggle = "Автобосс-фарм",
+		languageLabel = "Язык интерфейса:",
+		lang_ru = "Русский",
+		lang_uk = "Українська",
+		lang_en = "English (US)"
+	},
+	uk = {
+		hubTitle = "Pidromania Hub: Sword Blox Online",
+		byAuthor = "by @Pidromania",
+		floor = "Поверх",
+		teleports = "Телепорти",
+		bossFarm = "Фарм босів",
+		materialFarm = "Фарм ресурсів",
+		tools = "Інструменти",
+		settings = "Налаштування",
+		selectFloor = "Оберіть поверх:",
+		unknownFloor = "Помилка: невідомий поверх",
+		noBosses = "На цьому поверсі немає босів",
+		bossesOfFloor = "Боси поверху %d (%s):",
+		bossFarms = "Фарм босів:",
+		noFarms = "Немає доступних фармів на цьому поверсі",
+		matAndFish = "Фарм ресурсів і риби",
+		autoOre = "Автофарм усіх руд на поверсі",
+		autoFish = "Авто-ловля риби (10 кожну хвилину)",
+		freezeToggle = "Фріз гравця на місці",
+		respawnToggle = "Відродження на місці смерті",
+		playerListToggle = "Список геїв на сервері",
+		autofarmToggle = "Автобос-фарм",
+		languageLabel = "Мова інтерфейсу:",
+		lang_ru = "Російська",
+		lang_uk = "Українська",
+		lang_en = "English (US)"
+	},
+	en = {
+		hubTitle = "Pidromania Hub: Sword Blox Online",
+		byAuthor = "by @Pidromania",
+		floor = "Floor",
+		teleports = "Teleports",
+		bossFarm = "Boss Farm",
+		materialFarm = "Material Farm",
+		tools = "Tools",
+		settings = "Settings",
+		selectFloor = "Select floor:",
+		unknownFloor = "Error: unknown floor",
+		noBosses = "No bosses on this floor",
+		bossesOfFloor = "Bosses of floor %d (%s):",
+		bossFarms = "Boss Farms:",
+		noFarms = "No available farms on this floor",
+		matAndFish = "Material & Fish Farm",
+		autoOre = "Auto-farm all ores on floor",
+		autoFish = "Auto-fish (10 every 1 minute)",
+		freezeToggle = "Freeze player in place",
+		respawnToggle = "Respawn at death location",
+		playerListToggle = "Player list on server",
+		autofarmToggle = "Auto-boss farm",
+		languageLabel = "Interface language:",
+		lang_ru = "Russian",
+		lang_uk = "Ukrainian",
+		lang_en = "English (US)"
+	}
+}
+
+local function T(key)
+	return translations[currentLang][key] or ("???" .. key .. "???")
+end
+
+-- === ДАННЫЕ ИГРЫ ===
 local FLOORS = {
 {1,   "Town Of Beginnings",       4733293382},
 {2,   "Swordsman Fields",          4734865416},
@@ -26,6 +123,7 @@ local FLOORS = {
 {18,  "Early Crownvein",           94066307314492},
 {18,  "Early Crownvein: Arena",    117852524597461}
 }
+
 local BOSSES = {
 [4734865416] = {
 {"Shadesworn the Corrupted", 414, -1174, -461},
@@ -99,7 +197,6 @@ local BOSSES = {
 }
 }
 
--- === BOSS FARMS ===
 local BOSS_FARMS = {
 [4734865416] = {
 {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
@@ -175,6 +272,8 @@ local BOSS_FARMS = {
 {"Frontman", Vector3.new(-37.41, 62.37, -163.14)},
 }
 }
+
+-- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 local isFrozen = false
 local freezePosition = nil
 local freezeConnection = nil
@@ -186,6 +285,10 @@ local screenGui = nil
 local indicator = nil
 local playerListGui = nil
 local playerListUpdateLoop = nil
+local materialFarmActive = false
+local fishFarmActive = false
+
+-- === ФУНКЦИИ ===
 local function teleport(pos)
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then
@@ -247,6 +350,7 @@ local function findMobsFolder()
 	end
 	return folder
 end
+
 local function getPlayerLevel(plr)
 	local stats = plr:FindFirstChild("PlayerStats")
 	if stats then
@@ -274,8 +378,6 @@ local function getPlayerLevel(plr)
 	end
 	return "?"
 end
-local playerListGui = nil
-local playerListUpdateLoop = nil
 
 local function createPlayerListGui()
 	if playerListGui then return end
@@ -286,7 +388,7 @@ local function createPlayerListGui()
 	playerListGui.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0, 320, 0, 280) -- ШИРЕ И НИЖЕ
+	frame.Size = UDim2.new(0, 320, 0, 280)
 	frame.Position = UDim2.new(1, -330, 0, 20)
 	frame.BackgroundTransparency = 0
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
@@ -300,15 +402,15 @@ local function createPlayerListGui()
 	local header = Instance.new("TextLabel")
 	header.Size = UDim2.new(1, 0, 0, 30)
 	header.BackgroundTransparency = 1
-	header.Text = "Игроки на сервере"
+	header.Text = T("playerListToggle")
 	header.TextColor3 = Color3.fromRGB(180, 180, 220)
 	header.Font = Enum.Font.GothamBold
-	header.TextSize = 16 -- БОЛЬШЕ ТЕКСТ
+	header.TextSize = 16
 	header.TextXAlignment = Enum.TextXAlignment.Center
 	header.Parent = frame
 
 	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -12, 1, -42) -- чуть подогнано под новый header
+	scroll.Size = UDim2.new(1, -12, 1, -42)
 	scroll.Position = UDim2.new(0, 6, 0, 32)
 	scroll.BackgroundTransparency = 1
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -334,7 +436,7 @@ local function createPlayerListGui()
 				lbl.Text = txt
 				lbl.TextColor3 = Color3.fromRGB(240, 240, 255)
 				lbl.Font = Enum.Font.GothamBold
-				lbl.TextSize = 16 -- ОСНОВНОЙ ТЕКСТ ТОЖЕ БОЛЬШЕ
+				lbl.TextSize = 16
 				lbl.TextXAlignment = Enum.TextXAlignment.Left
 				lbl.TextTruncate = Enum.TextTruncate.AtEnd
 				lbl.Parent = scroll
@@ -345,7 +447,6 @@ local function createPlayerListGui()
 	end
 
 	updateList()
-
 	playerListUpdateLoop = spawn(function()
 		while playerListGui and playerListGui.Parent do
 			task.wait(5)
@@ -368,6 +469,7 @@ local function destroyPlayerListGui()
 		playerListGui = nil
 	end
 end
+
 local function toggleFreeze()
 	isFrozen = not isFrozen
 	if isFrozen then
@@ -397,6 +499,7 @@ local function toggleFreeze()
 		end
 	end
 end
+
 local function cleanupResurrection()
 	for _, conn in ipairs(resurrectionConnections) do
 		if conn and conn.Disconnect then
@@ -413,16 +516,19 @@ local function setupResurrection()
 	resurrectionActive = true
 	local player = game:GetService("Players").LocalPlayer
 	local runService = game:GetService("RunService")
+
 	local function onCharacterAdded(character)
 		local humanoid = character:WaitForChild("Humanoid")
 		local rootPart = character:WaitForChild("HumanoidRootPart")
 		local lastPos = rootPart.Position
+
 		local posConn = runService.Heartbeat:Connect(function()
 			if rootPart and rootPart.Parent then
 				lastPos = rootPart.Position
 			end
 		end)
 		table.insert(resurrectionConnections, posConn)
+
 		local diedConn = humanoid.Died:Connect(function()
 			if posConn.Connected then
 				posConn:Disconnect()
@@ -437,6 +543,7 @@ local function setupResurrection()
 			end)
 		end)
 		table.insert(resurrectionConnections, diedConn)
+
 		local ancestryConn = character.AncestryChanged:Connect(function(_, parent)
 			if not parent then
 				if posConn.Connected then posConn:Disconnect() end
@@ -445,14 +552,15 @@ local function setupResurrection()
 		end)
 		table.insert(resurrectionConnections, ancestryConn)
 	end
+
 	local charAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
 	table.insert(resurrectionConnections, charAddedConn)
+
 	if player.Character then
 		onCharacterAdded(player.Character)
 	end
 end
 
--- === ОБЩАЯ ФУНКЦИЯ ФАРМА ===
 local function startGenericFarm(bossName, farmPos)
 	currentFarmMode = bossName
 	initGUI()
@@ -466,17 +574,21 @@ local function startGenericFarm(bossName, farmPos)
 		local isFloor18 = (placeId == 94066307314492)
 		local isFloor13 = (placeId == 5136611550)
 		local isFloor17 = (placeId == 12632324801)
+
 		while currentFarmMode == bossName do
 			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 			if not hrp then break end
+
 			local mobsFolder = findMobsFolder()
 			local foundAny = false
+
 			if mobsFolder then
 				for _, mob in ipairs(mobsFolder:GetChildren()) do
 					if mob:IsA("Model") then
 						local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
 						if torso and torso:IsA("BasePart") then
 							local shouldProcess = false
+
 							if isFloor14 or isFloor18 or isFloor17 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
@@ -490,6 +602,7 @@ local function startGenericFarm(bossName, farmPos)
 									shouldProcess = true
 								end
 							end
+
 							if shouldProcess then
 								foundAny = true
 								torso.Anchored = true
@@ -504,6 +617,7 @@ local function startGenericFarm(bossName, farmPos)
 					end
 				end
 			end
+
 			updateIndicator(foundAny)
 			if isFloor14 or isFloor18 then
 				wait(3)
@@ -524,405 +638,6 @@ local function stopAllFarms()
 	end
 end
 
--- === GUI ===
-local screenGuiMain = Instance.new("ScreenGui")
-screenGuiMain.Name = "PidromaniaHub"
-screenGuiMain.ResetOnSpawn = false
-screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGuiMain.Parent = player:WaitForChild("PlayerGui")
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
-mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = screenGuiMain
-
-local mainFrameCorner = Instance.new("UICorner")
-mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
-mainFrameCorner.Parent = mainFrame
-
-local dragDetector = Instance.new("Frame")
-dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
-dragDetector.Position = UDim2.new(0, 0, 0, 0)
-dragDetector.BackgroundTransparency = 1
-dragDetector.Parent = mainFrame
-
-local minimizedFrame = Instance.new("Frame")
-minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
-minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
-minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-minimizedFrame.BorderSizePixel = 0
-minimizedFrame.Visible = false
-minimizedFrame.Active = true
-minimizedFrame.Draggable = true
-minimizedFrame.Parent = screenGuiMain
-
-local cornerMinimized = Instance.new("UICorner")
-cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
-cornerMinimized.Parent = minimizedFrame
-
-local minimizedLabel = Instance.new("TextLabel")
-minimizedLabel.Text = "Pidromania Hub"
-minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
-minimizedLabel.BackgroundTransparency = 1
-minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-minimizedLabel.Font = Enum.Font.GothamBold
-minimizedLabel.TextSize = 12 * 1.5
-minimizedLabel.Parent = minimizedFrame
-
-minimizedFrame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		mainFrame.Visible = true
-		minimizedFrame.Visible = false
-	end
-end)
-
--- HEADER
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
-header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-header.BorderSizePixel = 0
-header.Parent = mainFrame
-
-local cornerHeader = Instance.new("UICorner")
-cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
-cornerHeader.Parent = header
-
-local title = Instance.new("TextLabel")
-title.Text = "Pidromania Hub: Sword Blox Online"
-title.TextScaled = false
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14 * 1.5
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(220, 220, 255)
-local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
-title.Size = UDim2.new(0, textSize.X * 1.1, 0, 20 * 1.5)
-title.Position = UDim2.new(0, 5, 0, 7 * 1.5)
-title.Parent = header
-
-local author = Instance.new("TextLabel")
-author.Text = "by @Pidromania"
-author.TextScaled = false
-author.Font = Enum.Font.GothamSemibold
-author.TextSize = 12 * 1.5
-author.BackgroundTransparency = 1
-author.TextColor3 = Color3.fromRGB(150, 150, 180)
-local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
-author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 20 * 1.5)
-local offset = -15
-author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
-author.Parent = header
-
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Text = "--"
-minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
-minimizeBtn.Position = UDim2.new(1, -30 * 1.5, 0, 5 * 1.5)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.TextSize = 14 * 1.5
-minimizeBtn.Parent = header
-
-minimizeBtn.MouseButton1Click:Connect(function()
-	mainFrame.Visible = false
-	minimizedFrame.Visible = true
-end)
-
--- ПАНЕЛИ
-local leftPanel = Instance.new("Frame")
-leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
-leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
-leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-leftPanel.BorderSizePixel = 0
-leftPanel.Parent = mainFrame
-
-local cornerLeft = Instance.new("UICorner")
-cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
-cornerLeft.Parent = leftPanel
-
-local rightPanel = Instance.new("Frame")
-rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
-rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
-rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-rightPanel.BorderSizePixel = 0
-rightPanel.Parent = mainFrame
-
-local cornerRight = Instance.new("UICorner")
-cornerRight.CornerRadius = UDim.new(0, 8 * 1.5)
-cornerRight.Parent = rightPanel
-
-local contentContainer = Instance.new("ScrollingFrame")
-contentContainer.Size = UDim2.new(1, -10 * 1.5, 1, -10 * 1.5)
-contentContainer.Position = UDim2.new(0, 5 * 1.5, 0, 5 * 1.5)
-contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-contentContainer.ScrollBarThickness = 4 * 1.5
-contentContainer.BackgroundTransparency = 1
-contentContainer.Parent = rightPanel
-
-local cornerContent = Instance.new("UICorner")
-cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
-cornerContent.Parent = contentContainer
-
--- МЕНЮ
-local menuItems = {}
-local function createMenuItem(name, icon)
-	local btn = Instance.new("TextButton")
-	btn.Name = name
-	btn.Text = "  " .. (icon or "") .. "  " .. name
-	btn.Size = UDim2.new(1, -10 * 1.5, 0, 35 * 1.5)
-	btn.Position = UDim2.new(0, 5 * 1.5, 0, (#menuItems * (38 * 1.5)) + (5 * 1.5))
-	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-	btn.TextColor3 = Color3.fromRGB(220, 220, 255)
-	btn.Font = Enum.Font.GothamSemibold
-	btn.TextSize = 14 * 1.5
-	btn.AutoButtonColor = true
-	btn.Parent = leftPanel
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6 * 1.5)
-	corner.Parent = btn
-	table.insert(menuItems, btn)
-	return btn
-end
-
-local floorBtn = createMenuItem("Floor", "🌍")
-local teleportsBtn = createMenuItem("Teleports", "🌐")
-local bossFarmBtn = createMenuItem("Boss Farm", "👹")
-local materialFarmBtn = createMenuItem("Material Farm", "📦")
-local toolsBtn = createMenuItem("Tools", "🛠️")
-
-local function clearContent()
-	for _, child in ipairs(contentContainer:GetChildren()) do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-end
-
--- FLOOR
-local function showFloors()
-	clearContent()
-	local title = Instance.new("TextLabel")
-	title.Text = "Выберите этаж:"
-	title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(200, 200, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14 * 1.5
-	title.Parent = contentContainer
-	for i, data in ipairs(FLOORS) do
-		local floorNum, name, placeId = unpack(data)
-		local btn = Instance.new("TextButton")
-		btn.Name = "Floor" .. floorNum
-		btn.Text = string.format("Floor %d — %s", floorNum, name)
-		btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-		btn.Position = UDim2.new(0, 5 * 1.5, 0, (30 * 1.5) + (i - 1) * (35 * 1.5))
-		btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		btn.TextColor3 = Color3.fromRGB(240, 240, 255)
-		btn.Font = Enum.Font.GothamSemibold
-		btn.TextSize = 14 * 1.5
-		btn.AutoButtonColor = true
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6 * 1.5)
-		corner.Parent = btn
-		btn.MouseButton1Click:Connect(function()
-			pcall(function()
-				TeleportService:Teleport(placeId, player)
-			end)
-		end)
-		btn.Parent = contentContainer
-	end
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * (35 * 1.5) + (40 * 1.5))
-end
-
--- TELEPORTS
-local function showBosses()
-	clearContent()
-	local currentPlaceId = game.PlaceId
-	local currentFloor = nil
-	for _, floorData in ipairs(FLOORS) do
-		if floorData[3] == currentPlaceId then
-			currentFloor = floorData
-			break
-		end
-	end
-	if not currentFloor then
-		local title = Instance.new("TextLabel")
-		title.Text = "Ошибка: неизвестный этаж"
-		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-		title.BackgroundTransparency = 1
-		title.TextColor3 = Color3.fromRGB(255, 100, 100)
-		title.Font = Enum.Font.GothamBold
-		title.TextSize = 14 * 1.5
-		title.Parent = contentContainer
-		return
-	end
-	local bosses = BOSSES[currentPlaceId]
-	if not bosses or #bosses == 0 then
-		local title = Instance.new("TextLabel")
-		title.Text = "На этом этаже нет боссов"
-		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-		title.BackgroundTransparency = 1
-		title.TextColor3 = Color3.fromRGB(200, 200, 255)
-		title.Font = Enum.Font.GothamBold
-		title.TextSize = 14 * 1.5
-		title.Parent = contentContainer
-		return
-	end
-	local headerLabel = Instance.new("TextLabel")
-	headerLabel.Text = "Боссы этажа " .. currentFloor[1] .. " (" .. currentFloor[2] .. "):"
-	headerLabel.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-	headerLabel.BackgroundTransparency = 1
-	headerLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-	headerLabel.Font = Enum.Font.GothamBold
-	headerLabel.TextSize = 14 * 1.5
-	headerLabel.Parent = contentContainer
-	for i, boss in ipairs(bosses) do
-		local name, x, y, z = unpack(boss)
-		local btn = Instance.new("TextButton")
-		btn.Name = "Boss" .. i
-		btn.Text = name
-		btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-		btn.Position = UDim2.new(0, 5 * 1.5, 0, (30 * 1.5) + (i - 1) * (35 * 1.5))
-		btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		btn.TextColor3 = Color3.fromRGB(240, 240, 255)
-		btn.Font = Enum.Font.GothamSemibold
-		btn.TextSize = 14 * 1.5
-		btn.AutoButtonColor = true
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6 * 1.5)
-		corner.Parent = btn
-		btn.MouseButton1Click:Connect(function()
-			if player.Character then
-				local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					hrp.CFrame = CFrame.new(x, y, z)
-				else
-					warn("HumanoidRootPart не найден!")
-				end
-			else
-				warn("Персонаж не существует!")
-			end
-		end)
-		btn.Parent = contentContainer
-	end
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, #bosses * (35 * 1.5) + (40 * 1.5))
-end
-
--- BOSS FARM
-local function showBossFarms()
-	clearContent()
-	local currentPlaceId = game.PlaceId
-	local farms = BOSS_FARMS[currentPlaceId]
-	local title = Instance.new("TextLabel")
-	title.Text = "Boss Farms:"
-	title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(200, 200, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14 * 1.5
-	title.Parent = contentContainer
-	if not farms or #farms == 0 then
-		local noBossLabel = Instance.new("TextLabel")
-		noBossLabel.Text = "Нет доступных фармов на этом этаже"
-		noBossLabel.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-		noBossLabel.BackgroundTransparency = 1
-		noBossLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-		noBossLabel.Font = Enum.Font.GothamSemibold
-		noBossLabel.TextSize = 14 * 1.5
-		noBossLabel.Position = UDim2.new(0, 0, 0, 30 * 1.5)
-		noBossLabel.Parent = contentContainer
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 60 * 1.5)
-		return
-	end
-	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
-		local switchFrame = Instance.new("Frame")
-		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-		switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		switchFrame.BorderSizePixel = 0
-		switchFrame.Parent = parent
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6 * 1.5)
-		corner.Parent = switchFrame
-		local labelText = Instance.new("TextLabel")
-		labelText.Text = label
-		labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
-		labelText.BackgroundTransparency = 1
-		labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
-		labelText.Font = Enum.Font.GothamSemibold
-		labelText.TextSize = 14 * 1.5
-		labelText.TextXAlignment = Enum.TextXAlignment.Left
-		labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		labelText.Parent = switchFrame
-		local toggleBg = Instance.new("Frame")
-		toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
-		toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
-		toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-		toggleBg.BorderSizePixel = 0
-		toggleBg.Parent = switchFrame
-		local cornerBg = Instance.new("UICorner")
-		cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
-		cornerBg.Parent = toggleBg
-		local toggleKnob = Instance.new("Frame")
-		toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
-		toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		toggleKnob.BorderSizePixel = 0
-		toggleKnob.Parent = toggleBg
-		local cornerKnob = Instance.new("UICorner")
-		cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
-		cornerKnob.Parent = toggleKnob
-		local isEnabled = initialEnabled
-		local function updateToggle()
-			if isEnabled then
-				toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
-			else
-				toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-				toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
-			end
-		end
-		updateToggle()
-		switchFrame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				isEnabled = not isEnabled
-				onToggle(isEnabled)
-				updateToggle()
-			end
-		end)
-		return switchFrame, function(state)
-			isEnabled = state
-			updateToggle()
-		end
-	end
-	local yOffset = 30 * 1.5
-	for _, farmData in ipairs(farms) do
-		local bossName, farmPos = unpack(farmData)
-		local isActive = (currentFarmMode == bossName)
-		local switchFrame, setState = createToggleSwitch(contentContainer, "Farm: " .. bossName, isActive, function(enabled)
-			stopAllFarms()
-			if enabled then
-				startGenericFarm(bossName, farmPos)
-			else
-				currentFarmMode = nil
-			end
-		end)
-		switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-		yOffset = yOffset + 35 * 1.5
-	end
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
-end
-
--- === MATERIAL & FISH FARM ===
-local materialFarmActive = false
-local fishFarmActive = false
-
--- Material Farm
 local function startMaterialFarm()
 	if materialFarmActive then return end
 	materialFarmActive = true
@@ -951,7 +666,6 @@ local function stopMaterialFarm()
 	materialFarmActive = false
 end
 
--- Fish Farm
 local function startFishFarm()
 	if fishFarmActive then return end
 	fishFarmActive = true
@@ -972,272 +686,625 @@ local function stopFishFarm()
 	fishFarmActive = false
 end
 
--- UI for Material + Fish Farm
-local function showMaterialFarm()
-	clearContent()
-	local title = Instance.new("TextLabel")
-	title.Text = "Material & Fish Farm"
-	title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(200, 200, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14 * 1.5
-	title.Parent = contentContainer
-	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
-		local switchFrame = Instance.new("Frame")
-		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-		switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		switchFrame.BorderSizePixel = 0
-		switchFrame.Parent = parent
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6 * 1.5)
-		corner.Parent = switchFrame
-		local labelText = Instance.new("TextLabel")
-		labelText.Text = label
-		labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
-		labelText.BackgroundTransparency = 1
-		labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
-		labelText.Font = Enum.Font.GothamSemibold
-		labelText.TextSize = 14 * 1.5
-		labelText.TextXAlignment = Enum.TextXAlignment.Left
-		labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		labelText.Parent = switchFrame
-		local toggleBg = Instance.new("Frame")
-		toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
-		toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
-		toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-		toggleBg.BorderSizePixel = 0
-		toggleBg.Parent = switchFrame
-		local cornerBg = Instance.new("UICorner")
-		cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
-		cornerBg.Parent = toggleBg
-		local toggleKnob = Instance.new("Frame")
-		toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
-		toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		toggleKnob.BorderSizePixel = 0
-		toggleKnob.Parent = toggleBg
-		local cornerKnob = Instance.new("UICorner")
-		cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
-		cornerKnob.Parent = toggleKnob
-		local isEnabled = initialEnabled
-		local function updateToggle()
-			if isEnabled then
-				toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
-			else
-				toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-				toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
-			end
+-- === СОЗДАНИЕ GUI ===
+local function createToggleSwitch(parent, label, initialEnabled, onToggle)
+	local switchFrame = Instance.new("Frame")
+	switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+	switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	switchFrame.BorderSizePixel = 0
+	switchFrame.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6 * 1.5)
+	corner.Parent = switchFrame
+
+	local labelText = Instance.new("TextLabel")
+	labelText.Text = label
+	labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
+	labelText.BackgroundTransparency = 1
+	labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
+	labelText.Font = Enum.Font.GothamSemibold
+	labelText.TextSize = 14 * 1.5
+	labelText.TextXAlignment = Enum.TextXAlignment.Left
+	labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	labelText.Parent = switchFrame
+
+	local toggleBg = Instance.new("Frame")
+	toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
+	toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
+	toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	toggleBg.BorderSizePixel = 0
+	toggleBg.Parent = switchFrame
+
+	local cornerBg = Instance.new("UICorner")
+	cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
+	cornerBg.Parent = toggleBg
+
+	local toggleKnob = Instance.new("Frame")
+	toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
+	toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	toggleKnob.BorderSizePixel = 0
+	toggleKnob.Parent = toggleBg
+
+	local cornerKnob = Instance.new("UICorner")
+	cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerKnob.Parent = toggleKnob
+
+	local isEnabled = initialEnabled
+
+	local function updateToggle()
+		if isEnabled then
+			toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
+		else
+			toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+			toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
 		end
-		updateToggle()
-		switchFrame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				isEnabled = not isEnabled
-				onToggle(isEnabled)
-				updateToggle()
-			end
-		end)
-		return switchFrame, function(state)
-			isEnabled = state
+	end
+
+	updateToggle()
+
+	switchFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isEnabled = not isEnabled
+			onToggle(isEnabled)
 			updateToggle()
 		end
-	end
-	-- Material Toggle
-	local matToggle, _ = createToggleSwitch(
-		contentContainer,
-		"Автофарм всех руд на этаже",
-		materialFarmActive,
-		function(enabled)
-			if enabled then
-				startMaterialFarm()
-			else
-				stopMaterialFarm()
-			end
-		end
-	)
-	matToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
-	-- Fish Toggle
-	local fishToggle, _ = createToggleSwitch(
-		contentContainer,
-		"Авто-ловля рыбы (10 каждые 1 минуту)",
-		fishFarmActive,
-		function(enabled)
-			if enabled then
-				startFishFarm()
-			else
-				stopFishFarm()
-			end
-		end
-	)
-	fishToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 2)
-end
+	end)
 
--- TOOLS
-local function showConvenience()
-	clearContent()
-	local title = Instance.new("TextLabel")
-	title.Text = "Tools:"
-	title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(200, 200, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14 * 1.5
-	title.Parent = contentContainer
-
-	local function createToggleSwitch(parent, label, initialEnabled, onToggle)
-		local switchFrame = Instance.new("Frame")
-		switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-		switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		switchFrame.BorderSizePixel = 0
-		switchFrame.Parent = parent
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6 * 1.5)
-		corner.Parent = switchFrame
-		local labelText = Instance.new("TextLabel")
-		labelText.Text = label
-		labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
-		labelText.BackgroundTransparency = 1
-		labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
-		labelText.Font = Enum.Font.GothamSemibold
-		labelText.TextSize = 14 * 1.5
-		labelText.TextXAlignment = Enum.TextXAlignment.Left
-		labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-		labelText.Parent = switchFrame
-		local toggleBg = Instance.new("Frame")
-		toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
-		toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
-		toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-		toggleBg.BorderSizePixel = 0
-		toggleBg.Parent = switchFrame
-		local cornerBg = Instance.new("UICorner")
-		cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
-		cornerBg.Parent = toggleBg
-		local toggleKnob = Instance.new("Frame")
-		toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
-		toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		toggleKnob.BorderSizePixel = 0
-		toggleKnob.Parent = toggleBg
-		local cornerKnob = Instance.new("UICorner")
-		cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
-		cornerKnob.Parent = toggleKnob
-		local isEnabled = initialEnabled
-		local function updateToggle()
-			if isEnabled then
-				toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
-			else
-				toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-				toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-				toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
-			end
-		end
+	return switchFrame, function(state)
+		isEnabled = state
 		updateToggle()
-		switchFrame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				isEnabled = not isEnabled
-				onToggle(isEnabled)
-				updateToggle()
-			end
-		end)
-		return switchFrame, function(state)
-			isEnabled = state
-			updateToggle()
-		end
 	end
-
-	-- Freeze
-	local freezeSwitch, setFreezeState = createToggleSwitch(contentContainer, "Фриз игрока на месте", isFrozen, function(enabled)
-		if enabled then
-			toggleFreeze()
-		else
-			toggleFreeze()
-		end
-	end)
-	freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
-
-	-- Respawn
-	local resSwitch, setResState = createToggleSwitch(contentContainer, "Воскрешение на месте смерти", resurrectionActive, function(enabled)
-		if enabled then
-			setupResurrection()
-		else
-			cleanupResurrection()
-		end
-	end)
-	resSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
-
-	-- Player List (NEW!)
-	local playerListSwitch, _ = createToggleSwitch(contentContainer, "Список геев на сервере", playerListGui ~= nil, function(enabled)
-		if enabled then
-			createPlayerListGui()
-		else
-			destroyPlayerListGui()
-		end
-	end)
-	playerListSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5 + 35 * 1.5)
-
-	-- Autofarm (disabled)
-	local autofarmSwitch, setAutofarmState = createToggleSwitch(contentContainer, "Автобосс-фарм", false, function(enabled)
-		if enabled then
-			warn("Старый автобосс временно отключен. Используйте новые фармы.")
-			setAutofarmState(false)
-		end
-	end)
-	autofarmSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5 + 35 * 1.5 + 35 * 1.5)
-
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 4)
 end
 
--- ВЫБОР ВКЛАДКИ
-local function selectButton(btn)
-	for _, b in ipairs(menuItems) do
-		b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+-- === ОСНОВНАЯ ФУНКЦИЯ ПЕРЕСОЗДАНИЯ GUI ===
+local screenGuiMain = nil
+
+local function rebuildGUI()
+	if screenGuiMain then
+		screenGuiMain:Destroy()
 	end
-	btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
-end
 
-floorBtn.MouseButton1Click:Connect(function()
-	selectButton(floorBtn)
-	showFloors()
-end)
-teleportsBtn.MouseButton1Click:Connect(function()
-	selectButton(teleportsBtn)
-	showBosses()
-end)
-bossFarmBtn.MouseButton1Click:Connect(function()
-	selectButton(bossFarmBtn)
-	showBossFarms()
-end)
-materialFarmBtn.MouseButton1Click:Connect(function()
-	selectButton(materialFarmBtn)
-	showMaterialFarm()
-end)
-toolsBtn.MouseButton1Click:Connect(function()
-	selectButton(toolsBtn)
-	showConvenience()
-end)
+	screenGuiMain = Instance.new("ScreenGui")
+	screenGuiMain.Name = "PidromaniaHub"
+	screenGuiMain.ResetOnSpawn = false
+	screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGuiMain.Parent = player:WaitForChild("PlayerGui")
 
-selectButton(floorBtn)
-showFloors()
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
+	mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = screenGuiMain
 
--- Горячая клавиша G
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.G then
-		if mainFrame.Visible then
-			mainFrame.Visible = false
-			minimizedFrame.Visible = true
-		else
+	local mainFrameCorner = Instance.new("UICorner")
+	mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
+	mainFrameCorner.Parent = mainFrame
+
+	local dragDetector = Instance.new("Frame")
+	dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
+	dragDetector.Position = UDim2.new(0, 0, 0, 0)
+	dragDetector.BackgroundTransparency = 1
+	dragDetector.Parent = mainFrame
+
+	local minimizedFrame = Instance.new("Frame")
+	minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
+	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
+	minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	minimizedFrame.BorderSizePixel = 0
+	minimizedFrame.Visible = false
+	minimizedFrame.Active = true
+	minimizedFrame.Draggable = true
+	minimizedFrame.Parent = screenGuiMain
+
+	local cornerMinimized = Instance.new("UICorner")
+	cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerMinimized.Parent = minimizedFrame
+
+	local minimizedLabel = Instance.new("TextLabel")
+	minimizedLabel.Text = T("hubTitle")
+	minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
+	minimizedLabel.BackgroundTransparency = 1
+	minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+	minimizedLabel.Font = Enum.Font.GothamBold
+	minimizedLabel.TextSize = 12 * 1.5
+	minimizedLabel.Parent = minimizedFrame
+
+	minimizedFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			mainFrame.Visible = true
 			minimizedFrame.Visible = false
 		end
+	end)
+
+	-- HEADER
+	local header = Instance.new("Frame")
+	header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
+	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	header.BorderSizePixel = 0
+	header.Parent = mainFrame
+
+	local cornerHeader = Instance.new("UICorner")
+	cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerHeader.Parent = header
+
+	local title = Instance.new("TextLabel")
+	title.Text = T("hubTitle")
+	title.TextScaled = false
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14 * 1.5
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(220, 220, 255)
+	local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
+	title.Size = UDim2.new(0, textSize.X * 1.1, 0, 20 * 1.5)
+	title.Position = UDim2.new(0, 5, 0, 7 * 1.5)
+	title.Parent = header
+
+	local author = Instance.new("TextLabel")
+	author.Text = T("byAuthor")
+	author.TextScaled = false
+	author.Font = Enum.Font.GothamSemibold
+	author.TextSize = 12 * 1.5
+	author.BackgroundTransparency = 1
+	author.TextColor3 = Color3.fromRGB(150, 150, 180)
+	local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
+	author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 20 * 1.5)
+	local offset = -15
+	author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
+	author.Parent = header
+
+	local minimizeBtn = Instance.new("TextButton")
+	minimizeBtn.Text = "--"
+	minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
+	minimizeBtn.Position = UDim2.new(1, -30 * 1.5, 0, 5 * 1.5)
+	minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+	minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	minimizeBtn.Font = Enum.Font.GothamBold
+	minimizeBtn.TextSize = 14 * 1.5
+	minimizeBtn.Parent = header
+
+	minimizeBtn.MouseButton1Click:Connect(function()
+		mainFrame.Visible = false
+		minimizedFrame.Visible = true
+	end)
+
+	-- ПАНЕЛИ
+	local leftPanel = Instance.new("Frame")
+	leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
+	leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
+	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	leftPanel.BorderSizePixel = 0
+	leftPanel.Parent = mainFrame
+
+	local cornerLeft = Instance.new("UICorner")
+	cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerLeft.Parent = leftPanel
+
+	local rightPanel = Instance.new("Frame")
+	rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
+	rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
+	rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	rightPanel.BorderSizePixel = 0
+	rightPanel.Parent = mainFrame
+
+	local cornerRight = Instance.new("UICorner")
+	cornerRight.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerRight.Parent = rightPanel
+
+	local contentContainer = Instance.new("ScrollingFrame")
+	contentContainer.Size = UDim2.new(1, -10 * 1.5, 1, -10 * 1.5)
+	contentContainer.Position = UDim2.new(0, 5 * 1.5, 0, 5 * 1.5)
+	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	contentContainer.ScrollBarThickness = 4 * 1.5
+	contentContainer.BackgroundTransparency = 1
+	contentContainer.Parent = rightPanel
+
+	local cornerContent = Instance.new("UICorner")
+	cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerContent.Parent = contentContainer
+
+	-- МЕНЮ
+	local menuItems = {}
+
+	local function createMenuItem(name, icon)
+		local btn = Instance.new("TextButton")
+		btn.Name = name
+		btn.Text = "  " .. (icon or "") .. "  " .. name
+		btn.Size = UDim2.new(1, -10 * 1.5, 0, 35 * 1.5)
+		btn.Position = UDim2.new(0, 5 * 1.5, 0, (#menuItems * (38 * 1.5)) + (5 * 1.5))
+		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+		btn.Font = Enum.Font.GothamSemibold
+		btn.TextSize = 14 * 1.5
+		btn.AutoButtonColor = true
+		btn.Parent = leftPanel
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6 * 1.5)
+		corner.Parent = btn
+
+		table.insert(menuItems, btn)
+		return btn
 	end
-end)
+
+	local function clearContent()
+		for _, child in ipairs(contentContainer:GetChildren()) do
+			if child:IsA("GuiObject") then
+				child:Destroy()
+			end
+		end
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	end
+
+	-- === ВКЛАДКИ ===
+	local function showFloors()
+		clearContent()
+		local title = Instance.new("TextLabel")
+		title.Text = T("selectFloor")
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.fromRGB(200, 200, 255)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14 * 1.5
+		title.Parent = contentContainer
+
+		for i, data in ipairs(FLOORS) do
+			local floorNum, name, placeId = unpack(data)
+			local btn = Instance.new("TextButton")
+			btn.Name = "Floor" .. floorNum
+			btn.Text = string.format("Floor %d — %s", floorNum, name)
+			btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5 * 1.5, 0, (30 * 1.5) + (i - 1) * (35 * 1.5))
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
+			btn.Font = Enum.Font.GothamSemibold
+			btn.TextSize = 14 * 1.5
+			btn.AutoButtonColor = true
+
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 6 * 1.5)
+			corner.Parent = btn
+
+			btn.MouseButton1Click:Connect(function()
+				pcall(function()
+					TeleportService:Teleport(placeId, player)
+				end)
+			end)
+
+			btn.Parent = contentContainer
+		end
+
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * (35 * 1.5) + (40 * 1.5))
+	end
+
+	local function showBosses()
+		clearContent()
+		local currentPlaceId = game.PlaceId
+		local currentFloor = nil
+		for _, floorData in ipairs(FLOORS) do
+			if floorData[3] == currentPlaceId then
+				currentFloor = floorData
+				break
+			end
+		end
+
+		if not currentFloor then
+			local title = Instance.new("TextLabel")
+			title.Text = T("unknownFloor")
+			title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+			title.BackgroundTransparency = 1
+			title.TextColor3 = Color3.fromRGB(255, 100, 100)
+			title.Font = Enum.Font.GothamBold
+			title.TextSize = 14 * 1.5
+			title.Parent = contentContainer
+			return
+		end
+
+		local bosses = BOSSES[currentPlaceId]
+		if not bosses or #bosses == 0 then
+			local title = Instance.new("TextLabel")
+			title.Text = T("noBosses")
+			title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+			title.BackgroundTransparency = 1
+			title.TextColor3 = Color3.fromRGB(200, 200, 255)
+			title.Font = Enum.Font.GothamBold
+			title.TextSize = 14 * 1.5
+			title.Parent = contentContainer
+			return
+		end
+
+		local headerLabel = Instance.new("TextLabel")
+		headerLabel.Text = string.format(T("bossesOfFloor"), currentFloor[1], currentFloor[2])
+		headerLabel.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		headerLabel.BackgroundTransparency = 1
+		headerLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+		headerLabel.Font = Enum.Font.GothamBold
+		headerLabel.TextSize = 14 * 1.5
+		headerLabel.Parent = contentContainer
+
+		for i, boss in ipairs(bosses) do
+			local name, x, y, z = unpack(boss)
+			local btn = Instance.new("TextButton")
+			btn.Name = "Boss" .. i
+			btn.Text = name
+			btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5 * 1.5, 0, (30 * 1.5) + (i - 1) * (35 * 1.5))
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
+			btn.Font = Enum.Font.GothamSemibold
+			btn.TextSize = 14 * 1.5
+			btn.AutoButtonColor = true
+
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 6 * 1.5)
+			corner.Parent = btn
+
+			btn.MouseButton1Click:Connect(function()
+				if player.Character then
+					local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						hrp.CFrame = CFrame.new(x, y, z)
+					else
+						warn("HumanoidRootPart не найден!")
+					end
+				else
+					warn("Персонаж не существует!")
+				end
+			end)
+
+			btn.Parent = contentContainer
+		end
+
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #bosses * (35 * 1.5) + (40 * 1.5))
+	end
+
+	local function showBossFarms()
+		clearContent()
+		local currentPlaceId = game.PlaceId
+		local farms = BOSS_FARMS[currentPlaceId]
+
+		local title = Instance.new("TextLabel")
+		title.Text = T("bossFarms")
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.fromRGB(200, 200, 255)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14 * 1.5
+		title.Parent = contentContainer
+
+		if not farms or #farms == 0 then
+			local noBossLabel = Instance.new("TextLabel")
+			noBossLabel.Text = T("noFarms")
+			noBossLabel.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+			noBossLabel.BackgroundTransparency = 1
+			noBossLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+			noBossLabel.Font = Enum.Font.GothamSemibold
+			noBossLabel.TextSize = 14 * 1.5
+			noBossLabel.Position = UDim2.new(0, 0, 0, 30 * 1.5)
+			noBossLabel.Parent = contentContainer
+			contentContainer.CanvasSize = UDim2.new(0, 0, 0, 60 * 1.5)
+			return
+		end
+
+		local yOffset = 30 * 1.5
+		for _, farmData in ipairs(farms) do
+			local bossName, farmPos = unpack(farmData)
+			local isActive = (currentFarmMode == bossName)
+			local switchFrame, setState = createToggleSwitch(contentContainer, "Farm: " .. bossName, isActive, function(enabled)
+				stopAllFarms()
+				if enabled then
+					startGenericFarm(bossName, farmPos)
+				else
+					currentFarmMode = nil
+				end
+			end)
+			switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+			yOffset = yOffset + 35 * 1.5
+		end
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+	end
+
+	local function showMaterialFarm()
+		clearContent()
+		local title = Instance.new("TextLabel")
+		title.Text = T("matAndFish")
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.fromRGB(200, 200, 255)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14 * 1.5
+		title.Parent = contentContainer
+
+		local matToggle, _ = createToggleSwitch(
+			contentContainer,
+			T("autoOre"),
+			materialFarmActive,
+			function(enabled)
+				if enabled then
+					startMaterialFarm()
+				else
+					stopMaterialFarm()
+				end
+			end
+		)
+		matToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
+
+		local fishToggle, _ = createToggleSwitch(
+			contentContainer,
+			T("autoFish"),
+			fishFarmActive,
+			function(enabled)
+				if enabled then
+					startFishFarm()
+				else
+					stopFishFarm()
+				end
+			end
+		)
+		fishToggle.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
+
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 2)
+	end
+
+	local function showConvenience()
+		clearContent()
+		local title = Instance.new("TextLabel")
+		title.Text = T("tools") .. ":"
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.fromRGB(200, 200, 255)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14 * 1.5
+		title.Parent = contentContainer
+
+		local freezeSwitch, setFreezeState = createToggleSwitch(contentContainer, T("freezeToggle"), isFrozen, function(enabled)
+			toggleFreeze()
+		end)
+		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
+
+		local resSwitch, setResState = createToggleSwitch(contentContainer, T("respawnToggle"), resurrectionActive, function(enabled)
+			if enabled then
+				setupResurrection()
+			else
+				cleanupResurrection()
+			end
+		end)
+		resSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5)
+
+		local playerListSwitch, _ = createToggleSwitch(contentContainer, T("playerListToggle"), playerListGui ~= nil, function(enabled)
+			if enabled then
+				createPlayerListGui()
+			else
+				destroyPlayerListGui()
+			end
+		end)
+		playerListSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5 + 35 * 1.5)
+
+		local autofarmSwitch, setAutofarmState = createToggleSwitch(contentContainer, T("autofarmToggle"), false, function(enabled)
+			if enabled then
+				warn("Старый автобосс временно отключен. Используйте новые фармы.")
+				setAutofarmState(false)
+			end
+		end)
+		autofarmSwitch.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5 + 35 * 1.5 + 35 * 1.5 + 35 * 1.5)
+
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 30 * 1.5 + 35 * 1.5 * 4)
+	end
+
+	-- === НОВАЯ ВКЛАДКА: НАСТРОЙКИ ===
+	local function showSettings()
+		clearContent()
+
+		local title = Instance.new("TextLabel")
+		title.Text = T("languageLabel")
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.fromRGB(200, 200, 255)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14 * 1.5
+		title.Parent = contentContainer
+
+		local langs = {
+			{ code = "ru", name = T("lang_ru") },
+			{ code = "uk", name = T("lang_uk") },
+			{ code = "en", name = T("lang_en") }
+		}
+
+		local yOffset = 30 * 1.5
+		for _, lang in ipairs(langs) do
+			local btn = Instance.new("TextButton")
+			btn.Text = lang.name
+			btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
+			btn.Font = Enum.Font.GothamSemibold
+			btn.TextSize = 14 * 1.5
+			btn.AutoButtonColor = true
+
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 6 * 1.5)
+			corner.Parent = btn
+
+			btn.MouseButton1Click:Connect(function()
+				currentLang = lang.code
+				rebuildGUI() -- ✅ Без ошибок!
+			end)
+
+			btn.Parent = contentContainer
+			yOffset = yOffset + 35 * 1.5
+		end
+
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+	end
+
+	-- МЕНЮ КНОПКИ
+	local floorBtn = createMenuItem(T("floor"), "🌍")
+	local teleportsBtn = createMenuItem(T("teleports"), "🌐")
+	local bossFarmBtn = createMenuItem(T("bossFarm"), "👹")
+	local materialFarmBtn = createMenuItem(T("materialFarm"), "📦")
+	local toolsBtn = createMenuItem(T("tools"), "🛠️")
+	local settingsBtn = createMenuItem(T("settings"), "⚙️")
+
+	local function selectButton(btn)
+		for _, b in ipairs(menuItems) do
+			b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		end
+		btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+	end
+
+	floorBtn.MouseButton1Click:Connect(function()
+		selectButton(floorBtn)
+		showFloors()
+	end)
+	teleportsBtn.MouseButton1Click:Connect(function()
+		selectButton(teleportsBtn)
+		showBosses()
+	end)
+	bossFarmBtn.MouseButton1Click:Connect(function()
+		selectButton(bossFarmBtn)
+		showBossFarms()
+	end)
+	materialFarmBtn.MouseButton1Click:Connect(function()
+		selectButton(materialFarmBtn)
+		showMaterialFarm()
+	end)
+	toolsBtn.MouseButton1Click:Connect(function()
+		selectButton(toolsBtn)
+		showConvenience()
+	end)
+	settingsBtn.MouseButton1Click:Connect(function()
+		selectButton(settingsBtn)
+		showSettings()
+	end)
+
+	selectButton(floorBtn)
+	showFloors()
+
+	-- Горячая клавиша G
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if input.KeyCode == Enum.KeyCode.G then
+			if mainFrame.Visible then
+				mainFrame.Visible = false
+				minimizedFrame.Visible = true
+			else
+				mainFrame.Visible = true
+				minimizedFrame.Visible = false
+			end
+		end
+	end)
+end
+
+-- === ЗАПУСК GUI ===
+rebuildGUI()
 
 -- ==================================================
 -- ESP С ИМЕНЕМ И УРОВНЕМ
@@ -1247,6 +1314,7 @@ if not Camera then
 	Camera = Workspace:GetPropertyChangedSignal("CurrentCamera"):Wait()
 	Camera = Workspace.CurrentCamera
 end
+
 local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
@@ -1272,6 +1340,7 @@ local function updateEsp(player)
 	local head = character:FindFirstChild("Head")
 	local rootPart = character:FindFirstChild("HumanoidRootPart")
 	if not head or not rootPart then return end
+
 	local headPos, headVisible = toScreen(head.Position)
 	local rootPos, rootVisible = toScreen(rootPart.Position)
 	if not (headVisible and rootVisible) then
@@ -1282,6 +1351,7 @@ local function updateEsp(player)
 		end
 		return
 	end
+
 	local footOffset = Vector3.new(0, -3, 0)
 	local feetWorld = rootPart.Position + footOffset
 	local feetPos, _ = toScreen(feetWorld)
@@ -1291,23 +1361,28 @@ local function updateEsp(player)
 	local centerY = (headPos.Y + feetPos.Y) / 2
 	local boxY = centerY - scaledHeight / 2
 	local boxX = headPos.X - width / 2
+
 	if not EspObjects[player] then
 		local box = Drawing.new("Square")
 		box.Color = Color3.fromRGB(255, 0, 0)
 		box.Thickness = 2
 		box.Filled = false
+
 		local nameText = Drawing.new("Text")
 		nameText.Color = Color3.fromRGB(255, 255, 255)
 		nameText.Outline = true
 		nameText.Center = true
 		nameText.Size = 20
+
 		local levelText = Drawing.new("Text")
 		levelText.Color = Color3.fromRGB(0, 255, 255)
 		levelText.Outline = true
 		levelText.Center = true
 		levelText.Size = 18
+
 		EspObjects[player] = { box = box, name = nameText, level = levelText }
 	end
+
 	local esp = EspObjects[player]
 	esp.box.Size = Vector2.new(width, scaledHeight)
 	esp.box.Position = Vector2.new(boxX, boxY)
@@ -1315,6 +1390,7 @@ local function updateEsp(player)
 	esp.name.Text = player.Name
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
 	esp.name.Visible = true
+
 	if player.Name == "ArRoWeNn" then
 		esp.level.Text = "Lvl: Immortal"
 		esp.level.Color = Color3.fromRGB(255, 215, 0)
@@ -1330,6 +1406,7 @@ local function updateEsp(player)
 end
 
 Players.PlayerRemoving:Connect(removeEsp)
+
 for _, player in ipairs(Players:GetPlayers()) do
 	if player ~= LocalPlayer then
 		spawn(function()
