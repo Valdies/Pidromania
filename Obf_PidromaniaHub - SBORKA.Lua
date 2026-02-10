@@ -17,5 +17,7 @@ if whitelistedUserIds[LocalPlayer.UserId] then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
 else
     -- Загрузка "BanNahuy" для остальных
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
 end
+
