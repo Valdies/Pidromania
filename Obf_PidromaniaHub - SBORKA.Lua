@@ -5,7 +5,7 @@ local whitelistedUserIds = {
     [493337194]  = true, -- Кокосик (@Minikokosich)
     -- [4607304028] = true, -- Саня (@ArRoWeNn)
     [3270959865] = true, -- Влад (@luken_god)
-    -- [7947437575] = true  -- Вика (@CuRLyCHeBuRaSHKa)
+    [7947437575] = true  -- Вика (@CuRLyCHeBuRaSHKa)
 }
 
 local Players = game:GetService("Players")
@@ -20,5 +20,6 @@ else
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
 end
+
 
 
