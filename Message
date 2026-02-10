@@ -1,18 +1,30 @@
+-- ✅ РАБОЧИЙ СКРИПТ: Уведомления о входе + админ-детект
+-- Для Xeno Executor / любого клиента
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+
+local ADMIN_USER_ID = 9103392112
 local activeNotifications = {}
 
--- Твой UserId
-local ADMIN_USER_ID = 9103392112
+-- Функция создания GUI в PlayerGui (обход блокировки CoreGui)
+local function createNotification(playerName, isSelf)
+	local player = Players.LocalPlayer
+	if not player then return end
 
-local function showJoinNotification(playerName, isSelf)
-	if activeNotifications[playerName] then return end
+	-- Удаляем старые уведомления с тем же именем
+	for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+		if gui.Name == "PidromaniaJoinNotify_" .. playerName then
+			gui:Destroy()
+		end
+	end
 
 	local notificationGui = Instance.new("ScreenGui")
-	notificationGui.Name = "PidromaniaJoinNotify"
+	notificationGui.Name = "PidromaniaJoinNotify_" .. playerName
 	notificationGui.ResetOnSpawn = false
 	notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	notificationGui.Parent = game:GetService("CoreGui")
+	notificationGui.Parent = player.PlayerGui -- ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: не CoreGui, а PlayerGui
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 480, 0, 110)
@@ -51,22 +63,22 @@ local function showJoinNotification(playerName, isSelf)
 
 	activeNotifications[playerName] = true
 
-	local tweenIn = TweenService:Create(
-		frame,
-		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Position = UDim2.new(1, -490, 1, -120) }
-	)
+	-- Появление
+	local tweenIn = TweenService:Create(frame, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = UDim2.new(1, -490, 1, -120)
+	})
 	tweenIn:Play()
 
+	-- Исчезновение через 5 сек
 	spawn(function()
 		wait(5)
-		local tweenOut = TweenService:Create(
-			frame,
-			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = UDim2.new(1, 0, 1, -120) }
-		)
+
+		local tweenOut = TweenService:Create(frame, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 0, 1, -120)
+		})
 		tweenOut:Play()
 		tweenOut.Completed:Wait()
+
 		pcall(function()
 			notificationGui:Destroy()
 		end)
@@ -74,12 +86,40 @@ local function showJoinNotification(playerName, isSelf)
 	end)
 end
 
+-- Ожидаем, пока LocalPlayer загрузится
+repeat wait() until Players.LocalPlayer and Players.LocalPlayer.Character
+
+-- Подписываемся на новых игроков
 Players.PlayerAdded:Connect(function(player)
 	if player == Players.LocalPlayer then return end
 
-	spawn(function()
-		wait() -- небольшая задержка для загрузки имени и UserId
-		local isSelf = player.UserId == ADMIN_USER_ID
-		showJoinNotification(player.Name, isSelf)
-	end)
+	-- Ждём, пока UserId станет доступен (максимум 2 сек)
+	local attempts = 0
+	repeat
+		attempts += 1
+		wait(0.2)
+	until player.UserId ~= 0 or attempts > 10
+
+	if player.UserId == 0 then return end -- не удалось получить UserId
+
+	local isSelf = (player.UserId == ADMIN_USER_ID)
+	createNotification(player.Name, isSelf)
 end)
+
+-- Также проверим, не вошли ли уже нужные игроки (на случай, если скрипт запущен позже)
+for _, player in ipairs(Players:GetPlayers()) do
+	if player ~= Players.LocalPlayer then
+		spawn(function()
+			local attempts = 0
+			repeat
+				attempts += 1
+				wait(0.2)
+			until player.UserId ~= 0 or attempts > 10
+
+			if player.UserId ~= 0 then
+				local isSelf = (player.UserId == ADMIN_USER_ID)
+				createNotification(player.Name, isSelf)
+			end
+		end)
+	end
+end
