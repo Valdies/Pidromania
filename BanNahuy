@@ -1,3 +1,20 @@
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.G then
+        wait(5)
+		player:Kick("Your account was flagged multiple times for breaking rules, kick/warned, and is now banned!\nIf you'd like to dispute, you may open from ban-appeal-tickets on our Discord (rv6JQ2d)")
+	end
+end)
+
+
+
+
+
+--[[
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -118,3 +135,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		spawnFakeAdminAndKick()
 	end
 end)
+]]--
