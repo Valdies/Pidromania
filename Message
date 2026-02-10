@@ -1,31 +1,14 @@
--- ✅ РАБОЧИЙ СКРИПТ: Уведомления о входе + админ-детект
--- Для Xeno Executor / любого клиента
-
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local StarterGui = game:GetService("StarterGui")
-
-local ADMIN_USER_ID = 9103392112
 local activeNotifications = {}
 
--- Функция создания GUI в PlayerGui (обход блокировки CoreGui)
-local function createNotification(playerName, isSelf)
-	local player = Players.LocalPlayer
-	if not player then return end
-
-	-- Удаляем старые уведомления с тем же именем
-	for _, gui in ipairs(player.PlayerGui:GetChildren()) do
-		if gui.Name == "PidromaniaJoinNotify_" .. playerName then
-			gui:Destroy()
-		end
-	end
-
+local function showJoinNotification(playerName)
+	if activeNotifications[playerName] then return end
 	local notificationGui = Instance.new("ScreenGui")
-	notificationGui.Name = "PidromaniaJoinNotify_" .. playerName
+	notificationGui.Name = "PidromaniaJoinNotify"
 	notificationGui.ResetOnSpawn = false
 	notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	notificationGui.Parent = player.PlayerGui -- ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: не CoreGui, а PlayerGui
-
+	notificationGui.Parent = game:GetService("CoreGui")
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 480, 0, 110)
 	frame.Position = UDim2.new(1, 0, 1, -120)
@@ -33,22 +16,19 @@ local function createNotification(playerName, isSelf)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	frame.BorderSizePixel = 0
 	frame.Parent = notificationGui
-
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 14)
 	corner.Parent = frame
-
 	local topLabel = Instance.new("TextLabel")
 	topLabel.Size = UDim2.new(1, -16, 0, 40)
 	topLabel.Position = UDim2.new(0, 8, 0, 8)
 	topLabel.BackgroundTransparency = 1
-	topLabel.Text = isSelf and "Админ спалил вас в читах!" or "Игрок зашёл на сервер"
-	topLabel.TextColor3 = isSelf and Color3.fromRGB(255, 80, 80) or Color3.fromRGB(180, 180, 220)
+	topLabel.Text = "Игрок зашёл на сервер"
+	topLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
 	topLabel.Font = Enum.Font.GothamBold
 	topLabel.TextSize = 22
 	topLabel.TextXAlignment = Enum.TextXAlignment.Center
 	topLabel.Parent = frame
-
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Size = UDim2.new(1, -16, 0, 48)
 	nameLabel.Position = UDim2.new(0, 8, 0, 54)
@@ -60,25 +40,22 @@ local function createNotification(playerName, isSelf)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLabel.Parent = frame
-
 	activeNotifications[playerName] = true
-
-	-- Появление
-	local tweenIn = TweenService:Create(frame, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.new(1, -490, 1, -120)
-	})
+	local tweenIn = TweenService:Create(
+		frame,
+		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(1, -490, 1, -120) }
+	)
 	tweenIn:Play()
-
-	-- Исчезновение через 5 сек
 	spawn(function()
 		wait(5)
-
-		local tweenOut = TweenService:Create(frame, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(1, 0, 1, -120)
-		})
+		local tweenOut = TweenService:Create(
+			frame,
+			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = UDim2.new(1, 0, 1, -120) }
+		)
 		tweenOut:Play()
 		tweenOut.Completed:Wait()
-
 		pcall(function()
 			notificationGui:Destroy()
 		end)
@@ -86,40 +63,10 @@ local function createNotification(playerName, isSelf)
 	end)
 end
 
--- Ожидаем, пока LocalPlayer загрузится
-repeat wait() until Players.LocalPlayer and Players.LocalPlayer.Character
-
--- Подписываемся на новых игроков
 Players.PlayerAdded:Connect(function(player)
 	if player == Players.LocalPlayer then return end
-
-	-- Ждём, пока UserId станет доступен (максимум 2 сек)
-	local attempts = 0
-	repeat
-		attempts += 1
-		wait(0.2)
-	until player.UserId ~= 0 or attempts > 10
-
-	if player.UserId == 0 then return end -- не удалось получить UserId
-
-	local isSelf = (player.UserId == ADMIN_USER_ID)
-	createNotification(player.Name, isSelf)
+	spawn(function()
+		wait()
+		showJoinNotification(player.Name)
+	end)
 end)
-
--- Также проверим, не вошли ли уже нужные игроки (на случай, если скрипт запущен позже)
-for _, player in ipairs(Players:GetPlayers()) do
-	if player ~= Players.LocalPlayer then
-		spawn(function()
-			local attempts = 0
-			repeat
-				attempts += 1
-				wait(0.2)
-			until player.UserId ~= 0 or attempts > 10
-
-			if player.UserId ~= 0 then
-				local isSelf = (player.UserId == ADMIN_USER_ID)
-				createNotification(player.Name, isSelf)
-			end
-		end)
-	end
-end
