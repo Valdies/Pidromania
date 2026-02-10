@@ -296,7 +296,7 @@ local BOSS_FARMS = {
 {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
 },
 [117852524597461] = {
-{"Frontman", Vector3.new(-37.41, 62.37, -163.14)},
+{"Frontman", Vector3.new(-38.01, 83, -333.90)},
 }
 }
 
@@ -321,6 +321,19 @@ local function teleport(pos)
 	if char and char:FindFirstChild("HumanoidRootPart") then
 		char.HumanoidRootPart.CFrame = CFrame.new(pos)
 	end
+end
+
+local function spawnPlatform(pos)
+	local platform = Instance.new("Part")
+	platform.Name = "PidromaniaPlatform"
+	platform.Size = Vector3.new(10, 1, 10)
+	platform.Position = pos
+	platform.Color = Color3.fromRGB(0, 170, 255)
+	platform.Material = Enum.Material.SmoothPlastic
+	platform.Anchored = true
+	platform.CanCollide = true
+	platform.Parent = Workspace
+	return platform
 end
 
 local function freezePlayer()
@@ -592,15 +605,35 @@ local function startGenericFarm(bossName, farmPos)
 	currentFarmMode = bossName
 	initGUI()
 	updateIndicator(false)
-	teleport(farmPos)
-	wait(0.3)
-	freezePlayer()
+
+	local isFrontman = (bossName == "Frontman")
+	local platform = nil
+
+	if isFrontman then
+		-- Платформа спавнится в безопасной зоне
+		local platformPos = Vector3.new(-38.01, 80.40, -333.90)
+		platform = spawnPlatform(platformPos)
+		teleport(platformPos + Vector3.new(0, 5, 0)) -- чуть выше платформы
+	else
+		teleport(farmPos)
+		task.wait(0.3)
+	end
+
+	-- Запускаем основной цикл с задержкой
 	spawn(function()
+		-- ⏳ Ждём 1 секунду перед фризом и фармом
+		task.wait(1)
+
+		-- 🔒 Фризим только после паузы
+		freezePlayer()
+
 		local placeId = game.PlaceId
 		local isFloor14 = (placeId == 4733293091)
 		local isFloor18 = (placeId == 94066307314492)
 		local isFloor13 = (placeId == 5136611550)
 		local isFloor17 = (placeId == 12632324801)
+		local isArena18_2 = (placeId == 117852524597461)
+		local isCurrentlyFrontman = (bossName == "Frontman")
 
 		while currentFarmMode == bossName do
 			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -616,7 +649,15 @@ local function startGenericFarm(bossName, farmPos)
 						if torso and torso:IsA("BasePart") then
 							local shouldProcess = false
 
-							if isFloor14 or isFloor18 or isFloor17 then
+							-- Frontman использует логику как на 14 этаже
+							if isCurrentlyFrontman and isArena18_2 then
+								local delta = torso.Position - farmPos
+								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
+								local verticalDelta = delta.Y
+								if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then
+									shouldProcess = true
+								end
+							elseif isFloor14 or isFloor18 or isFloor17 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 								local verticalDelta = delta.Y
@@ -636,7 +677,7 @@ local function startGenericFarm(bossName, farmPos)
 								torso.CanCollide = false
 								local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
 								torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
-								if not (isFloor14 or isFloor18) then
+								if not (isFloor14 or isFloor18 or isCurrentlyFrontman) then
 									break
 								end
 							end
@@ -646,13 +687,19 @@ local function startGenericFarm(bossName, farmPos)
 			end
 
 			updateIndicator(foundAny)
-			if isFloor14 or isFloor18 then
-				wait(3)
+
+			if isFloor14 or isFloor18 or isCurrentlyFrontman then
+				task.wait(3)
 			else
-				wait(0.1)
+				task.wait(0.1)
 			end
 		end
+
+		-- Очистка по завершению
 		unfreezePlayer()
+		if platform then
+			platform:Destroy()
+		end
 		updateIndicator(false)
 	end)
 end
