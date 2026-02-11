@@ -12,14 +12,13 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 if whitelistedUserIds[LocalPlayer.UserId] then
-    -- Загрузка основных скриптов для друзей
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
 else
-    -- Загрузка "BanNahuy" для остальных
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
 end
+
 
 
 
