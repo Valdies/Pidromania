@@ -46,3 +46,4 @@ elseif SBOR[game.PlaceId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
     end
 end
+
