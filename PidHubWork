@@ -148,7 +148,8 @@ local FLOORS = {
 {16,  "Rulid Village",             11987539001},
 {17,  "Candy Lands",               12632324801},
 {18,  "Early Crownvein",           94066307314492},
-{18,  "Early Crownvein: Arena",    117852524597461}
+{18,  "Early Crownvein: Arena",    117852524597461},
+{19,  "Glacialis Ward",            130463264320898}
 }
 
 local BOSSES = {
