@@ -1483,16 +1483,86 @@ local function updateEsp(player)
 	esp.box.Size = Vector2.new(width, scaledHeight)
 	esp.box.Position = Vector2.new(boxX, boxY)
 	esp.box.Visible = true
-	esp.name.Text = player.Name
-	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-	esp.name.Visible = true
 
-	if player.Name == "ArRoWeNn" then
+	-- === НАЧАЛО: СПЕЦИАЛЬНЫЙ ESP ДЛЯ ТЕБЯ (huesos880055535) ===
+	if player.Name == "huesos880055535" then
+		esp.name.Visible = false -- скрываем обычное имя
+
+		local text = "Dominus"
+		local charWidth = 14
+		local startX = headPos.X - (#text * charWidth) / 2
+
+		if not EspObjects[player].rainbowLetters then
+			EspObjects[player].rainbowLetters = {}
+			RainbowOffsets[player] = 0
+		end
+
+		local letters = EspObjects[player].rainbowLetters
+		local t = tick() * 0.6
+
+		for i = 1, #text do
+			local char = text:sub(i, i)
+			if not letters[i] then
+				letters[i] = Drawing.new("Text")
+				letters[i].Size = 20
+				letters[i].Outline = true
+				letters[i].Center = false
+			end
+
+			letters[i].Text = char
+			letters[i].Position = Vector2.new(startX + (i - 1) * charWidth, headPos.Y - 25)
+			letters[i].Visible = true
+
+			-- Космическая палитра: фиолет → синий → пыль
+			local phase = t + i * 0.35
+			local hue = (math.sin(phase * 0.8) * 0.25 + 0.65) % 1  -- 0.65–0.9 → фиолет/синий
+			local sat = math.abs(math.sin(phase * 1.2)) * 0.4 + 0.5
+			local val = math.abs(math.sin(phase * 0.9 + i * 0.2)) * 0.3 + 0.65
+
+			-- Каждая 3-я буква — теплее (пыль)
+			if i % 3 == 0 then
+				hue = hue * 0.7 + 0.2  -- сдвиг к оранжевому
+				val = val * 0.9 + 0.1
+			end
+
+			letters[i].Color = Color3.fromHSV(hue, sat, val)
+		end
+
+		-- Скрыть лишние буквы
+		for i = #text + 1, #letters do
+			if letters[i] then letters[i].Visible = false end
+		end
+
+		-- Уровень остаётся "Dominus" внизу
+		esp.level.Text = "Lvl: Dominus"
+		esp.level.Color = Color3.fromRGB(140, 100, 255) -- космический фиолет
+		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
+		esp.level.Visible = true
+
+	-- === КОНЕЦ: КОСМИЧЕСКИЙ ESP ===
+
+	elseif player.Name == "ArRoWeNn" then
+		esp.name.Text = player.Name
+		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+		esp.name.Visible = true
 		esp.level.Text = "Lvl: Immortal"
 		esp.level.Color = Color3.fromRGB(255, 215, 0)
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
+
+	elseif player.Name == "Minikokosich" then
+		esp.name.Text = player.Name
+		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+		esp.name.Visible = true
+		esp.level.Text = "Lvl: Guardian"
+		esp.level.Color = Color3.fromRGB(0, 255, 150)
+		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
+		esp.level.Visible = true
+
 	else
+		esp.name.Text = player.Name
+		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+		esp.name.Visible = true
 		local level = getPlayerLevel(player)
 		esp.level.Text = "Lvl: " .. tostring(level)
 		esp.level.Color = Color3.fromRGB(0, 255, 255)
@@ -1529,3 +1599,4 @@ RunService.RenderStepped:Connect(function()
 		updateEsp(player)
 	end
 end)
+
