@@ -655,6 +655,8 @@ local function startGenericFarm(bossName, farmPos)
 		local isFloor17 = (placeId == 12632324801)
 		local isArena18_2 = (placeId == 117852524597461)
 		local isCurrentlyFrontman = (bossName == "Frontman")
+		local isFloor19 = (placeId == 130463264320898)
+
 
 		while currentFarmMode == bossName do
 			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -678,7 +680,7 @@ local function startGenericFarm(bossName, farmPos)
 								if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then
 									shouldProcess = true
 								end
-							elseif isFloor14 or isFloor18 or isFloor17 or isArena18_2 then
+							elseif isFloor14 or isFloor18 or isFloor17 or isFloor19 or isArena18_2 then
 								local delta = torso.Position - farmPos
 								local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 								local verticalDelta = delta.Y
