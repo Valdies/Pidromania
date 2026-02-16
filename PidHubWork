@@ -1494,8 +1494,6 @@ local function updateEsp(player)
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
 
-	-- === КОНЕЦ: КОСМИЧЕСКИЙ ESP ===
-
 	elseif player.Name == "ArRoWeNn" then
 		esp.name.Text = player.Name
 		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
