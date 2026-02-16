@@ -1,3 +1,7 @@
+-- // Pidromania Hub v2.0 - Updated Material Farm
+-- // Created for Vlad (huesos880055535)
+-- // Game: Sword Blox Online
+
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
@@ -327,7 +331,7 @@ local BOSS_FARMS = {
 },
 [130463264320898] = {
 {"Новый пидор", Vector3.new(-3501.16, 153.08, 3534.65)},
-{"Автофарм у минибоссов", Vector3.new(3642.07, -922.13, 6413.42)},
+{"Автофарм у минибоссов", Vector3.new(3800.08, -942.65, 6421.68)},
 {"Автофарм у вендиго", Vector3.new(3005.19, -473.21, 6981.29)}
 }
 }
@@ -646,7 +650,8 @@ local isFloor14 = (placeId == 4733293091)
 local isFloor18 = (placeId == 94066307314492)
 local isFloor13 = (placeId == 5136611550)
 local isFloor17 = (placeId == 12632324801)
-local isArena18_2 = (placeId == 117852524597461)
+local isArena18_2 = (placeId == 117852524597461) 
+local isFloor19 = (placeId == 130463264320898)
 local isCurrentlyFrontman = (bossName == "Frontman")
 while currentFarmMode == bossName do
 local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -666,7 +671,7 @@ local verticalDelta = delta.Y
 if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then
 shouldProcess = true
 end
-elseif isFloor14 or isFloor18 or isFloor17 or isArena18_2 then
+elseif isFloor14 or isFloor18 or isFloor17 or isFloor19 or isArena18_2 then
 local delta = torso.Position - farmPos
 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 local verticalDelta = delta.Y
