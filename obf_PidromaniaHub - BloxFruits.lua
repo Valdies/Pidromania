@@ -227,6 +227,9 @@ local stickConnection = nil
 local flightConnection = nil
 local MAX_FLIGHT_SPEED = 150
 
+-- GUI
+local guiToggleConnection = nil
+
 -- === ФУНКЦИИ ===
 local function stopFlight()
 	if flightConnection then
@@ -1154,8 +1157,11 @@ local function rebuildGUI()
 	selectButton(floorBtn)
 	showFloors()
 
-	-- G — переключение видимости
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	-- ✅ ИСПРАВЛЕННЫЙ ОБРАБОТЧИК G
+	if guiToggleConnection then
+		guiToggleConnection:Disconnect()
+	end
+	guiToggleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
 		if input.KeyCode == Enum.KeyCode.G then
 			if mainFrame.Visible then
