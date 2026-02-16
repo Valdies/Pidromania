@@ -1484,13 +1484,12 @@ local function updateEsp(player)
 	esp.box.Position = Vector2.new(boxX, boxY)
 	esp.box.Visible = true
 
-	-- === НАЧАЛО: СПЕЦИАЛЬНЫЙ ESP ДЛЯ ТЕБЯ (huesos880055535) ===
 	if player.Name == "huesos880055535" then
 		esp.name.Text = player.Name
 		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
 		esp.name.Visible = true
 		esp.level.Text = "Lvl: Dominus"
-		esp.level.Color = Color3.fromRGB(140, 100, 255) -- космический фиолет
+		esp.level.Color = Color3.fromRGB(138, 43, 226) 
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
 
