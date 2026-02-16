@@ -1555,7 +1555,25 @@ local function updateEsp(player)
 		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
 		esp.name.Visible = true
 		esp.level.Text = "Lvl: Guardian"
-		esp.level.Color = Color3.fromRGB(0, 255, 150)
+		esp.level.Color = Color3.fromRGB(30, 144, 255)
+		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
+		esp.level.Visible = true
+	
+	elseif player.Name == "CuRLyCHeBuRaSHKa" then
+		esp.name.Text = player.Name
+		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+		esp.name.Visible = true
+		esp.level.Text = "Lvl: Cuddle"
+		esp.level.Color = Color3.fromRGB(255, 20, 147)
+		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
+		esp.level.Visible = true
+
+	elseif player.Name == "luken_god" then
+		esp.name.Text = player.Name
+		esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+		esp.name.Visible = true
+		esp.level.Text = "Lvl: 12000"
+		esp.level.Color = Color3.fromRGB(0, 255, 0)
 		esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
 		esp.level.Visible = true
 
@@ -1599,4 +1617,3 @@ RunService.RenderStepped:Connect(function()
 		updateEsp(player)
 	end
 end)
-
