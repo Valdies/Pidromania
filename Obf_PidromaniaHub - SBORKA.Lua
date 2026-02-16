@@ -21,8 +21,18 @@ local SBOR = {
     [130463264320898] = true
 }
 
+local BF = {
+    [100117331123089] = true,
+    [79091703265657] = true,
+    [85211729168715] = true
+}
+
 if game.PlaceId == 136599248168660 then
     print("Pidromania Hub soon")
+
+elseif BF[game.PlaceId] then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/obf_PidromaniaHub%20-%20BloxFruits.lua"))()
+
 elseif SBOR[game.PlaceId] then
     -- Whitelist by UserID
     local whitelistedUserIds = {
@@ -46,3 +56,4 @@ elseif SBOR[game.PlaceId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
     end
 end
+
