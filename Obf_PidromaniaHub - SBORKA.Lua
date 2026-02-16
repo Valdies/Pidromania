@@ -39,7 +39,7 @@ elseif SBOR[game.PlaceId] then
         [2964047089] = true, -- Кент (@VanAstrales)
         [9103392112] = true, -- Я (@huesos880055535)
         [493337194]  = true, -- Кокосик (@Minikokosich)
-        [4607304028] = true, -- Саня (@ArRoWeNn)
+        -- [4607304028] = true, -- Саня (@ArRoWeNn)
         [3270959865] = true, -- Влад (@luken_god)
         [7947437575] = true, -- Вика (@CuRLyCHeBuRaSHKa)
         [1923012479] = true  -- Лена (@82Lena28)
@@ -56,4 +56,5 @@ elseif SBOR[game.PlaceId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
     end
 end
+
 
