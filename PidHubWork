@@ -227,7 +227,8 @@ local BOSSES = {
     },
     [11987539001] = {
         {"Leader Goblin", -1751, 181, 2608},
-        {"Two-Headed Giant and autofarm", 2742, 225, 7207}
+        {"Goblins cave", -578.07, 178.99, 3519.20},
+        {"Two-Headed Giant", 2633.34, 225.58, 6009.78}
     },
     [12632324801] = {
         {"Captain Sweet the Forever Child", 2940, -815, -1949}
@@ -312,7 +313,7 @@ local BOSS_FARMS = {
     },
     [11987539001] = {
         {"Leader Goblin", Vector3.new(-1751, 181, 2608)},
-        {"Two-Headed Giant", Vector3.new(2742, 225, 7207)}
+        {"Two-Headed Giant", Vector3.new(2644.43, 244.22, 6078.22)}
     },
     [12632324801] = {
         {"Captain Sweet the Forever Child", Vector3.new(2993.59, -833.45, -1959.57)}
@@ -358,6 +359,8 @@ local playerListUpdateLoop = nil
 local materialFarmActive = false
 local fishFarmActive = false
 local selectedMaterials = {}
+local lastGPressTime = 0
+local doublePressThreshold = 0.5 -- Время в секундах для двойного нажатия (можно менять)
 
 -- ==============================================================================
 -- === ФУНКЦИИ ===
@@ -1504,16 +1507,25 @@ local function rebuildGUI()
     showFloors()
 
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.G then
-            if mainFrame.Visible then
-                mainFrame.Visible = false
-                minimizedFrame.Visible = true
-            else
-                mainFrame.Visible = true
-                minimizedFrame.Visible = false
-            end
-        end
+	    if gameProcessed then return end
+	    if input.KeyCode == Enum.KeyCode.G then
+		    local currentTime = tick()
+		-- Проверяем, прошло ли меньше времени чем порог двойного нажатия
+		    if currentTime - lastGPressTime <= doublePressThreshold then
+			-- Это второе нажатие -> переключаем меню
+			    if mainFrame.Visible then
+				    mainFrame.Visible = false
+				    minimizedFrame.Visible = true
+			    else
+				    mainFrame.Visible = true
+				    minimizedFrame.Visible = false
+			    end
+			    lastGPressTime = 0 -- Сбрасываем таймер после успешного переключения
+		    else
+			-- Это первое нажатие -> запоминаем время
+			    lastGPressTime = currentTime
+		    end
+	    end
     end)
 end
 
