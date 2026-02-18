@@ -359,8 +359,6 @@ local playerListUpdateLoop = nil
 local materialFarmActive = false
 local fishFarmActive = false
 local selectedMaterials = {}
-local lastGPressTime = 0
-local doublePressThreshold = 0.5 -- Время в секундах для двойного нажатия (можно менять)
 
 -- ==============================================================================
 -- === ФУНКЦИИ ===
@@ -1507,25 +1505,16 @@ local function rebuildGUI()
     showFloors()
 
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	    if gameProcessed then return end
-	    if input.KeyCode == Enum.KeyCode.G then
-		    local currentTime = tick()
-		-- Проверяем, прошло ли меньше времени чем порог двойного нажатия
-		    if currentTime - lastGPressTime <= doublePressThreshold then
-			-- Это второе нажатие -> переключаем меню
-			    if mainFrame.Visible then
-				    mainFrame.Visible = false
-				    minimizedFrame.Visible = true
-			    else
-				    mainFrame.Visible = true
-				    minimizedFrame.Visible = false
-			    end
-			    lastGPressTime = 0 -- Сбрасываем таймер после успешного переключения
-		    else
-			-- Это первое нажатие -> запоминаем время
-			    lastGPressTime = currentTime
-		    end
-	    end
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.G then
+            if mainFrame.Visible then
+                mainFrame.Visible = false
+                minimizedFrame.Visible = true
+            else
+                mainFrame.Visible = true
+                minimizedFrame.Visible = false
+            end
+        end
     end)
 end
 
