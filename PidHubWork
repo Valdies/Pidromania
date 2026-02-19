@@ -228,7 +228,7 @@ local BOSSES = {
     [11987539001] = {
         {"Leader Goblin", -1751, 181, 2608},
         {"Goblins cave", -578.07, 178.99, 3519.20},
-        {"Two-Headed Giant", 2633.34, 225.58, 6009.78}
+        {"Two-Headed Giant", 2884.42, 225.58, 6035.96}
     },
     [12632324801] = {
         {"Captain Sweet the Forever Child", 2940, -815, -1949}
