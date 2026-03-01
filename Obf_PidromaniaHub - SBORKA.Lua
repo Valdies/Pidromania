@@ -1,4 +1,5 @@
 local SBOR = {
+    [4733278992] = true,
     [4733293382] = true,
     [4734865416] = true,
     [4735703075] = true,
@@ -59,6 +60,9 @@ elseif SBOR[game.PlaceId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
     end
 end
+
+elseif
+
 
 
 
