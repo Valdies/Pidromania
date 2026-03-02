@@ -297,7 +297,8 @@ local BOSS_FARMS = {
 {"Storm Atronach", Vector3.new(-5849, -368, 9330)}
 },
 [4737916764] = {
-{"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)}
+{"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)},
+{"MobFarm", Vector3.new(271.30, 34, -1441.69)}
 },
 [4740039076] = {
 {"MobFarm", Vector3.new(-2666.91, 893.12, 9499.35)},
@@ -876,7 +877,8 @@ initGUI()
 updateIndicator(false)
 local isFrontman = (bossName == "Frontman")
 local isCurrentlyVladimir = (bossName == "Владимир Красное Солнышко")
-local isCurrentlyFrostveil = (bossName == "Frostveil Echo") -- Добавлено
+local isCurrentlyFrostveil = (bossName == "Frostveil Echo")
+local isCurrentlyFloor8Mob = (bossName == "MobFarm" and game.PlaceId == 4737916764)
 local platform = nil
 if isFrontman then
 local platformPos = Vector3.new(-38.32, 80.40, -285.61)
@@ -888,9 +890,15 @@ local playerPos = Vector3.new(-3183.14, 152.03, -1271.63)
 farmPos = playerPos
 platform = spawnPlatform(platformPos)
 teleport(playerPos)
-elseif isCurrentlyFrostveil then -- Добавлено
-local platformPos = Vector3.new(2203.02, -1223.54, 4586.85)
+elseif isCurrentlyFrostveil then
+local platformPos = Vector3.new(2203.02, -1218.54, 4586.85)
 local playerPos = Vector3.new(2203.02, -1216.54, 4586.85)
+farmPos = playerPos
+platform = spawnPlatform(platformPos)
+teleport(playerPos)
+elseif isCurrentlyFloor8Mob then
+local platformPos = Vector3.new(271.30, 34, -1441.69)
+local playerPos = Vector3.new(271.30, 36, -1441.69)
 farmPos = playerPos
 platform = spawnPlatform(platformPos)
 teleport(playerPos)
@@ -920,12 +928,12 @@ if mob:IsA("Model") then
 local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
 if torso and torso:IsA("BasePart") then
 local shouldProcess = false
-if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil then -- Изменено
+if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob then
 local delta = torso.Position - farmPos
 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
 local verticalDelta = delta.Y
 if horizontalDist <= 15 then
-if isCurrentlyVladimir or isCurrentlyFrostveil then -- Изменено
+if isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob then
 if verticalDelta >= 0 and verticalDelta <= 50 then
 shouldProcess = true
 end
@@ -954,7 +962,7 @@ torso.Anchored = true
 torso.CanCollide = false
 local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
 torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
-if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil) then -- Изменено
+if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob) then
 break
 end
 end
@@ -963,7 +971,7 @@ end
 end
 end
 updateIndicator(foundAny)
-if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil then -- Изменено
+if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob then
 task.wait(3)
 else
 task.wait(0.1)
