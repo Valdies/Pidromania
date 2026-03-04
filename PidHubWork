@@ -170,26 +170,26 @@ end
 -- === ДАННЫЕ ИГРЫ ===
 -- ==============================================================================
 local FLOORS = {
-{1, "Town Of Beginnings", 4733293382},
-{2, "Swordsman Fields", 4734865416},
-{3, "Swamp Lands", 4735703075},
-{4, "Desert Land", 4735718710},
-{5, "Icy Caverns", 4736649014},
-{6, "Hellfire Wasteland", 4736759720},
-{7, "Luminara Grove", 4736984932},
-{8, "Graves", 4737916764},
-{9, "Tropical Sea", 4740039076},
-{10, "S", 4747247314},
-{11, "Fallen Kingdom", 5135551944},
-{12, "The Flower Garden", 5212666689},
-{13, "Ghost Forest", 5136611550},
-{14, "Floating Islands", 4733293091},
-{15, "College Campus", 11987483716},
-{16, "Rulid Village", 11987539001},
-{17, "Candy Lands", 12632324801},
-{18, "Early Crownvein", 94066307314492},
-{18, "Early Crownvein: Arena", 117852524597461},
-{19, "Glacialis Ward", 130463264320898}
+{1,   "Town Of Beginnings",        4733293382},
+{2,   "Swordsman Fields",          4734865416},
+{3,   "Swamp Lands",               4735703075},
+{4,   "Desert Land",               4735718710},
+{5,   "Icy Caverns",               4736649014},
+{6,   "Hellfire Wasteland",        4736759720},
+{7,   "Luminara Grove",            4736984932},
+{8,   "Graves",                    4737916764},
+{9,   "Tropical Sea",              4740039076},
+{10,  "Sakura Serenity",           4747247314},
+{11,  "Fallen Kingdom",            5135551944},
+{12,  "The Flower Garden",         5212666689},
+{13,  "Ghost Forest",              5136611550},
+{14,  "Floating Islands",          4733293091},
+{15,  "College Campus",            11987483716},
+{16,  "Rulid Village",             11987539001},
+{17,  "Candy Lands",               12632324801},
+{18,  "Early Crownvein",           94066307314492},
+{18,  "Early Crownvein: Arena",    117852524597461},
+{19,  "Glacialis Ward",            130463264320898}
 }
 local BOSSES = {
 [4734865416] = {
