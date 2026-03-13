@@ -249,7 +249,7 @@ local BOSSES = {
 [11987539001] = {
 {"Leader Goblin", -1751, 181, 2608},
 {"Goblins cave", -578.07, 178.99, 3519.20},
-{"Two-Headed Giant", 28842, 225.58, 6035.96}
+{"Two-Headed Giant", 2742.92, 225.58, 7207.78}
 },
 [12632324801] = {
 {"Captain Sweet the Forever Child", 2940, -815, -1949}
@@ -314,7 +314,7 @@ local BOSS_FARMS = {
 },
 [5212666689] = {
 {"Laurellis Convict", Vector3.new(14969.86, 770.86, -708.19)},
-{"Slime Lord Pengonis", Vector3.new(-0, 1108.39, -9849.32)}
+{"Slime Lord Pengonis", Vector3.new(-1803.66, 1108.39, -9831.81)}
 },
 [5136611550] = {
 {"Tormented Spectrum", Vector3.new(-94.10, 1404.62, 3186.31)},
@@ -408,6 +408,7 @@ local EXTRA_LOCATIONS = {
 {"Комната босса", -2620.99, 32.80, 7070.26}
 },
 [4747247314] = {
+{"Шахта", -114.55, 20.66, 966.82},
 {"Вход в башню", -4000.10, -9989.45, -5859.08},
 {"Комната босса", -3987.15, -9930.00, -6714.68}
 },
@@ -417,19 +418,22 @@ local EXTRA_LOCATIONS = {
 {"Комната босса", -9471.52, -474.34, 1500.44}
 },
 [5212666689] = {
-{"None", 0.0, 0.0, 0.0}
+{"Магазин в залупенске", -1618.68, 1359.33, 8325.41},
+{"Вход в башню", 2065.14, 260.02, -8207.31},
+{"Комната босса", -1193.62, 1092.96, -9792.50}
 },
 [5136611550] = {
 {"None", 0.0, 0.0, 0.0}
 },
 [4733293091] = {
-{"None", 0.0, 0.0, 0.0}
+{"Яйцо босса", -1557.81, -1322.58, 1580.20}
 },
 [11987483716] = {
 {"None", 0.0, 0.0, 0.0}
 },
 [11987539001] = {
-{"None", 0.0, 0.0, 0.0}
+{"Деревня", -991.45, 239.96, -956.28},
+{"Гигас", -1434.15, 170.36, -2159.10}
 },
 [12632324801] = {
 {"None", 0.0, 0.0, 0.0}
@@ -803,11 +807,6 @@ warn("[Pidromania Hub] Папка Mobs не найдена! Автофарм н�
 return
 end
 autoWalkActive = true
--- УДАЛЕНО: Изменение WalkSpeed
--- local char = player.Character
--- if char and char:FindFirstChild("Humanoid") then
---     char.Humanoid.WalkSpeed = AUTO_WALK_CONFIG.WalkSpeed
--- end
 autoWalkConnection = RunService.RenderStepped:Connect(function()
 if not autoWalkActive then return end
 if not mobsFolder then
@@ -854,24 +853,11 @@ if autoWalkConnection then
 autoWalkConnection:Disconnect()
 autoWalkConnection = nil
 end
--- УДАЛЕНО: Возврат WalkSpeed
--- local char = player.Character
--- if char and char:FindFirstChild("Humanoid") then
---     char.Humanoid.WalkSpeed = AUTO_WALK_CONFIG.NormalSpeed
--- end
 print("❌ [Pidromania Hub] Автофарм мобов деактивирован.")
 end
 player.CharacterAdded:Connect(function(char)
 task.wait(1)
 local humanoid = char:FindFirstChild("Humanoid")
-if humanoid then
--- УДАЛЕНО: Автоматическое изменение WalkSpeed при появлении персонажа
--- if autoWalkActive then
---     humanoid.WalkSpeed = AUTO_WALK_CONFIG.WalkSpeed
--- else
---     humanoid.WalkSpeed = AUTO_WALK_CONFIG.NormalSpeed
--- end
-end
 end)
 -- ==============================================================================
 -- === ОСТАЛЬНЫЕ ФАРМЫ ===
