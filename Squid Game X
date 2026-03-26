@@ -1,5 +1,5 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (Final + Glass) ===
+-- === Pidromania Hub: Squid Game X (ESP Fix for New Players) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -62,18 +62,16 @@ local function T(key)
 end
 
 -- ==============================================================================
--- === КООРДИНАТЫ (Squid Game X) ===
+-- === КООРДИНАТЫ ===
 -- ==============================================================================
 local CUSTOM_TELEPORTS = {
 	{"🎮 Кукла", -12191.98, -790.19, -3091.15},
 	{"🪢 Скакалка", -56.06, 119.97, 3.07},
-	{"🛡️ Безопасная зона", -830.23, 24.05, 288.59},
-	{"🪟 Стекло", 1280.30, 102.11, -955.72} -- Добавлено стекло
+	{"🛡️ Безопасная зона (Прятки)", -830.23, 24.05, 288.59},
+	{"🪟 Стекло", 1280.30, 102.11, -955.72},
+	{"🍽️ Безопасная зона (Ужин)", 8162.46, 48.53, 23396.95}
 }
 
--- ==============================================================================
--- === ФУНКЦИИ ТЕЛЕПОРТАЦИИ ===
--- ==============================================================================
 local function teleport(x, y, z)
 	local char = player.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then
@@ -82,7 +80,7 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
--- === ESP (Большой квадрат, Белый ник, Зеленая полоска) ===
+-- === ESP (ИСПРАВЛЕНО: Свойства задаются ПРИ СОЗДАНИИ) ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
 local EspObjects = {}
@@ -93,13 +91,43 @@ local function toScreen(pos)
 	return Vector2.new(vp.X, vp.Y), on
 end
 
+-- Функция создания объектов с СРАЗУ заданными свойствами
 local function createEspObjects()
-	return {
+	local esp = {
 		box = Drawing.new("Square"),
 		name = Drawing.new("Text"),
 		healthBarBg = Drawing.new("Square"),
 		healthBar = Drawing.new("Square")
 	}
+
+	-- Настройка рамки (Красная, толстая)
+	esp.box.Color = Color3.fromRGB(255, 0, 0)
+	esp.box.Thickness = 3
+	esp.box.Filled = false
+	esp.box.Visible = false
+
+	-- Настройка ника (Белый, крупный)
+	esp.name.Color = Color3.fromRGB(255, 255, 255)
+	esp.name.Outline = true
+	esp.name.OutlineColor = Color3.fromRGB(0, 0, 0)
+	esp.name.Center = true
+	esp.name.Size = 24
+	esp.name.Font = 2
+	esp.name.Visible = false
+
+	-- Настройка фона полоски здоровья
+	esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
+	esp.healthBarBg.Filled = true
+	esp.healthBarBg.Thickness = 0
+	esp.healthBarBg.Visible = false
+
+	-- Настройка полоски здоровья (Зеленая, толстая)
+	esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
+	esp.healthBar.Filled = true
+	esp.healthBar.Thickness = 0
+	esp.healthBar.Visible = false
+
+	return esp
 end
 
 local function updateEsp(plr)
@@ -114,6 +142,7 @@ local function updateEsp(plr)
 	local headPos, headVis = toScreen(head.Position)
 	local rootPos, rootVis = toScreen(root.Position)
 	
+	-- Если игрока не видно на экране
 	if not (headVis and rootVis) then
 		if EspObjects[plr] then
 			EspObjects[plr].box.Visible = false
@@ -124,44 +153,27 @@ local function updateEsp(plr)
 		return
 	end
 	
-	-- Расчет размеров бокса (УВЕЛИЧЕНО В 2 РАЗА)
+	-- Создаем объекты, если их нет (свойства уже заданы внутри createEspObjects)
+	if not EspObjects[plr] then
+		EspObjects[plr] = createEspObjects()
+	end
+	
+	local esp = EspObjects[plr]
+	
+	-- Дозаправка свойств (защита от сброса)
+	esp.box.Color = Color3.fromRGB(255, 0, 0)
+	esp.box.Thickness = 3
+	esp.name.Color = Color3.fromRGB(255, 255, 255)
+	esp.name.Size = 24
+	esp.healthBar.Color = humanoid.Health < humanoid.MaxHealth * 0.3 and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 0)
+
+	-- Расчет размеров
 	local baseHeight = math.abs(headPos.Y - rootPos.Y)
 	local height = baseHeight * 2.8 
 	local width = height * 0.65
 	local topLeft = Vector2.new(headPos.X - width/2, headPos.Y - (height * 0.15))
 	
-	-- Инициализация объектов
-	if not EspObjects[plr] then
-		EspObjects[plr] = createEspObjects()
-		local esp = EspObjects[plr]
-		
-		-- Box settings (Красный, толще)
-		esp.box.Color = Color3.fromRGB(255, 0, 0)
-		esp.box.Thickness = 3
-		esp.box.Filled = false
-		
-		-- Name settings (БЕЛЫЙ, крупнее)
-		esp.name.Color = Color3.fromRGB(255, 255, 255)
-		esp.name.Outline = true
-		esp.name.OutlineColor = Color3.fromRGB(0, 0, 0)
-		esp.name.Center = true
-		esp.name.Size = 24 
-		esp.name.Font = 2
-		
-		-- Health Bar Background
-		esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
-		esp.healthBarBg.Filled = true
-		esp.healthBarBg.Thickness = 0
-		
-		-- Health Bar (Зеленый, крупнее)
-		esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
-		esp.healthBar.Filled = true
-		esp.healthBar.Thickness = 0
-	end
-	
-	local esp = EspObjects[plr]
-	
-	-- Обновление позиций
+	-- Применение позиций и размеров
 	esp.box.Size = Vector2.new(width, height)
 	esp.box.Position = topLeft
 	esp.box.Visible = true
@@ -170,29 +182,20 @@ local function updateEsp(plr)
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
 	esp.name.Visible = true
 	
-	-- Логика полоски здоровья
+	-- Полоска здоровья
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
 	local barHeight = 6 
 	local barX = headPos.X - (barWidth / 2)
 	local barY = headPos.Y - 8 
 	
-	-- Фон
 	esp.healthBarBg.Size = Vector2.new(barWidth, barHeight)
 	esp.healthBarBg.Position = Vector2.new(barX, barY)
 	esp.healthBarBg.Visible = true
 	
-	-- Заполнение
 	esp.healthBar.Size = Vector2.new(barWidth * hpPercent, barHeight)
 	esp.healthBar.Position = Vector2.new(barX, barY)
 	esp.healthBar.Visible = true
-	
-	-- Цвет при низком здоровье
-	if hpPercent < 0.3 then
-		esp.healthBar.Color = Color3.fromRGB(255, 50, 50)
-	else
-		esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
-	end
 end
 
 local function cleanupEsp(plr)
@@ -206,19 +209,26 @@ end
 
 -- Запуск ESP
 spawn(function()
-	while not Camera do
-		Camera = workspace.CurrentCamera
+	-- Ждем камеру
+	while not workspace.CurrentCamera do
 		task.wait()
 	end
+	Camera = workspace.CurrentCamera
 	
+	-- Обработка новых игроков
 	Players.PlayerAdded:Connect(function(plr)
 		if plr ~= player then
-			EspObjects[plr] = createEspObjects()
+			-- Небольшая задержка, чтобы.character точно прогрузился
+			task.wait(0.1)
+			if plr.Character then
+				EspObjects[plr] = createEspObjects()
+			end
 		end
 	end)
 	
 	Players.PlayerRemoving:Connect(cleanupEsp)
 	
+	-- Главный цикл
 	while true do
 		for _, plr in ipairs(Players:GetPlayers()) do
 			if plr ~= player then
@@ -230,7 +240,7 @@ spawn(function()
 end)
 
 -- ==============================================================================
--- === GUI (С кнопкой сворачивания) ===
+-- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
 
@@ -243,7 +253,6 @@ local function rebuildGUI()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 	
-	-- Свернутое окно (Плашка)
 	minimizedFrame = Instance.new("Frame")
 	minimizedFrame.Size = UDim2.new(0, 120, 0, 30)
 	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
@@ -274,7 +283,6 @@ local function rebuildGUI()
 		end
 	end)
 	
-	-- Главное окно
 	mainFrame = Instance.new("Frame")
 	mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
 	mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
@@ -288,7 +296,6 @@ local function rebuildGUI()
 	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = mainFrame
 	
-	-- Header
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
 	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -309,7 +316,6 @@ local function rebuildGUI()
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Parent = header
 	
-	-- КНОПКА СВОРАЧИВАНИЯ "--"
 	local minimizeBtn = Instance.new("TextButton")
 	minimizeBtn.Text = "--"
 	minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -325,7 +331,6 @@ local function rebuildGUI()
 		minimizedFrame.Visible = true
 	end)
 	
-	-- Left panel (Меню)
 	leftPanel = Instance.new("Frame")
 	leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
 	leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
@@ -336,7 +341,6 @@ local function rebuildGUI()
 	lCorner.CornerRadius = UDim.new(0, 8)
 	lCorner.Parent = leftPanel
 	
-	-- Right panel (Контент)
 	local rightPanel = Instance.new("Frame")
 	rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
 	rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
@@ -365,7 +369,6 @@ local function rebuildGUI()
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 	end
 	
-	-- Функция: Телепорты
 	local function showTeleports()
 		clearContent()
 		local lbl = Instance.new("TextLabel")
@@ -397,7 +400,6 @@ local function rebuildGUI()
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #CUSTOM_TELEPORTS * 35 * 1.5 + 40)
 	end
 	
-	-- Функция: Настройки
 	local function showSettings()
 		clearContent()
 		local lbl = Instance.new("TextLabel")
@@ -439,7 +441,6 @@ local function rebuildGUI()
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
 	
-	-- Создание кнопок меню
 	local menuY = 5
 	local function makeBtn(text, icon, cb)
 		local btn = Instance.new("TextButton")
@@ -466,12 +467,8 @@ local function rebuildGUI()
 	showTeleports()
 end
 
--- ==============================================================================
--- === ЗАПУСК И УПРАВЛЕНИЕ ===
--- ==============================================================================
 rebuildGUI()
 
--- Горячая клавиша G
 UserInputService.InputBegan:Connect(function(inp, gp)
 	if gp then return end
 	if inp.KeyCode == Enum.KeyCode.G then
