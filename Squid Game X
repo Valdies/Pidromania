@@ -1,5 +1,5 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (Fixed ESP & UI) ===
+-- === Pidromania Hub: Squid Game X (Final + Glass) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -67,7 +67,8 @@ end
 local CUSTOM_TELEPORTS = {
 	{"🎮 Кукла", -12191.98, -790.19, -3091.15},
 	{"🪢 Скакалка", -56.06, 119.97, 3.07},
-	{"🛡️ Безопасная зона", -830.23, 24.05, 288.59}
+	{"🛡️ Безопасная зона", -830.23, 24.05, 288.59},
+	{"🪟 Стекло", 1280.30, 102.11, -955.72} -- Добавлено стекло
 }
 
 -- ==============================================================================
@@ -125,7 +126,7 @@ local function updateEsp(plr)
 	
 	-- Расчет размеров бокса (УВЕЛИЧЕНО В 2 РАЗА)
 	local baseHeight = math.abs(headPos.Y - rootPos.Y)
-	local height = baseHeight * 2.8 -- Было 1.4, стало 2.8
+	local height = baseHeight * 2.8 
 	local width = height * 0.65
 	local topLeft = Vector2.new(headPos.X - width/2, headPos.Y - (height * 0.15))
 	
@@ -144,7 +145,7 @@ local function updateEsp(plr)
 		esp.name.Outline = true
 		esp.name.OutlineColor = Color3.fromRGB(0, 0, 0)
 		esp.name.Center = true
-		esp.name.Size = 24 -- Было 18
+		esp.name.Size = 24 
 		esp.name.Font = 2
 		
 		-- Health Bar Background
@@ -166,15 +167,15 @@ local function updateEsp(plr)
 	esp.box.Visible = true
 	
 	esp.name.Text = plr.Name
-	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) -- Чуть выше из-за размера
+	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
 	esp.name.Visible = true
 	
-	-- Логика полоски здоровья (увеличена)
+	-- Логика полоски здоровья
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
-	local barHeight = 6 -- Было 4
+	local barHeight = 6 
 	local barX = headPos.X - (barWidth / 2)
-	local barY = headPos.Y - 8 -- Позиция под ником
+	local barY = headPos.Y - 8 
 	
 	-- Фон
 	esp.healthBarBg.Size = Vector2.new(barWidth, barHeight)
