@@ -1,0 +1,487 @@
+-- ==============================================================================
+-- === Pidromania Hub: Squid Game X (Fixed ESP & UI) ===
+-- ==============================================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- ==============================================================================
+-- === ЛОКАЛИЗАЦИЯ ===
+-- ==============================================================================
+local currentLang = "ru"
+local translations = {
+	ru = { 
+		hubTitle = "Pidromania Hub: Squid Game X", 
+		byAuthor = "by @Pidromania", 
+		teleports = "Телепорты", 
+		settings = "Настройки", 
+		languageLabel = "Язык интерфейса:", 
+		lang_ru = "Русский", 
+		lang_uk = "Українська", 
+		lang_kk = "Қазақ", 
+		lang_en = "English (US)" 
+	},
+	uk = { 
+		hubTitle = "Pidromania Hub: Squid Game X", 
+		byAuthor = "by @Pidromania", 
+		teleports = "Телепорти", 
+		settings = "Налаштування", 
+		languageLabel = "Мова інтерфейсу:", 
+		lang_ru = "Російська", 
+		lang_uk = "Українська", 
+		lang_kk = "Қазақ", 
+		lang_en = "English (US)" 
+	},
+	kk = { 
+		hubTitle = "Pidromania Hub: Squid Game X", 
+		byAuthor = "by @Pidromania", 
+		teleports = "Телепорттар", 
+		settings = "Параметрлер", 
+		languageLabel = "Интерфейс тілі:", 
+		lang_ru = "Орыс", 
+		lang_uk = "Украин", 
+		lang_kk = "Қазақ", 
+		lang_en = "Ағылшын (АҚШ)" 
+	},
+	en = { 
+		hubTitle = "Pidromania Hub: Squid Game X", 
+		byAuthor = "by @Pidromania", 
+		teleports = "Teleports", 
+		settings = "Settings", 
+		languageLabel = "Interface language:", 
+		lang_ru = "Russian", 
+		lang_uk = "Ukrainian", 
+		lang_kk = "Қазақ", 
+		lang_en = "English (US)" 
+	}
+}
+
+local function T(key) 
+	return translations[currentLang][key] or ("???" .. key .. "???") 
+end
+
+-- ==============================================================================
+-- === КООРДИНАТЫ (Squid Game X) ===
+-- ==============================================================================
+local CUSTOM_TELEPORTS = {
+	{"🎮 Кукла", -12191.98, -790.19, -3091.15},
+	{"🪢 Скакалка", -56.06, 119.97, 3.07},
+	{"🛡️ Безопасная зона", -830.23, 24.05, 288.59}
+}
+
+-- ==============================================================================
+-- === ФУНКЦИИ ТЕЛЕПОРТАЦИИ ===
+-- ==============================================================================
+local function teleport(x, y, z)
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		char.HumanoidRootPart.CFrame = CFrame.new(x, y, z)
+	end
+end
+
+-- ==============================================================================
+-- === ESP (Большой квадрат, Белый ник, Зеленая полоска) ===
+-- ==============================================================================
+local Camera = workspace.CurrentCamera
+local EspObjects = {}
+
+local function toScreen(pos)
+	if not Camera then return Vector2.new(0,0), false end
+	local vp, on = Camera:WorldToViewportPoint(pos)
+	return Vector2.new(vp.X, vp.Y), on
+end
+
+local function createEspObjects()
+	return {
+		box = Drawing.new("Square"),
+		name = Drawing.new("Text"),
+		healthBarBg = Drawing.new("Square"),
+		healthBar = Drawing.new("Square")
+	}
+end
+
+local function updateEsp(plr)
+	if plr == player or not plr.Character then return end
+	
+	local head = plr.Character:FindFirstChild("Head")
+	local root = plr.Character:FindFirstChild("HumanoidRootPart")
+	local humanoid = plr.Character:FindFirstChild("Humanoid")
+	
+	if not head or not root or not humanoid then return end
+	
+	local headPos, headVis = toScreen(head.Position)
+	local rootPos, rootVis = toScreen(root.Position)
+	
+	if not (headVis and rootVis) then
+		if EspObjects[plr] then
+			EspObjects[plr].box.Visible = false
+			EspObjects[plr].name.Visible = false
+			EspObjects[plr].healthBar.Visible = false
+			EspObjects[plr].healthBarBg.Visible = false
+		end
+		return
+	end
+	
+	-- Расчет размеров бокса (УВЕЛИЧЕНО В 2 РАЗА)
+	local baseHeight = math.abs(headPos.Y - rootPos.Y)
+	local height = baseHeight * 2.8 -- Было 1.4, стало 2.8
+	local width = height * 0.65
+	local topLeft = Vector2.new(headPos.X - width/2, headPos.Y - (height * 0.15))
+	
+	-- Инициализация объектов
+	if not EspObjects[plr] then
+		EspObjects[plr] = createEspObjects()
+		local esp = EspObjects[plr]
+		
+		-- Box settings (Красный, толще)
+		esp.box.Color = Color3.fromRGB(255, 0, 0)
+		esp.box.Thickness = 3
+		esp.box.Filled = false
+		
+		-- Name settings (БЕЛЫЙ, крупнее)
+		esp.name.Color = Color3.fromRGB(255, 255, 255)
+		esp.name.Outline = true
+		esp.name.OutlineColor = Color3.fromRGB(0, 0, 0)
+		esp.name.Center = true
+		esp.name.Size = 24 -- Было 18
+		esp.name.Font = 2
+		
+		-- Health Bar Background
+		esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
+		esp.healthBarBg.Filled = true
+		esp.healthBarBg.Thickness = 0
+		
+		-- Health Bar (Зеленый, крупнее)
+		esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
+		esp.healthBar.Filled = true
+		esp.healthBar.Thickness = 0
+	end
+	
+	local esp = EspObjects[plr]
+	
+	-- Обновление позиций
+	esp.box.Size = Vector2.new(width, height)
+	esp.box.Position = topLeft
+	esp.box.Visible = true
+	
+	esp.name.Text = plr.Name
+	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) -- Чуть выше из-за размера
+	esp.name.Visible = true
+	
+	-- Логика полоски здоровья (увеличена)
+	local hpPercent = humanoid.Health / humanoid.MaxHealth
+	local barWidth = width * 0.9 
+	local barHeight = 6 -- Было 4
+	local barX = headPos.X - (barWidth / 2)
+	local barY = headPos.Y - 8 -- Позиция под ником
+	
+	-- Фон
+	esp.healthBarBg.Size = Vector2.new(barWidth, barHeight)
+	esp.healthBarBg.Position = Vector2.new(barX, barY)
+	esp.healthBarBg.Visible = true
+	
+	-- Заполнение
+	esp.healthBar.Size = Vector2.new(barWidth * hpPercent, barHeight)
+	esp.healthBar.Position = Vector2.new(barX, barY)
+	esp.healthBar.Visible = true
+	
+	-- Цвет при низком здоровье
+	if hpPercent < 0.3 then
+		esp.healthBar.Color = Color3.fromRGB(255, 50, 50)
+	else
+		esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
+	end
+end
+
+local function cleanupEsp(plr)
+	if EspObjects[plr] then
+		for _, obj in pairs(EspObjects[plr]) do
+			if obj.Remove then obj:Remove() end
+		end
+		EspObjects[plr] = nil
+	end
+end
+
+-- Запуск ESP
+spawn(function()
+	while not Camera do
+		Camera = workspace.CurrentCamera
+		task.wait()
+	end
+	
+	Players.PlayerAdded:Connect(function(plr)
+		if plr ~= player then
+			EspObjects[plr] = createEspObjects()
+		end
+	end)
+	
+	Players.PlayerRemoving:Connect(cleanupEsp)
+	
+	while true do
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= player then
+				updateEsp(plr)
+			end
+		end
+		RunService.RenderStepped:Wait()
+	end
+end)
+
+-- ==============================================================================
+-- === GUI (С кнопкой сворачивания) ===
+-- ==============================================================================
+local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
+
+local function rebuildGUI()
+	if screenGui then screenGui:Destroy() end
+	
+	screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "PidromaniaHub_SquidGame"
+	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGui.Parent = player:WaitForChild("PlayerGui")
+	
+	-- Свернутое окно (Плашка)
+	minimizedFrame = Instance.new("Frame")
+	minimizedFrame.Size = UDim2.new(0, 120, 0, 30)
+	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
+	minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	minimizedFrame.BorderSizePixel = 0
+	minimizedFrame.Visible = false
+	minimizedFrame.Active = true
+	minimizedFrame.Draggable = true
+	minimizedFrame.Parent = screenGui
+	
+	local minCorner = Instance.new("UICorner")
+	minCorner.CornerRadius = UDim.new(0, 6)
+	minCorner.Parent = minimizedFrame
+	
+	local minLabel = Instance.new("TextLabel")
+	minLabel.Text = "Squid Game X"
+	minLabel.Size = UDim2.new(1, 0, 1, 0)
+	minLabel.BackgroundTransparency = 1
+	minLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+	minLabel.Font = Enum.Font.GothamBold
+	minLabel.TextSize = 14
+	minLabel.Parent = minimizedFrame
+	
+	minimizedFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			mainFrame.Visible = true
+			minimizedFrame.Visible = false
+		end
+	end)
+	
+	-- Главное окно
+	mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
+	mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = screenGui
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = mainFrame
+	
+	-- Header
+	local header = Instance.new("Frame")
+	header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
+	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	header.BorderSizePixel = 0
+	header.Parent = mainFrame
+	local hCorner = Instance.new("UICorner")
+	hCorner.CornerRadius = UDim.new(0, 6)
+	hCorner.Parent = header
+	
+	local title = Instance.new("TextLabel")
+	title.Text = T("hubTitle") .. "  " .. T("byAuthor")
+	title.Size = UDim2.new(1, -100, 1, 0)
+	title.Position = UDim2.new(0, 10, 0, 0)
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(220, 220, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14 * 1.5
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = header
+	
+	-- КНОПКА СВОРАЧИВАНИЯ "--"
+	local minimizeBtn = Instance.new("TextButton")
+	minimizeBtn.Text = "--"
+	minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+	minimizeBtn.Position = UDim2.new(1, -35, 0, 2)
+	minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+	minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	minimizeBtn.Font = Enum.Font.GothamBold
+	minimizeBtn.TextSize = 18
+	minimizeBtn.Parent = header
+	
+	minimizeBtn.MouseButton1Click:Connect(function()
+		mainFrame.Visible = false
+		minimizedFrame.Visible = true
+	end)
+	
+	-- Left panel (Меню)
+	leftPanel = Instance.new("Frame")
+	leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
+	leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
+	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	leftPanel.BorderSizePixel = 0
+	leftPanel.Parent = mainFrame
+	local lCorner = Instance.new("UICorner")
+	lCorner.CornerRadius = UDim.new(0, 8)
+	lCorner.Parent = leftPanel
+	
+	-- Right panel (Контент)
+	local rightPanel = Instance.new("Frame")
+	rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
+	rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
+	rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	rightPanel.BorderSizePixel = 0
+	rightPanel.Parent = mainFrame
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 8)
+	rCorner.Parent = rightPanel
+	
+	contentContainer = Instance.new("ScrollingFrame")
+	contentContainer.Size = UDim2.new(1, -10, 1, -10)
+	contentContainer.Position = UDim2.new(0, 5, 0, 5)
+	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	contentContainer.ScrollBarThickness = 4
+	contentContainer.BackgroundTransparency = 1
+	contentContainer.Parent = rightPanel
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 6)
+	cCorner.Parent = contentContainer
+	
+	local function clearContent()
+		for _, c in ipairs(contentContainer:GetChildren()) do
+			if c:IsA("GuiObject") then c:Destroy() end
+		end
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	end
+	
+	-- Функция: Телепорты
+	local function showTeleports()
+		clearContent()
+		local lbl = Instance.new("TextLabel")
+		lbl.Text = T("teleports")
+		lbl.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		lbl.BackgroundTransparency = 1
+		lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 14 * 1.5
+		lbl.Parent = contentContainer
+		
+		for i, data in ipairs(CUSTOM_TELEPORTS) do
+			local name, x, y, z = unpack(data)
+			local btn = Instance.new("TextButton")
+			btn.Text = name
+			btn.Size = UDim2.new(1, -10, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5, 0, 30 * 1.5 + (i-1) * 35 * 1.5)
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
+			btn.Font = Enum.Font.GothamSemibold
+			btn.TextSize = 14 * 1.5
+			btn.AutoButtonColor = true
+			local bCorner = Instance.new("UICorner")
+			bCorner.CornerRadius = UDim.new(0, 6)
+			bCorner.Parent = btn
+			btn.MouseButton1Click:Connect(function() teleport(x,y,z) end)
+			btn.Parent = contentContainer
+		end
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #CUSTOM_TELEPORTS * 35 * 1.5 + 40)
+	end
+	
+	-- Функция: Настройки
+	local function showSettings()
+		clearContent()
+		local lbl = Instance.new("TextLabel")
+		lbl.Text = T("languageLabel")
+		lbl.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		lbl.BackgroundTransparency = 1
+		lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 14 * 1.5
+		lbl.Parent = contentContainer
+		
+		local langs = {
+			{code="ru", name=T("lang_ru")}, 
+			{code="uk", name=T("lang_uk")},
+			{code="kk", name=T("lang_kk")}, 
+			{code="en", name=T("lang_en")}
+		}
+		local y = 30 * 1.5
+		for _, lang in ipairs(langs) do
+			local btn = Instance.new("TextButton")
+			btn.Text = lang.name
+			btn.Size = UDim2.new(1, -10, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5, 0, y)
+			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
+			btn.Font = Enum.Font.GothamSemibold
+			btn.TextSize = 14 * 1.5
+			btn.AutoButtonColor = true
+			local bCorner = Instance.new("UICorner")
+			bCorner.CornerRadius = UDim.new(0, 6)
+			bCorner.Parent = btn
+			btn.MouseButton1Click:Connect(function()
+				currentLang = lang.code
+				rebuildGUI()
+			end)
+			btn.Parent = contentContainer
+			y = y + 35 * 1.5
+		end
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+	end
+	
+	-- Создание кнопок меню
+	local menuY = 5
+	local function makeBtn(text, icon, cb)
+		local btn = Instance.new("TextButton")
+		btn.Text = "  "..icon.."  "..text
+		btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
+		btn.Position = UDim2.new(0, 5, 0, menuY)
+		menuY = menuY + (38 * 1.5)
+		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+		btn.Font = Enum.Font.GothamSemibold
+		btn.TextSize = 14 * 1.5
+		btn.AutoButtonColor = true
+		btn.Parent = leftPanel
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, 6)
+		bCorner.Parent = btn
+		btn.MouseButton1Click:Connect(cb)
+		return btn
+	end
+	
+	makeBtn(T("teleports"), "🌐", showTeleports)
+	makeBtn(T("settings"), "⚙️", showSettings)
+	
+	showTeleports()
+end
+
+-- ==============================================================================
+-- === ЗАПУСК И УПРАВЛЕНИЕ ===
+-- ==============================================================================
+rebuildGUI()
+
+-- Горячая клавиша G
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp then return end
+	if inp.KeyCode == Enum.KeyCode.G then
+		if mainFrame then
+			if mainFrame.Visible then
+				mainFrame.Visible = false
+				if minimizedFrame then minimizedFrame.Visible = true end
+			else
+				mainFrame.Visible = true
+				if minimizedFrame then minimizedFrame.Visible = false end
+			end
+		end
+	end
+end)
