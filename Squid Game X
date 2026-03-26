@@ -81,7 +81,7 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
--- === ESP (ИСПРАВЛЕНО: Защита от отображения на себе) ===
+-- === ESP (ИСПРАВЛЕНО: Смерть и Выход) ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
 local EspObjects = {}
@@ -126,28 +126,44 @@ local function createEspObjects()
 	return esp
 end
 
+local function hideEspObjects(plr)
+	if EspObjects[plr] then
+		EspObjects[plr].box.Visible = false
+		EspObjects[plr].name.Visible = false
+		EspObjects[plr].healthBar.Visible = false
+		EspObjects[plr].healthBarBg.Visible = false
+	end
+end
+
 local function updateEsp(plr)
 	-- ДВОЙНАЯ ПРОВЕРКА: Если это сам игрок, выходим немедленно
 	if plr == player then return end
 	
-	if not plr.Character then return end
+	if not plr.Character then 
+		hideEspObjects(plr)
+		return 
+	end
 	
 	local head = plr.Character:FindFirstChild("Head")
 	local root = plr.Character:FindFirstChild("HumanoidRootPart")
 	local humanoid = plr.Character:FindFirstChild("Humanoid")
 	
-	if not head or not root or not humanoid then return end
+	if not head or not root or not humanoid then 
+		hideEspObjects(plr)
+		return 
+	end
+	
+	-- ПРОВЕРКА НА СМЕРТЬ: Если здоровья нет, скрываем ESP
+	if humanoid.Health <= 0 then
+		hideEspObjects(plr)
+		return
+	end
 	
 	local headPos, headVis = toScreen(head.Position)
 	local rootPos, rootVis = toScreen(root.Position)
 	
 	if not (headVis and rootVis) then
-		if EspObjects[plr] then
-			EspObjects[plr].box.Visible = false
-			EspObjects[plr].name.Visible = false
-			EspObjects[plr].healthBar.Visible = false
-			EspObjects[plr].healthBarBg.Visible = false
-		end
+		hideEspObjects(plr)
 		return
 	end
 	
