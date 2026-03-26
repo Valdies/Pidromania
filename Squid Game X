@@ -4,7 +4,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TextService = game:GetService("TextService") -- Добавлено для расчета текста
+local TextService = game:GetService("TextService")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -68,7 +68,6 @@ end
 local CUSTOM_TELEPORTS = {
 	{"🎮 Комната фронтмэна", 7944.32, 120.69, 3618.20},
 	{"Скакалка", -56.06, 119.97, 3.07},
-	{"Кораблики", -2852.64, -785.78, 15457.86},
 	{"🛡️ Безопасная зона (Прятки)", -622.17, 183.55, 399.09},
 	{"Стекло", 1280.30, 102.11, -955.72},
 	{"🍽️ Безопасная зона (Ужин)", 8162.46, 48.53, 23396.95}
@@ -82,7 +81,7 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
--- === ESP (ИСПРАВЛЕНО: Свойства задаются ПРИ СОЗДАНИИ) ===
+-- === ESP (ИСПРАВЛЕНО: Защита от отображения на себе) ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
 local EspObjects = {}
@@ -93,7 +92,6 @@ local function toScreen(pos)
 	return Vector2.new(vp.X, vp.Y), on
 end
 
--- Функция создания объектов с СРАЗУ заданными свойствами
 local function createEspObjects()
 	local esp = {
 		box = Drawing.new("Square"),
@@ -102,13 +100,11 @@ local function createEspObjects()
 		healthBar = Drawing.new("Square")
 	}
 
-	-- Настройка рамки (Красная, толстая)
 	esp.box.Color = Color3.fromRGB(255, 0, 0)
 	esp.box.Thickness = 3
 	esp.box.Filled = false
 	esp.box.Visible = false
 
-	-- Настройка ника (Белый, крупный)
 	esp.name.Color = Color3.fromRGB(255, 255, 255)
 	esp.name.Outline = true
 	esp.name.OutlineColor = Color3.fromRGB(0, 0, 0)
@@ -117,13 +113,11 @@ local function createEspObjects()
 	esp.name.Font = 2
 	esp.name.Visible = false
 
-	-- Настройка фона полоски здоровья
 	esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
 	esp.healthBarBg.Filled = true
 	esp.healthBarBg.Thickness = 0
 	esp.healthBarBg.Visible = false
 
-	-- Настройка полоски здоровья (Зеленая, толстая)
 	esp.healthBar.Color = Color3.fromRGB(0, 255, 0)
 	esp.healthBar.Filled = true
 	esp.healthBar.Thickness = 0
@@ -133,7 +127,10 @@ local function createEspObjects()
 end
 
 local function updateEsp(plr)
-	if plr == player or not plr.Character then return end
+	-- ДВОЙНАЯ ПРОВЕРКА: Если это сам игрок, выходим немедленно
+	if plr == player then return end
+	
+	if not plr.Character then return end
 	
 	local head = plr.Character:FindFirstChild("Head")
 	local root = plr.Character:FindFirstChild("HumanoidRootPart")
@@ -144,7 +141,6 @@ local function updateEsp(plr)
 	local headPos, headVis = toScreen(head.Position)
 	local rootPos, rootVis = toScreen(root.Position)
 	
-	-- Если игрока не видно на экране
 	if not (headVis and rootVis) then
 		if EspObjects[plr] then
 			EspObjects[plr].box.Visible = false
@@ -155,27 +151,24 @@ local function updateEsp(plr)
 		return
 	end
 	
-	-- Создаем объекты, если их нет
 	if not EspObjects[plr] then
 		EspObjects[plr] = createEspObjects()
 	end
 	
 	local esp = EspObjects[plr]
 	
-	-- Дозаправка свойств
 	esp.box.Color = Color3.fromRGB(255, 0, 0)
 	esp.box.Thickness = 3
 	esp.name.Color = Color3.fromRGB(255, 255, 255)
 	esp.name.Size = 24
+	-- Динамический цвет здоровья
 	esp.healthBar.Color = humanoid.Health < humanoid.MaxHealth * 0.3 and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 0)
 
-	-- Расчет размеров
 	local baseHeight = math.abs(headPos.Y - rootPos.Y)
 	local height = baseHeight * 2.8 
 	local width = height * 0.65
 	local topLeft = Vector2.new(headPos.X - width/2, headPos.Y - (height * 0.15))
 	
-	-- Применение позиций и размеров
 	esp.box.Size = Vector2.new(width, height)
 	esp.box.Position = topLeft
 	esp.box.Visible = true
@@ -184,7 +177,6 @@ local function updateEsp(plr)
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
 	esp.name.Visible = true
 	
-	-- Полоска здоровья
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
 	local barHeight = 6 
@@ -215,9 +207,12 @@ spawn(function()
 	Camera = workspace.CurrentCamera
 	
 	Players.PlayerAdded:Connect(function(plr)
+		-- FIX: Игнорируем локального игрока при добавлении
 		if plr ~= player then
 			task.wait(0.1)
-			if plr.Character then EspObjects[plr] = createEspObjects() end
+			if plr.Character then 
+				EspObjects[plr] = createEspObjects() 
+			end
 		end
 	end)
 	
@@ -225,7 +220,10 @@ spawn(function()
 	
 	while true do
 		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= player then updateEsp(plr) end
+			-- FIX: Обновляем только если игрок НЕ мы
+			if plr ~= player then 
+				updateEsp(plr) 
+			end
 		end
 		RunService.RenderStepped:Wait()
 	end
@@ -245,7 +243,6 @@ local function rebuildGUI()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 	
-	-- Минимизированная рамка
 	minimizedFrame = Instance.new("Frame")
 	minimizedFrame.Size = UDim2.new(0, 120, 0, 30)
 	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
@@ -276,7 +273,6 @@ local function rebuildGUI()
 		end
 	end)
 	
-	-- Основная рамка
 	mainFrame = Instance.new("Frame")
 	mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
 	mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
@@ -290,7 +286,6 @@ local function rebuildGUI()
 	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = mainFrame
 	
-	-- Хедер
 	local header = Instance.new("Frame")
 	header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
 	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -300,31 +295,27 @@ local function rebuildGUI()
 	hCorner.CornerRadius = UDim.new(0, 6)
 	hCorner.Parent = header
 	
-	-- === ЗАГОЛОВОК (ЦВЕТ КАК В ОРИГИНАЛЕ) ===
 	local title = Instance.new("TextLabel")
 	title.Text = T("hubTitle")
-	title.Size = UDim2.new(0, 0, 1, 0) -- Размер будет рассчитан автоматически
+	title.Size = UDim2.new(0, 0, 1, 0)
 	title.Position = UDim2.new(0, 10, 0, 0)
 	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(220, 220, 255) -- Светлый цвет (как в оригинале)
+	title.TextColor3 = Color3.fromRGB(220, 220, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 14 * 1.5
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.TextTruncate = Enum.TextTruncate.None
 	title.Parent = header
 	
-	-- Расчет ширины заголовка для позиционирования автора
 	local titleTextBounds = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
 	title.Size = UDim2.new(0, titleTextBounds.X, 1, 0)
 
-	-- === АВТОР (СЕРЫЙ ЦВЕТ КАК В ОРИГИНАЛЕ) ===
 	local author = Instance.new("TextLabel")
 	author.Text = "  " .. T("byAuthor")
 	author.Size = UDim2.new(0, 0, 1, 0)
-	-- Позиционируем сразу после заголовка
 	author.Position = UDim2.new(0, 10 + titleTextBounds.X, 0, 0) 
 	author.BackgroundTransparency = 1
-	author.TextColor3 = Color3.fromRGB(150, 150, 180) -- Серый цвет (как в оригинале)
+	author.TextColor3 = Color3.fromRGB(150, 150, 180)
 	author.Font = Enum.Font.GothamSemibold
 	author.TextSize = 12 * 1.5
 	author.TextXAlignment = Enum.TextXAlignment.Left
@@ -345,7 +336,6 @@ local function rebuildGUI()
 		minimizedFrame.Visible = true
 	end)
 	
-	-- Левая панель
 	leftPanel = Instance.new("Frame")
 	leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
 	leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
@@ -356,7 +346,6 @@ local function rebuildGUI()
 	lCorner.CornerRadius = UDim.new(0, 8)
 	lCorner.Parent = leftPanel
 	
-	-- Правая панель
 	local rightPanel = Instance.new("Frame")
 	rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
 	rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
