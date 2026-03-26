@@ -28,8 +28,12 @@ local BF = {
     [85211729168715] = true
 }
 
+
 if game.PlaceId == 136599248168660 then
     print("Pidromania Hub soon")
+
+elseif game.PlaceId == 7554888362 then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Squid%20Game%20X"))()
 
 elseif BF[game.PlaceId] then
     -- loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/obf_PidromaniaHub%20-%20BloxFruits.lua"))()
@@ -46,6 +50,7 @@ elseif SBOR[game.PlaceId] then
         [4550232169] = true, -- Петя (@Dog03071)
         [7947437575] = true, -- Вика (@CuRLyCHeBuRaSHKa)
         [1205348792] = true,
+        [10462778979] = true, -- Отсосаня 2.0
         [9715547061] = true, -- Тянка какая то (@make_legend2)
         [1923012479] = true  -- Лена1 (@82Lena28)
     }
