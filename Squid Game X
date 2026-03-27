@@ -1,10 +1,11 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (ESP Fix + Color Corrected) ===
+-- === Pidromania Hub: Squid Game X (ESP Fix + ExitDoor Utility) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
+local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -17,44 +18,60 @@ local translations = {
 		byAuthor = "by @Pidromania", 
 		teleports = "Телепорты", 
 		settings = "Настройки", 
+		utilities = "Полезности",
 		languageLabel = "Язык интерфейса:", 
 		lang_ru = "Русский", 
 		lang_uk = "Українська", 
 		lang_kk = "Қазақ", 
-		lang_en = "English (US)" 
+		lang_en = "English (US)",
+		showExit = "Показать выход (ExitDoor)",
+		exitEnabled = "✅ Выход: ВКЛ",
+		exitDisabled = "❌ Выход: ВЫКЛ"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
 		byAuthor = "by @Pidromania", 
 		teleports = "Телепорти", 
 		settings = "Налаштування", 
+		utilities = "Корисності",
 		languageLabel = "Мова інтерфейсу:", 
 		lang_ru = "Російська", 
 		lang_uk = "Українська", 
 		lang_kk = "Қазақ", 
-		lang_en = "English (US)" 
+		lang_en = "English (US)",
+		showExit = "Показати вихід (ExitDoor)",
+		exitEnabled = "✅ Вихід: УВІМК",
+		exitDisabled = "❌ Вихід: ВИМК"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
 		byAuthor = "by @Pidromania", 
 		teleports = "Телепорттар", 
 		settings = "Параметрлер", 
+		utilities = "Құралдар",
 		languageLabel = "Интерфейс тілі:", 
 		lang_ru = "Орыс", 
 		lang_uk = "Украин", 
 		lang_kk = "Қазақ", 
-		lang_en = "Ағылшын (АҚШ)" 
+		lang_en = "Ағылшын (АҚШ)",
+		showExit = "Шығуды көрсету (ExitDoor)",
+		exitEnabled = "✅ Шығу: ҚОСУЛЫ",
+		exitDisabled = "❌ Шығу: ӨШІРУЛІ"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
 		byAuthor = "by @Pidromania", 
 		teleports = "Teleports", 
 		settings = "Settings", 
+		utilities = "Utilities",
 		languageLabel = "Interface language:", 
 		lang_ru = "Russian", 
 		lang_uk = "Ukrainian", 
 		lang_kk = "Қазақ", 
-		lang_en = "English (US)" 
+		lang_en = "English (US)",
+		showExit = "Show Exit (ExitDoor)",
+		exitEnabled = "✅ Exit: ON",
+		exitDisabled = "❌ Exit: OFF"
 	}
 }
 
@@ -81,7 +98,7 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
--- === ESP (ИСПРАВЛЕНО: Смерть и Выход) ===
+-- === ESP ИГРОКОВ (ОСНОВНОЙ) ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
 local EspObjects = {}
@@ -126,44 +143,26 @@ local function createEspObjects()
 	return esp
 end
 
-local function hideEspObjects(plr)
-	if EspObjects[plr] then
-		EspObjects[plr].box.Visible = false
-		EspObjects[plr].name.Visible = false
-		EspObjects[plr].healthBar.Visible = false
-		EspObjects[plr].healthBarBg.Visible = false
-	end
-end
-
 local function updateEsp(plr)
-	-- ДВОЙНАЯ ПРОВЕРКА: Если это сам игрок, выходим немедленно
 	if plr == player then return end
-	
-	if not plr.Character then 
-		hideEspObjects(plr)
-		return 
-	end
+	if not plr.Character then return end
 	
 	local head = plr.Character:FindFirstChild("Head")
 	local root = plr.Character:FindFirstChild("HumanoidRootPart")
 	local humanoid = plr.Character:FindFirstChild("Humanoid")
 	
-	if not head or not root or not humanoid then 
-		hideEspObjects(plr)
-		return 
-	end
-	
-	-- ПРОВЕРКА НА СМЕРТЬ: Если здоровья нет, скрываем ESP
-	if humanoid.Health <= 0 then
-		hideEspObjects(plr)
-		return
-	end
+	if not head or not root or not humanoid then return end
 	
 	local headPos, headVis = toScreen(head.Position)
 	local rootPos, rootVis = toScreen(root.Position)
 	
 	if not (headVis and rootVis) then
-		hideEspObjects(plr)
+		if EspObjects[plr] then
+			EspObjects[plr].box.Visible = false
+			EspObjects[plr].name.Visible = false
+			EspObjects[plr].healthBar.Visible = false
+			EspObjects[plr].healthBarBg.Visible = false
+		end
 		return
 	end
 	
@@ -177,7 +176,6 @@ local function updateEsp(plr)
 	esp.box.Thickness = 3
 	esp.name.Color = Color3.fromRGB(255, 255, 255)
 	esp.name.Size = 24
-	-- Динамический цвет здоровья
 	esp.healthBar.Color = humanoid.Health < humanoid.MaxHealth * 0.3 and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 0)
 
 	local baseHeight = math.abs(headPos.Y - rootPos.Y)
@@ -217,13 +215,12 @@ local function cleanupEsp(plr)
 	end
 end
 
--- Запуск ESP
+-- Запуск ESP игроков
 spawn(function()
 	while not workspace.CurrentCamera do task.wait() end
 	Camera = workspace.CurrentCamera
 	
 	Players.PlayerAdded:Connect(function(plr)
-		-- FIX: Игнорируем локального игрока при добавлении
 		if plr ~= player then
 			task.wait(0.1)
 			if plr.Character then 
@@ -236,7 +233,6 @@ spawn(function()
 	
 	while true do
 		for _, plr in ipairs(Players:GetPlayers()) do
-			-- FIX: Обновляем только если игрок НЕ мы
 			if plr ~= player then 
 				updateEsp(plr) 
 			end
@@ -246,9 +242,132 @@ spawn(function()
 end)
 
 -- ==============================================================================
--- === GUI (ЦВЕТА ИСПРАВЛЕНЫ) ===
+-- === ESP ВЫХОДА (EXIT DOOR) - НОВАЯ ФУНКЦИЯ ===
+-- ==============================================================================
+local exitDoorESPEnabled = false
+local exitDoorConnection = nil
+local exitDoorDrawings = {}
+
+local function findExitDoors()
+    local foundDoors = {}
+    local hideSeekFolder = Workspace:FindFirstChild("Map") 
+        and Workspace.Map:FindFirstChild("HideNSeek") 
+        and Workspace.Map.HideNSeek:FindFirstChild("Elements")
+        
+    if not hideSeekFolder then
+        hideSeekFolder = Workspace
+    end
+
+    for _, obj in ipairs(hideSeekFolder:GetDescendants()) do
+        if obj.Name == "ExitDoor" then
+            local part = obj:FindFirstChildWhichIsA("BasePart")
+            if part then
+                table.insert(foundDoors, {model = obj, part = part})
+            end
+        end
+    end
+    return foundDoors
+end
+
+local function clearExitDoorESP()
+    if exitDoorConnection then 
+        exitDoorConnection:Disconnect() 
+        exitDoorConnection = nil 
+    end
+    for _, obj in pairs(exitDoorDrawings) do
+        if obj.Remove then obj:Remove() end
+    end
+    exitDoorDrawings = {}
+end
+
+local function toggleExitDoorESP()
+    exitDoorESPEnabled = not exitDoorESPEnabled
+    
+    if exitDoorESPEnabled then
+        -- ВКЛЮЧЕНИЕ
+        local exitDoors = findExitDoors()
+        if #exitDoors == 0 then
+            warn("❌ ExitDoor ESP: Двери не найдены. Возможно, раунд еще не начался.")
+            exitDoorESPEnabled = false
+            return
+        end
+
+        for i, data in ipairs(exitDoors) do
+            local doorModel = data.model
+            local doorPart = data.part
+            
+            local box = Drawing.new("Square")
+            box.Color = Color3.fromRGB(0, 255, 0) 
+            box.Thickness = 4
+            box.Filled = false
+            box.Visible = false
+            
+            local label = Drawing.new("Text")
+            label.Text = "EXIT #" .. i
+            label.Size = 24
+            label.Color = Color3.fromRGB(50, 255, 50)
+            label.Outline = true
+            label.OutlineColor = Color3.fromRGB(0, 0, 0)
+            label.Center = true
+            label.Visible = false
+            
+            table.insert(exitDoorDrawings, {
+                model = doorModel,
+                part = doorPart,
+                box = box,
+                label = label
+            })
+        end
+        
+        exitDoorConnection = RunService.RenderStepped:Connect(function()
+            if not Camera then Camera = workspace.CurrentCamera end
+            if not Camera then return end
+            
+            for _, esp in ipairs(exitDoorDrawings) do
+                if not esp.part or not esp.part.Parent then
+                    esp.box.Visible = false
+                    esp.label.Visible = false
+                    continue
+                end
+                
+                local pos = esp.part.Position
+                local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+                
+                if onScreen then
+                    local distance = (Camera.CFrame.Position - pos).Magnitude
+                    local size = math.clamp(7000 / distance, 60, 500) 
+                    
+                    esp.box.Position = Vector2.new(screenPos.X - size/2, screenPos.Y - size/2)
+                    esp.box.Size = Vector2.new(size, size)
+                    esp.box.Visible = true
+                    
+                    esp.label.Position = Vector2.new(screenPos.X, screenPos.Y - size/2 - 30)
+                    esp.label.Visible = true
+                else
+                    esp.box.Visible = false
+                    esp.label.Visible = false
+                end
+            end
+        end)
+        print("✅ ExitDoor ESP активен!")
+    else
+        -- ВЫКЛЮЧЕНИЕ
+        clearExitDoorESP()
+        print("❌ ExitDoor ESP деактивирован.")
+    end
+    
+    -- Обновление текста кнопки в GUI, если она существует
+    if currentExitDoorBtn then
+        currentExitDoorBtn.Text = exitDoorESPEnabled and T("exitEnabled") or T("exitDisabled")
+        currentExitDoorBtn.BackgroundColor3 = exitDoorESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 80)
+    end
+end
+
+-- ==============================================================================
+-- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
+local currentExitDoorBtn = nil -- Ссылка на кнопку переключения ESP
 
 local function rebuildGUI()
 	if screenGui then screenGui:Destroy() end
@@ -461,6 +580,40 @@ local function rebuildGUI()
 		end
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
+
+	-- НОВАЯ ФУНКЦИЯ: ПОЛЕЗНОСТИ
+	local function showUtilities()
+		clearContent()
+		local lbl = Instance.new("TextLabel")
+		lbl.Text = T("utilities")
+		lbl.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+		lbl.BackgroundTransparency = 1
+		lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 14 * 1.5
+		lbl.Parent = contentContainer
+		
+		-- Кнопка переключения ExitDoor ESP
+		currentExitDoorBtn = Instance.new("TextButton")
+		currentExitDoorBtn.Text = exitDoorESPEnabled and T("exitEnabled") or T("exitDisabled")
+		currentExitDoorBtn.Size = UDim2.new(1, -10, 0, 40 * 1.5)
+		currentExitDoorBtn.Position = UDim2.new(0, 5, 0, 30 * 1.5)
+		currentExitDoorBtn.BackgroundColor3 = exitDoorESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 80)
+		currentExitDoorBtn.TextColor3 = Color3.fromRGB(240, 240, 255)
+		currentExitDoorBtn.Font = Enum.Font.GothamBold
+		currentExitDoorBtn.TextSize = 14 * 1.5
+		currentExitDoorBtn.AutoButtonColor = true
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, 6)
+		bCorner.Parent = currentExitDoorBtn
+		
+		currentExitDoorBtn.MouseButton1Click:Connect(function()
+			toggleExitDoorESP()
+		end)
+		currentExitDoorBtn.Parent = contentContainer
+		
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 80 * 1.5)
+	end
 	
 	local menuY = 5
 	local function makeBtn(text, icon, cb)
@@ -483,6 +636,7 @@ local function rebuildGUI()
 	end
 	
 	makeBtn(T("teleports"), "🌐", showTeleports)
+	makeBtn(T("utilities"), "🛠️", showUtilities) -- Добавлена кнопка Полезности
 	makeBtn(T("settings"), "⚙️", showSettings)
 	
 	showTeleports()
