@@ -33,6 +33,7 @@ if game.PlaceId == 136599248168660 then
     print("Pidromania Hub soon")
 
 elseif game.PlaceId == 7554888362 or  game.PlaceId == 7559074529 then
+    wait(10)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Squid%20Game%20X"))()
 
 elseif BF[game.PlaceId] then
