@@ -1,5 +1,5 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (ESP Fix + ExitDoor Utility) ===
+-- === Pidromania Hub: Squid Game X (ESP Fix + ExitDoor Toggle Switch) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -24,9 +24,9 @@ local translations = {
 		lang_uk = "Українська", 
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
-		showExit = "Показать выход (ExitDoor)",
-		exitEnabled = "✅ Выход: ВКЛ",
-		exitDisabled = "❌ Выход: ВЫКЛ"
+		exitDoorLabel = "Показать выход (ExitDoor)",
+		exitEnabled = "✅ ВКЛ",
+		exitDisabled = "❌ ВЫКЛ"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -39,9 +39,9 @@ local translations = {
 		lang_uk = "Українська", 
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
-		showExit = "Показати вихід (ExitDoor)",
-		exitEnabled = "✅ Вихід: УВІМК",
-		exitDisabled = "❌ Вихід: ВИМК"
+		exitDoorLabel = "Показати вихід (ExitDoor)",
+		exitEnabled = "✅ УВІМК",
+		exitDisabled = "❌ ВИМК"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -54,9 +54,9 @@ local translations = {
 		lang_uk = "Украин", 
 		lang_kk = "Қазақ", 
 		lang_en = "Ағылшын (АҚШ)",
-		showExit = "Шығуды көрсету (ExitDoor)",
-		exitEnabled = "✅ Шығу: ҚОСУЛЫ",
-		exitDisabled = "❌ Шығу: ӨШІРУЛІ"
+		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
+		exitEnabled = "✅ ҚОСУЛЫ",
+		exitDisabled = "❌ ӨШІРУЛІ"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -69,9 +69,9 @@ local translations = {
 		lang_uk = "Ukrainian", 
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
-		showExit = "Show Exit (ExitDoor)",
-		exitEnabled = "✅ Exit: ON",
-		exitDisabled = "❌ Exit: OFF"
+		exitDoorLabel = "Show Exit (ExitDoor)",
+		exitEnabled = "✅ ON",
+		exitDisabled = "❌ OFF"
 	}
 }
 
@@ -242,7 +242,7 @@ spawn(function()
 end)
 
 -- ==============================================================================
--- === ESP ВЫХОДА (EXIT DOOR) - НОВАЯ ФУНКЦИЯ ===
+-- === ESP ВЫХОДА (EXIT DOOR) ===
 -- ==============================================================================
 local exitDoorESPEnabled = false
 local exitDoorConnection = nil
@@ -274,21 +274,23 @@ local function clearExitDoorESP()
         exitDoorConnection:Disconnect() 
         exitDoorConnection = nil 
     end
-    for _, obj in pairs(exitDoorDrawings) do
-        if obj.Remove then obj:Remove() end
+    for _, espData in pairs(exitDoorDrawings) do
+        if espData.box and espData.box.Remove then espData.box:Remove() end
+        if espData.label and espData.label.Remove then espData.label:Remove() end
     end
     exitDoorDrawings = {}
 end
 
-local function toggleExitDoorESP()
-    exitDoorESPEnabled = not exitDoorESPEnabled
+local function toggleExitDoorESP(enabled)
+    -- Если состояние не изменилось — выходим
+    if enabled == exitDoorESPEnabled then return end
     
-    if exitDoorESPEnabled then
-        -- ВКЛЮЧЕНИЕ
+    if enabled then
+        clearExitDoorESP()
+        
         local exitDoors = findExitDoors()
         if #exitDoors == 0 then
-            warn("❌ ExitDoor ESP: Двери не найдены. Возможно, раунд еще не начался.")
-            exitDoorESPEnabled = false
+            warn("❌ ExitDoor ESP: Двери не найдены.")
             return
         end
 
@@ -349,25 +351,97 @@ local function toggleExitDoorESP()
                 end
             end
         end)
+        
+        exitDoorESPEnabled = true
         print("✅ ExitDoor ESP активен!")
     else
-        -- ВЫКЛЮЧЕНИЕ
         clearExitDoorESP()
+        exitDoorESPEnabled = false
         print("❌ ExitDoor ESP деактивирован.")
     end
-    
-    -- Обновление текста кнопки в GUI, если она существует
-    if currentExitDoorBtn then
-        currentExitDoorBtn.Text = exitDoorESPEnabled and T("exitEnabled") or T("exitDisabled")
-        currentExitDoorBtn.BackgroundColor3 = exitDoorESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 80)
-    end
+end
+
+-- ==============================================================================
+-- === КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ (из старого скрипта) ===
+-- ==============================================================================
+local function createToggleSwitch(parent, label, initialEnabled, onToggle)
+	local switchFrame = Instance.new("Frame")
+	switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+	switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	switchFrame.BorderSizePixel = 0
+	switchFrame.Parent = parent
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6 * 1.5)
+	corner.Parent = switchFrame
+	
+	local labelText = Instance.new("TextLabel")
+	labelText.Text = label
+	labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
+	labelText.BackgroundTransparency = 1
+	labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
+	labelText.Font = Enum.Font.GothamSemibold
+	labelText.TextSize = 14 * 1.5
+	labelText.TextXAlignment = Enum.TextXAlignment.Left
+	labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	labelText.Parent = switchFrame
+	
+	local toggleBg = Instance.new("Frame")
+	toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
+	toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
+	toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	toggleBg.BorderSizePixel = 0
+	toggleBg.Parent = switchFrame
+	
+	local cornerBg = Instance.new("UICorner")
+	cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
+	cornerBg.Parent = toggleBg
+	
+	local toggleKnob = Instance.new("Frame")
+	toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
+	toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	toggleKnob.BorderSizePixel = 0
+	toggleKnob.Parent = toggleBg
+	
+	local cornerKnob = Instance.new("UICorner")
+	cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerKnob.Parent = toggleKnob
+	
+	local isEnabled = initialEnabled
+	
+	local function updateToggle()
+		if isEnabled then
+			toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
+		else
+			toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+			toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
+		end
+	end
+	
+	updateToggle()
+	
+	switchFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isEnabled = not isEnabled
+			onToggle(isEnabled)
+			updateToggle()
+		end
+	end)
+	
+	return switchFrame, function(state)
+		isEnabled = state
+		updateToggle()
+	end
 end
 
 -- ==============================================================================
 -- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
-local currentExitDoorBtn = nil -- Ссылка на кнопку переключения ESP
 
 local function rebuildGUI()
 	if screenGui then screenGui:Destroy() end
@@ -581,7 +655,6 @@ local function rebuildGUI()
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
 
-	-- НОВАЯ ФУНКЦИЯ: ПОЛЕЗНОСТИ
 	local function showUtilities()
 		clearContent()
 		local lbl = Instance.new("TextLabel")
@@ -593,24 +666,15 @@ local function rebuildGUI()
 		lbl.TextSize = 14 * 1.5
 		lbl.Parent = contentContainer
 		
-		-- Кнопка переключения ExitDoor ESP
-		currentExitDoorBtn = Instance.new("TextButton")
-		currentExitDoorBtn.Text = exitDoorESPEnabled and T("exitEnabled") or T("exitDisabled")
-		currentExitDoorBtn.Size = UDim2.new(1, -10, 0, 40 * 1.5)
-		currentExitDoorBtn.Position = UDim2.new(0, 5, 0, 30 * 1.5)
-		currentExitDoorBtn.BackgroundColor3 = exitDoorESPEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 80)
-		currentExitDoorBtn.TextColor3 = Color3.fromRGB(240, 240, 255)
-		currentExitDoorBtn.Font = Enum.Font.GothamBold
-		currentExitDoorBtn.TextSize = 14 * 1.5
-		currentExitDoorBtn.AutoButtonColor = true
-		local bCorner = Instance.new("UICorner")
-		bCorner.CornerRadius = UDim.new(0, 6)
-		bCorner.Parent = currentExitDoorBtn
-		
-		currentExitDoorBtn.MouseButton1Click:Connect(function()
-			toggleExitDoorESP()
-		end)
-		currentExitDoorBtn.Parent = contentContainer
+		-- 🔥 КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
+		createToggleSwitch(
+			contentContainer,
+			T("exitDoorLabel"),
+			exitDoorESPEnabled,
+			function(enabled)
+				toggleExitDoorESP(enabled)
+			end
+		)
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 80 * 1.5)
 	end
@@ -636,7 +700,7 @@ local function rebuildGUI()
 	end
 	
 	makeBtn(T("teleports"), "🌐", showTeleports)
-	makeBtn(T("utilities"), "🛠️", showUtilities) -- Добавлена кнопка Полезности
+	makeBtn(T("utilities"), "🛠️", showUtilities)
 	makeBtn(T("settings"), "⚙️", showSettings)
 	
 	showTeleports()
