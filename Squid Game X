@@ -1,5 +1,5 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (ESP Fix + ExitDoor Toggle Switch) ===
+-- === Pidromania Hub: Squid Game X (ESP + ExitDoor + Guard Cam Toggle) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -25,8 +25,7 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показать выход (ExitDoor)",
-		exitEnabled = "✅ ВКЛ",
-		exitDisabled = "❌ ВЫКЛ"
+		guardCamLabel = "Камера на Guard"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -40,8 +39,7 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показати вихід (ExitDoor)",
-		exitEnabled = "✅ УВІМК",
-		exitDisabled = "❌ ВИМК"
+		guardCamLabel = "Камера на Guard"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -55,8 +53,7 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "Ағылшын (АҚШ)",
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
-		exitEnabled = "✅ ҚОСУЛЫ",
-		exitDisabled = "❌ ӨШІРУЛІ"
+		guardCamLabel = "Камера Guard"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -70,8 +67,7 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Show Exit (ExitDoor)",
-		exitEnabled = "✅ ON",
-		exitDisabled = "❌ OFF"
+		guardCamLabel = "Camera on Guard"
 	}
 }
 
@@ -215,7 +211,6 @@ local function cleanupEsp(plr)
 	end
 end
 
--- Запуск ESP игроков
 spawn(function()
 	while not workspace.CurrentCamera do task.wait() end
 	Camera = workspace.CurrentCamera
@@ -282,7 +277,6 @@ local function clearExitDoorESP()
 end
 
 local function toggleExitDoorESP(enabled)
-    -- Если состояние не изменилось — выходим
     if enabled == exitDoorESPEnabled then return end
     
     if enabled then
@@ -353,16 +347,88 @@ local function toggleExitDoorESP(enabled)
         end)
         
         exitDoorESPEnabled = true
-        print("✅ ExitDoor ESP активен!")
     else
         clearExitDoorESP()
         exitDoorESPEnabled = false
-        print("❌ ExitDoor ESP деактивирован.")
     end
 end
 
 -- ==============================================================================
--- === КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ (из старого скрипта) ===
+-- === 🔥 КАМЕРА НА GUARD ===
+-- ==============================================================================
+local guardCamEnabled = false
+local guardCamConnection = nil
+
+local function getPlayerTeam(plr)
+    local team = plr.Team
+    if team then
+        return team.Name
+    end
+    return nil
+end
+
+local function findNearestGuard()
+    local nearestGuard = nil
+    local nearestDistance = math.huge
+    local localCharacter = player.Character
+    
+    if not localCharacter then return nil end
+    
+    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return nil end
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local teamName = getPlayerTeam(plr)
+            if teamName == "Guard" then
+                local character = plr.Character
+                if character then
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local distance = (localRoot.Position - root.Position).Magnitude
+                        if distance < nearestDistance then
+                            nearestDistance = distance
+                            nearestGuard = plr
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestGuard
+end
+
+local function updateGuardCamera()
+    local guard = findNearestGuard()
+    
+    if guard and guard.Character then
+        local guardRoot = guard.Character:FindFirstChild("HumanoidRootPart")
+        if guardRoot then
+            local currentPos = Camera.CFrame.Position
+            Camera.CFrame = CFrame.lookAt(currentPos, guardRoot.Position)
+        end
+    end
+end
+
+local function toggleGuardCamera(enabled)
+    if enabled == guardCamEnabled then return end
+    
+    if enabled then
+        if guardCamConnection then guardCamConnection:Disconnect() end
+        guardCamConnection = RunService.RenderStepped:Connect(updateGuardCamera)
+        guardCamEnabled = true
+    else
+        if guardCamConnection then 
+            guardCamConnection:Disconnect() 
+            guardCamConnection = nil 
+        end
+        guardCamEnabled = false
+    end
+end
+
+-- ==============================================================================
+-- === КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ ===
 -- ==============================================================================
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 	local switchFrame = Instance.new("Frame")
@@ -666,8 +732,10 @@ local function rebuildGUI()
 		lbl.TextSize = 14 * 1.5
 		lbl.Parent = contentContainer
 		
-		-- 🔥 КРАСИВЫЙ ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
-		createToggleSwitch(
+		local y = 30 * 1.5
+		
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
+		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
 			exitDoorESPEnabled,
@@ -675,8 +743,22 @@ local function rebuildGUI()
 				toggleExitDoorESP(enabled)
 			end
 		)
+		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		y = y + 45 * 1.5
 		
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 80 * 1.5)
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ КАМЕРЫ НА GUARD
+		local guardSwitch = createToggleSwitch(
+			contentContainer,
+			T("guardCamLabel"),
+			guardCamEnabled,
+			function(enabled)
+				toggleGuardCamera(enabled)
+			end
+		)
+		guardSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		y = y + 45 * 1.5
+		
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
 	
 	local menuY = 5
