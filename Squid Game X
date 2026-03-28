@@ -1,5 +1,6 @@
 -- ==============================================================================
 -- === Pidromania Hub: Squid Game X (ESP + ExitDoor + Guard Cam Toggle) ===
+-- === MOD: Custom labels above nickname for special players ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -109,6 +110,7 @@ local function createEspObjects()
 	local esp = {
 		box = Drawing.new("Square"),
 		name = Drawing.new("Text"),
+		customLabel = Drawing.new("Text"),  -- 🔥 НОВОЕ: кастомная надпись над ником
 		healthBarBg = Drawing.new("Square"),
 		healthBar = Drawing.new("Square")
 	}
@@ -125,6 +127,16 @@ local function createEspObjects()
 	esp.name.Size = 24
 	esp.name.Font = 2
 	esp.name.Visible = false
+
+	-- 🔥 НАСТРОЙКИ ДЛЯ КАСТОМНОЙ НАДПИСИ:
+	esp.customLabel.Color = Color3.fromRGB(255, 255, 255)
+	esp.customLabel.Outline = true
+	esp.customLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
+	esp.customLabel.Center = true
+	esp.customLabel.Size = 18
+	esp.customLabel.Font = 2
+	esp.customLabel.Visible = false
+	esp.customLabel.Text = ""
 
 	esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
 	esp.healthBarBg.Filled = true
@@ -156,6 +168,7 @@ local function updateEsp(plr)
 		if EspObjects[plr] then
 			EspObjects[plr].box.Visible = false
 			EspObjects[plr].name.Visible = false
+			EspObjects[plr].customLabel.Visible = false
 			EspObjects[plr].healthBar.Visible = false
 			EspObjects[plr].healthBarBg.Visible = false
 		end
@@ -186,6 +199,30 @@ local function updateEsp(plr)
 	esp.name.Text = plr.Name
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
 	esp.name.Visible = true
+	
+	-- 🔥 КАСТОМНЫЕ НАДПИСИ НАД НИКОМ 🔥
+	local customText = ""
+	local customColor = nil
+	local playerNameLower = string.lower(plr.Name)
+
+	if playerNameLower == "luken_god" then
+		customText = "Даже тут у него 12000 LvL"
+		customColor = Color3.fromRGB(0, 255, 0)  -- 🟢 зелёный
+	elseif playerNameLower == "curlycheburashka" then
+		customText = "Викуля Красотуля"
+		customColor = Color3.fromRGB(255, 105, 180)  -- 🌸 розовый
+	end
+
+	if customText ~= "" and esp.customLabel then
+		esp.customLabel.Text = customText
+		esp.customLabel.Color = customColor
+		-- Позиция: над ником (ник на headPos.Y - 30, значит надпись ставим на -55)
+		esp.customLabel.Position = Vector2.new(headPos.X, headPos.Y - 55)
+		esp.customLabel.Visible = true
+	else
+		esp.customLabel.Visible = false
+		esp.customLabel.Text = ""
+	end
 	
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
@@ -734,7 +771,6 @@ local function rebuildGUI()
 		
 		local y = 30 * 1.5
 		
-		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -746,7 +782,6 @@ local function rebuildGUI()
 		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
-		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ КАМЕРЫ НА GUARD
 		local guardSwitch = createToggleSwitch(
 			contentContainer,
 			T("guardCamLabel"),
