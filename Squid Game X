@@ -1,12 +1,12 @@
 -- ==============================================================================
--- === Pidromania Hub: Squid Game X (ESP + ExitDoor + Guard Cam Toggle) ===
--- === MOD: Custom labels above nickname for special players ===
+-- === Pidromania Hub: Squid Game X (ESP + ExitDoor + Guard Cam + Clone Bridge) ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -26,7 +26,8 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показать выход (ExitDoor)",
-		guardCamLabel = "Камера на Guard"
+		guardCamLabel = "Камера на Guard",
+		cloneBridgeLabel = "Создать клонов на мосту"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -40,7 +41,8 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показати вихід (ExitDoor)",
-		guardCamLabel = "Камера на Guard"
+		guardCamLabel = "Камера на Guard",
+		cloneBridgeLabel = "Створити клонів на мосту"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -54,7 +56,8 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "Ағылшын (АҚШ)",
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
-		guardCamLabel = "Камера Guard"
+		guardCamLabel = "Камера Guard",
+		cloneBridgeLabel = "Көпірде клондар жасау"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -68,7 +71,8 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Show Exit (ExitDoor)",
-		guardCamLabel = "Camera on Guard"
+		guardCamLabel = "Camera on Guard",
+		cloneBridgeLabel = "Spawn Clones on Bridge"
 	}
 }
 
@@ -95,6 +99,144 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
+-- === КЛОН НА МОСТУ (20 ПЛАТФОРМ, 2 МИНУТЫ) ===
+-- ==============================================================================
+local MY_USER_ID = 1923012479
+local bridgeCloneModels = {}
+local cloneCleanupScheduled = false
+
+local bridgePositions = {
+    Vector3.new(1276, 100.6, -1071),
+    Vector3.new(1286, 100.6, -1071),
+    Vector3.new(1276, 100.6, -1061),
+    Vector3.new(1286, 100.6, -1061),
+    Vector3.new(1276, 100.6, -1051),
+    Vector3.new(1286, 100.6, -1051),
+    Vector3.new(1276, 100.6, -1041),
+    Vector3.new(1286, 100.6, -1041),
+    Vector3.new(1276, 100.6, -1031),
+    Vector3.new(1286, 100.6, -1031),
+    Vector3.new(1276, 100.6, -1021),
+    Vector3.new(1286, 100.6, -1021),
+    Vector3.new(1276, 100.6, -1011),
+    Vector3.new(1286, 100.6, -1011),
+    Vector3.new(1276, 100.6, -1001),
+    Vector3.new(1286, 100.6, -1001),
+    Vector3.new(1276, 100.6, -991),
+    Vector3.new(1286, 100.6, -991),
+    Vector3.new(1276, 100.6, -981),
+    Vector3.new(1286, 100.6, -981),
+}
+
+local function spawnBridgeClone(position, index)
+    local success, model = pcall(function()
+        return Players:CreateHumanoidModelFromUserId(MY_USER_ID)
+    end)
+    
+    if not success or not model then
+        warn(`❌ Не удалось создать клона #{index}`)
+        return false
+    end
+    
+    model.Name = "82Lena28_Bridge_" .. index
+    model.Parent = Workspace
+    
+    local rootPart = model:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        rootPart = model:FindFirstChild("Torso")
+    end
+    if not rootPart then
+        for _, v in ipairs(model:GetChildren()) do
+            if v:IsA("BasePart") then
+                rootPart = v
+                break
+            end
+        end
+    end
+    
+    if not rootPart then
+        warn(`⚠️ Ошибка структуры клона #{index}, удаляю...`)
+        model:Destroy()
+        return false
+    end
+    
+    model.PrimaryPart = rootPart
+    rootPart.CFrame = CFrame.new(position.X, position.Y + 2, position.Z)
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineTransparency = 0
+    highlight.FillTransparency = 0.5
+    highlight.Adornee = model
+    highlight.Parent = model
+    
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    
+    for _, item in ipairs(model:GetChildren()) do
+        if item:IsA("Tool") then item:Destroy() end
+    end
+    
+    table.insert(bridgeCloneModels, model)
+    
+    local x = math.round(position.X * 100) / 100
+    local y = math.round((position.Y + 2) * 100) / 100
+    local z = math.round(position.Z * 100) / 100
+    print(`✅ Клон #{index} создан! Координаты: ({x}, {y}, {z})`)
+    
+    return true
+end
+
+local function cleanupBridgeClones()
+    print("\n🧹 Удаление клонов с моста...")
+    for i, model in ipairs(bridgeCloneModels) do
+        if model and model.Parent then
+            model:Destroy()
+        end
+    end
+    bridgeCloneModels = {}
+    print("✅ Все клоны удалены!")
+end
+
+local function spawnAllBridgeClones()
+    if #bridgeCloneModels > 0 then
+        print("⚠️ Клоны уже существуют, сначала удаляю старые...")
+        cleanupBridgeClones()
+        task.wait(0.5)
+    end
+    
+    print("\n🚀 НАЧИНАЮ СПАВН 20 КЛОНОВ НА МОСТУ...")
+    local startTime = tick()
+    local successCount = 0
+    
+    for index, position in ipairs(bridgePositions) do
+        if spawnBridgeClone(position, index) then
+            successCount += 1
+        end
+        task.wait(0.05)
+    end
+    
+    local endTime = tick()
+    local duration = math.round((endTime - startTime) * 100) / 100
+    
+    print(`\n✅ ГОТОВО! Создано {successCount} из {#bridgePositions} клонов за {duration} сек.`)
+    print(`⏱️ Клоны будут удалены через 2 минуты (120 сек)`)
+    
+    -- Планируем удаление через 2 минуты
+    if not cloneCleanupScheduled then
+        cloneCleanupScheduled = true
+        task.delay(120, function()
+            cleanupBridgeClones()
+            cloneCleanupScheduled = false
+        end)
+    end
+end
+
+-- ==============================================================================
 -- === ESP ИГРОКОВ (ОСНОВНОЙ) ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
@@ -110,7 +252,6 @@ local function createEspObjects()
 	local esp = {
 		box = Drawing.new("Square"),
 		name = Drawing.new("Text"),
-		customLabel = Drawing.new("Text"),  -- 🔥 НОВОЕ: кастомная надпись над ником
 		healthBarBg = Drawing.new("Square"),
 		healthBar = Drawing.new("Square")
 	}
@@ -127,16 +268,6 @@ local function createEspObjects()
 	esp.name.Size = 24
 	esp.name.Font = 2
 	esp.name.Visible = false
-
-	-- 🔥 НАСТРОЙКИ ДЛЯ КАСТОМНОЙ НАДПИСИ:
-	esp.customLabel.Color = Color3.fromRGB(255, 255, 255)
-	esp.customLabel.Outline = true
-	esp.customLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
-	esp.customLabel.Center = true
-	esp.customLabel.Size = 18
-	esp.customLabel.Font = 2
-	esp.customLabel.Visible = false
-	esp.customLabel.Text = ""
 
 	esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
 	esp.healthBarBg.Filled = true
@@ -168,7 +299,6 @@ local function updateEsp(plr)
 		if EspObjects[plr] then
 			EspObjects[plr].box.Visible = false
 			EspObjects[plr].name.Visible = false
-			EspObjects[plr].customLabel.Visible = false
 			EspObjects[plr].healthBar.Visible = false
 			EspObjects[plr].healthBarBg.Visible = false
 		end
@@ -199,30 +329,6 @@ local function updateEsp(plr)
 	esp.name.Text = plr.Name
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
 	esp.name.Visible = true
-	
-	-- 🔥 КАСТОМНЫЕ НАДПИСИ НАД НИКОМ 🔥
-	local customText = ""
-	local customColor = nil
-	local playerNameLower = string.lower(plr.Name)
-
-	if playerNameLower == "luken_god" then
-		customText = "Даже тут у него 12000 LvL"
-		customColor = Color3.fromRGB(0, 255, 0)  -- 🟢 зелёный
-	elseif playerNameLower == "curlycheburashka" then
-		customText = "Викуля Красотуля"
-		customColor = Color3.fromRGB(255, 105, 180)  -- 🌸 розовый
-	end
-
-	if customText ~= "" and esp.customLabel then
-		esp.customLabel.Text = customText
-		esp.customLabel.Color = customColor
-		-- Позиция: над ником (ник на headPos.Y - 30, значит надпись ставим на -55)
-		esp.customLabel.Position = Vector2.new(headPos.X, headPos.Y - 55)
-		esp.customLabel.Visible = true
-	else
-		esp.customLabel.Visible = false
-		esp.customLabel.Text = ""
-	end
 	
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
@@ -542,6 +648,31 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 end
 
 -- ==============================================================================
+-- === КНОПКА ДЛЯ СПАВНА КЛОНОВ ===
+-- ==============================================================================
+local function createCloneButton(parent, label, yPosition)
+    local btn = Instance.new("TextButton")
+    btn.Text = "🎭 " .. label
+    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
+    btn.Position = UDim2.new(0, 5, 0, yPosition)
+    btn.BackgroundColor3 = Color3.fromRGB(80, 50, 100)
+    btn.TextColor3 = Color3.fromRGB(255, 220, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14 * 1.5
+    btn.AutoButtonColor = true
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 6)
+    bCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        spawnAllBridgeClones()
+    end)
+    
+    btn.Parent = parent
+    return btn
+end
+
+-- ==============================================================================
 -- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
@@ -771,6 +902,7 @@ local function rebuildGUI()
 		
 		local y = 30 * 1.5
 		
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -782,6 +914,7 @@ local function rebuildGUI()
 		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ КАМЕРЫ НА GUARD
 		local guardSwitch = createToggleSwitch(
 			contentContainer,
 			T("guardCamLabel"),
@@ -791,6 +924,14 @@ local function rebuildGUI()
 			end
 		)
 		guardSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		y = y + 45 * 1.5
+		
+		-- 🎭 КНОПКА ДЛЯ СПАВНА КЛОНОВ НА МОСТУ
+		local cloneBtn = createCloneButton(
+			contentContainer,
+			T("cloneBridgeLabel"),
+			y
+		)
 		y = y + 45 * 1.5
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
@@ -839,3 +980,5 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 		end
 	end
 end)
+
+print("✅ Pidromania Hub загружен! Жми 'G' для открытия меню.")
