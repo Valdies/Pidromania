@@ -280,7 +280,7 @@ local function createEspObjects()
 	esp.customLabel.Outline = true
 	esp.customLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
 	esp.customLabel.Center = true
-	esp.customLabel.Size = 18
+	esp.customLabel.Size = 27
 	esp.customLabel.Font = 2
 	esp.customLabel.Visible = false
 	esp.customLabel.Text = ""
