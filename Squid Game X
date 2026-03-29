@@ -1,6 +1,3 @@
--- ==============================================================================
--- === Pidromania Hub: Squid Game X (ESP + ExitDoor + Guard Cam + Clone Bridge) ===
--- ==============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -88,7 +85,8 @@ local CUSTOM_TELEPORTS = {
 	{"Скакалка", -56.06, 119.97, 3.07},
 	{"🛡️ Безопасная зона (Прятки)", -622.17, 183.55, 399.09},
 	{"Стекло", 1280.30, 102.11, -955.72},
-	{"🍽️ Безопасная зона (Ужин)", 8162.46, 48.53, 23396.95}
+	{"🍽️ Безопасная зона (Ужин)", 8162.46, 48.53, 23396.95},
+	{"Лодки", -2799.48, -785.78, 15508.45}
 }
 
 local function teleport(x, y, z)
@@ -97,6 +95,27 @@ local function teleport(x, y, z)
 		char.HumanoidRootPart.CFrame = CFrame.new(x, y, z)
 	end
 end
+
+-- ==============================================================================
+-- === 🔥 СПЕЦИАЛЬНЫЕ ИГРОКИ (НИКИ + ЦВЕТА + НАДПИСИ) ===
+-- ==============================================================================
+local SPECIAL_PLAYERS = {
+	["luken_god"] = {
+		text = "Даже тут у него 12000 LvL",
+		color = Color3.fromRGB(0, 255, 0),  -- 🟢 Зелёный
+		nickColor = Color3.fromRGB(0, 255, 0)
+	},
+	["curlycheburashka"] = {
+		text = "Викуля Красотуля",
+		color = Color3.fromRGB(255, 105, 180),  -- 🌸 Розовый
+		nickColor = Color3.fromRGB(255, 105, 180)
+	},
+	["82Lena28"] = {
+		text = "Pidromania Dev",
+		color = Color3.fromRGB(30, 144, 255),  -- 🔵 Голубой
+		nickColor = Color3.fromRGB(30, 144, 255)
+	}
+}
 
 -- ==============================================================================
 -- === КЛОН НА МОСТУ (20 ПЛАТФОРМ, 2 МИНУТЫ) ===
@@ -134,7 +153,6 @@ local function spawnBridgeClone(position, index)
     end)
     
     if not success or not model then
-        warn(`❌ Не удалось создать клона #{index}`)
         return false
     end
     
@@ -155,7 +173,6 @@ local function spawnBridgeClone(position, index)
     end
     
     if not rootPart then
-        warn(`⚠️ Ошибка структуры клона #{index}, удаляю...`)
         model:Destroy()
         return false
     end
@@ -183,33 +200,24 @@ local function spawnBridgeClone(position, index)
     
     table.insert(bridgeCloneModels, model)
     
-    local x = math.round(position.X * 100) / 100
-    local y = math.round((position.Y + 2) * 100) / 100
-    local z = math.round(position.Z * 100) / 100
-    print(`✅ Клон #{index} создан! Координаты: ({x}, {y}, {z})`)
-    
     return true
 end
 
 local function cleanupBridgeClones()
-    print("\n🧹 Удаление клонов с моста...")
     for i, model in ipairs(bridgeCloneModels) do
         if model and model.Parent then
             model:Destroy()
         end
     end
     bridgeCloneModels = {}
-    print("✅ Все клоны удалены!")
 end
 
 local function spawnAllBridgeClones()
     if #bridgeCloneModels > 0 then
-        print("⚠️ Клоны уже существуют, сначала удаляю старые...")
         cleanupBridgeClones()
         task.wait(0.5)
     end
     
-    print("\n🚀 НАЧИНАЮ СПАВН 20 КЛОНОВ НА МОСТУ...")
     local startTime = tick()
     local successCount = 0
     
@@ -223,10 +231,6 @@ local function spawnAllBridgeClones()
     local endTime = tick()
     local duration = math.round((endTime - startTime) * 100) / 100
     
-    print(`\n✅ ГОТОВО! Создано {successCount} из {#bridgePositions} клонов за {duration} сек.`)
-    print(`⏱️ Клоны будут удалены через 2 минуты (120 сек)`)
-    
-    -- Планируем удаление через 2 минуты
     if not cloneCleanupScheduled then
         cloneCleanupScheduled = true
         task.delay(120, function()
@@ -237,10 +241,11 @@ local function spawnAllBridgeClones()
 end
 
 -- ==============================================================================
--- === ESP ИГРОКОВ (ОСНОВНОЙ) ===
+-- === ESP ИГРОКОВ (ОСНОВНОЙ) + HIGHLIGHT ЧЕРЕЗ СТЕНЫ ===
 -- ==============================================================================
 local Camera = workspace.CurrentCamera
 local EspObjects = {}
+local PlayerHighlights = {}  -- 🔥 Хранилище Highlight для особых игроков
 
 local function toScreen(pos)
 	if not Camera then return Vector2.new(0,0), false end
@@ -252,6 +257,7 @@ local function createEspObjects()
 	local esp = {
 		box = Drawing.new("Square"),
 		name = Drawing.new("Text"),
+		customLabel = Drawing.new("Text"),  -- 🔥 Для особых надписей
 		healthBarBg = Drawing.new("Square"),
 		healthBar = Drawing.new("Square")
 	}
@@ -269,6 +275,16 @@ local function createEspObjects()
 	esp.name.Font = 2
 	esp.name.Visible = false
 
+	-- 🔥 НАСТРОЙКИ КАСТОМНОЙ НАДПИСИ:
+	esp.customLabel.Color = Color3.fromRGB(255, 255, 255)
+	esp.customLabel.Outline = true
+	esp.customLabel.OutlineColor = Color3.fromRGB(0, 0, 0)
+	esp.customLabel.Center = true
+	esp.customLabel.Size = 18
+	esp.customLabel.Font = 2
+	esp.customLabel.Visible = false
+	esp.customLabel.Text = ""
+
 	esp.healthBarBg.Color = Color3.fromRGB(40, 40, 40)
 	esp.healthBarBg.Filled = true
 	esp.healthBarBg.Thickness = 0
@@ -280,6 +296,43 @@ local function createEspObjects()
 	esp.healthBar.Visible = false
 
 	return esp
+end
+
+-- 🔥 ФУНКЦИЯ: Создание/Обновление Highlight для особого игрока
+local function updatePlayerHighlight(plr, specialData)
+	if not plr.Character then return end
+	
+	-- Если Highlight уже есть — обновляем цвет
+	if PlayerHighlights[plr] then
+		local highlight = PlayerHighlights[plr]
+		if highlight and highlight.Parent then
+			highlight.OutlineColor = specialData.color
+			highlight.FillColor = specialData.color
+			return
+		end
+	end
+	
+	-- Создаём новый Highlight
+	local highlight = Instance.new("Highlight")
+	highlight.OutlineColor = specialData.color
+	highlight.FillColor = specialData.color
+	highlight.OutlineTransparency = 0
+	highlight.FillTransparency = 0.7
+	highlight.Adornee = plr.Character
+	highlight.Parent = plr.Character
+	
+	PlayerHighlights[plr] = highlight
+end
+
+-- 🔥 ФУНКЦИЯ: Удаление Highlight
+local function removePlayerHighlight(plr)
+	if PlayerHighlights[plr] then
+		local highlight = PlayerHighlights[plr]
+		if highlight and highlight.Parent then
+			highlight:Destroy()
+		end
+		PlayerHighlights[plr] = nil
+	end
 end
 
 local function updateEsp(plr)
@@ -295,10 +348,30 @@ local function updateEsp(plr)
 	local headPos, headVis = toScreen(head.Position)
 	local rootPos, rootVis = toScreen(root.Position)
 	
+	-- 🔥 ПРОВЕРКА: Особый игрок?
+	local playerNameLower = string.lower(plr.Name)
+	local specialData = SPECIAL_PLAYERS[playerNameLower]
+	
+	-- Если особый игрок — создаём Highlight (виден через стены!)
+	if specialData then
+		updatePlayerHighlight(plr, specialData)
+		-- Меняем цвет ника на особый (если вдруг он отображается)
+		if EspObjects[plr] then
+			EspObjects[plr].name.Color = specialData.nickColor
+		end
+	else
+		-- Если больше не особый — удаляем Highlight
+		removePlayerHighlight(plr)
+		if EspObjects[plr] then
+			EspObjects[plr].name.Color = Color3.fromRGB(255, 255, 255)
+		end
+	end
+	
 	if not (headVis and rootVis) then
 		if EspObjects[plr] then
 			EspObjects[plr].box.Visible = false
 			EspObjects[plr].name.Visible = false
+			EspObjects[plr].customLabel.Visible = false
 			EspObjects[plr].healthBar.Visible = false
 			EspObjects[plr].healthBarBg.Visible = false
 		end
@@ -311,9 +384,8 @@ local function updateEsp(plr)
 	
 	local esp = EspObjects[plr]
 	
-	esp.box.Color = Color3.fromRGB(255, 0, 0)
-	esp.box.Thickness = 3
-	esp.name.Color = Color3.fromRGB(255, 255, 255)
+	esp.box.Color = specialData and specialData.color or Color3.fromRGB(255, 0, 0)
+	esp.name.Color = specialData and specialData.nickColor or Color3.fromRGB(255, 255, 255)
 	esp.name.Size = 24
 	esp.healthBar.Color = humanoid.Health < humanoid.MaxHealth * 0.3 and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 0)
 
@@ -324,11 +396,31 @@ local function updateEsp(plr)
 	
 	esp.box.Size = Vector2.new(width, height)
 	esp.box.Position = topLeft
-	esp.box.Visible = true
 	
 	esp.name.Text = plr.Name
 	esp.name.Position = Vector2.new(headPos.X, headPos.Y - 30) 
-	esp.name.Visible = true
+	
+	-- 🔥 ЛОГИКА ОТОБРАЖЕНИЯ (ИЗМЕНЕНО)
+	if specialData then
+		-- Для особых игроков: нет квадрата, нет ника, только префикс и обводка (Highlight)
+		esp.box.Visible = false
+		esp.name.Visible = false
+		esp.healthBar.Visible = false
+		esp.healthBarBg.Visible = false
+		
+		esp.customLabel.Text = specialData.text
+		esp.customLabel.Color = specialData.color
+		esp.customLabel.Position = Vector2.new(headPos.X, headPos.Y - 55)  -- Над ником
+		esp.customLabel.Visible = true
+	else
+		-- Для обычных игроков: полный ESP
+		esp.box.Visible = true
+		esp.name.Visible = true
+		esp.healthBar.Visible = true
+		esp.healthBarBg.Visible = true
+		esp.customLabel.Visible = false
+		esp.customLabel.Text = ""
+	end
 	
 	local hpPercent = humanoid.Health / humanoid.MaxHealth
 	local barWidth = width * 0.9 
@@ -338,11 +430,9 @@ local function updateEsp(plr)
 	
 	esp.healthBarBg.Size = Vector2.new(barWidth, barHeight)
 	esp.healthBarBg.Position = Vector2.new(barX, barY)
-	esp.healthBarBg.Visible = true
 	
 	esp.healthBar.Size = Vector2.new(barWidth * hpPercent, barHeight)
 	esp.healthBar.Position = Vector2.new(barX, barY)
-	esp.healthBar.Visible = true
 end
 
 local function cleanupEsp(plr)
@@ -352,6 +442,7 @@ local function cleanupEsp(plr)
 		end
 		EspObjects[plr] = nil
 	end
+	removePlayerHighlight(plr)  -- 🔥 Удаляем Highlight при выходе
 end
 
 spawn(function()
@@ -368,6 +459,29 @@ spawn(function()
 	end)
 	
 	Players.PlayerRemoving:Connect(cleanupEsp)
+	
+	-- 🔥 Обновляем Highlight при респавне персонажа
+	Players.PlayerAdded:Connect(function(plr)
+		plr.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			local playerNameLower = string.lower(plr.Name)
+			local specialData = SPECIAL_PLAYERS[playerNameLower]
+			if specialData then
+				updatePlayerHighlight(plr, specialData)
+			end
+		end)
+	end)
+	
+	-- 🔥 Для уже существующих игроков
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character then
+			local playerNameLower = string.lower(plr.Name)
+			local specialData = SPECIAL_PLAYERS[playerNameLower]
+			if specialData then
+				updatePlayerHighlight(plr, specialData)
+			end
+		end
+	end
 	
 	while true do
 		for _, plr in ipairs(Players:GetPlayers()) do
@@ -427,7 +541,6 @@ local function toggleExitDoorESP(enabled)
         
         local exitDoors = findExitDoors()
         if #exitDoors == 0 then
-            warn("❌ ExitDoor ESP: Двери не найдены.")
             return
         end
 
@@ -902,7 +1015,6 @@ local function rebuildGUI()
 		
 		local y = 30 * 1.5
 		
-		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ EXIT DOOR ESP
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -914,7 +1026,6 @@ local function rebuildGUI()
 		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
-		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ ДЛЯ КАМЕРЫ НА GUARD
 		local guardSwitch = createToggleSwitch(
 			contentContainer,
 			T("guardCamLabel"),
@@ -926,7 +1037,6 @@ local function rebuildGUI()
 		guardSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
-		-- 🎭 КНОПКА ДЛЯ СПАВНА КЛОНОВ НА МОСТУ
 		local cloneBtn = createCloneButton(
 			contentContainer,
 			T("cloneBridgeLabel"),
@@ -980,5 +1090,3 @@ UserInputService.InputBegan:Connect(function(inp, gp)
 		end
 	end
 end)
-
-print("✅ Pidromania Hub загружен! Жми 'G' для открытия меню.")
