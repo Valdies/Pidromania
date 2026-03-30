@@ -25,7 +25,7 @@ local translations = {
 		exitDoorLabel = "Показать выход (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
-		teleportPlayersLabel = "Телепорт игроков ко мне"
+		teleportPlayersLabel = "Заморозить игроков у себя"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -41,7 +41,7 @@ local translations = {
 		exitDoorLabel = "Показати вихід (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
-		teleportPlayersLabel = "Телепорт гравців до мене"
+		teleportPlayersLabel = "Заморозити гравців біля себе"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -57,7 +57,7 @@ local translations = {
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
 		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
-		teleportPlayersLabel = "Ойыншыларды маған телепорттау"
+		teleportPlayersLabel = "Ойыншыларды қатыру"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -73,7 +73,7 @@ local translations = {
 		exitDoorLabel = "Show Exit (ExitDoor)",
 		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
-		teleportPlayersLabel = "Teleport Players to Me"
+		teleportPlayersLabel = "Freeze Players Near Me"
 	}
 }
 
@@ -137,59 +137,79 @@ local function isFriend(playerName)
 end
 
 -- ==============================================================================
--- === 🔥 НЕПРЕРЫВНЫЙ ТЕЛЕПОРТ ИГРОКОВ ===
+-- === 🔥 ЗАМОРОЗКА ИГРОКОВ (ТЕЛЕПОРТ + ФИКСАЦИЯ) ===
 -- ==============================================================================
-local continuousTeleportEnabled = false
-local continuousTeleportConnection = nil
+local freezePlayersEnabled = false
+local freezePlayersConnection = nil
+local frozenPlayers = {} -- 🔥 Храним позиции замороженных игроков
 
-local function startContinuousTeleport()
-	if continuousTeleportEnabled then return end
+local function freezeAllPlayers()
+	if freezePlayersEnabled then return end
 	
-	continuousTeleportEnabled = true
+	freezePlayersEnabled = true
+	frozenPlayers = {}
 	
-	continuousTeleportConnection = RunService.RenderStepped:Connect(function()
-		local localChar = player.Character
-		if not localChar then return end
-		local localRoot = localChar:FindFirstChild("HumanoidRootPart")
-		if not localRoot then return end
-		
-		local localPos = localRoot.Position
-		
-		for _, plr in ipairs(Players:GetPlayers()) do
-			if plr ~= player then
-				if isFriend(plr.Name) then
-					continue
+	local localChar = player.Character
+	if not localChar then return end
+	local localRoot = localChar:FindFirstChild("HumanoidRootPart")
+	if not localRoot then return end
+	
+	local localPos = localRoot.Position
+	
+	-- 🔥 Телепортируем всех врагов к себе и запоминаем их позиции
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player then
+			if isFriend(plr.Name) then
+				continue
+			end
+			
+			local char = plr.Character
+			if char then
+				local root = char:FindFirstChild("HumanoidRootPart")
+				if root then
+					-- Телепортируем с небольшим смещением, чтобы не застревали
+					local offset = Vector3.new(0, 0, 3)
+					local freezePos = localPos + offset
+					root.CFrame = CFrame.new(freezePos)
+					
+					-- 🔥 Запоминаем позицию заморозки для этого игрока
+					frozenPlayers[plr] = freezePos
 				end
-				
-				local char = plr.Character
-				if char then
-					local root = char:FindFirstChild("HumanoidRootPart")
-					if root then
-						local offset = Vector3.new(0, 0, 2)
-						root.CFrame = CFrame.new(localPos + offset)
-					end
+			end
+		end
+	end
+	
+	-- 🔥 Постоянно держим их на зафиксированной позиции
+	freezePlayersConnection = RunService.RenderStepped:Connect(function()
+		for plr, freezePos in pairs(frozenPlayers) do
+			if plr and plr.Character then
+				local root = plr.Character:FindFirstChild("HumanoidRootPart")
+				if root then
+					-- 🔥 Держим их замороженными в точке телепорта (не у тебя!)
+					root.CFrame = CFrame.new(freezePos)
 				end
 			end
 		end
 	end)
 end
 
-local function stopContinuousTeleport()
-	if not continuousTeleportEnabled then return end
+local function unfreezeAllPlayers()
+	if not freezePlayersEnabled then return end
 	
-	if continuousTeleportConnection then
-		continuousTeleportConnection:Disconnect()
-		continuousTeleportConnection = nil
+	if freezePlayersConnection then
+		freezePlayersConnection:Disconnect()
+		freezePlayersConnection = nil
 	end
 	
-	continuousTeleportEnabled = false
+	frozenPlayers = {}
+	freezePlayersEnabled = false
 end
 
-local function toggleContinuousTeleport(enabled)
+local function toggleFreezePlayers(enabled)
 	if enabled then
-		startContinuousTeleport()
+		freezeAllPlayers()
 	else
-		stopContinuousTeleport()
+		unfreezeAllPlayers()
 	end
 end
 
@@ -1151,16 +1171,16 @@ local function rebuildGUI()
 		)
 		y = y + 45 * 1.5
 		
-		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ: Телепорт игроков (вместо кнопки)
-		local teleportSwitch = createToggleSwitch(
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ: Заморозка игроков
+		local freezeSwitch = createToggleSwitch(
 			contentContainer,
 			T("teleportPlayersLabel"),
-			continuousTeleportEnabled,
+			freezePlayersEnabled,
 			function(enabled)
-				toggleContinuousTeleport(enabled)
+				toggleFreezePlayers(enabled)
 			end
 		)
-		teleportSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
