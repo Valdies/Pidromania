@@ -118,6 +118,11 @@ local SPECIAL_PLAYERS = {
 		text = "Pidromania Dev",
 		color = Color3.fromRGB(30, 144, 255),
 		nickColor = Color3.fromRGB(30, 144, 255)
+	},
+	["arrowennos"] = {  -- 🔥 НОВАЯ ЗАПИСЬ ДЛЯ ЭРОВЕНА
+		text = "С саньком (не геи)",
+		color = Color3.fromRGB(0, 100, 0),  -- 🌲 Тёмно-зелёный
+		nickColor = Color3.fromRGB(0, 100, 0)
 	}
 }
 
