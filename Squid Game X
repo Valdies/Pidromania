@@ -25,7 +25,8 @@ local translations = {
 		exitDoorLabel = "Показать выход (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
-		teleportPlayersLabel = "Телепортировать игроков ко мне"
+		teleportPlayersLabel = "Притянуть игроков (Постоянно)",
+		stopTeleportLabel = "Остановить притяжение"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -41,7 +42,8 @@ local translations = {
 		exitDoorLabel = "Показати вихід (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
-		teleportPlayersLabel = "Телепортувати гравців до мене"
+		teleportPlayersLabel = "Притягнути гравців (Постійно)",
+		stopTeleportLabel = "Зупинити притягування"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -57,7 +59,8 @@ local translations = {
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
 		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
-		teleportPlayersLabel = "Ойыншыларды маған телепорттау"
+		teleportPlayersLabel = "Ойыншыларды тарту (Тұрақты)",
+		stopTeleportLabel = "Тартуды тоқтату"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -73,7 +76,8 @@ local translations = {
 		exitDoorLabel = "Show Exit (ExitDoor)",
 		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
-		teleportPlayersLabel = "Teleport Players to Me"
+		teleportPlayersLabel = "Pull Players (Continuous)",
+		stopTeleportLabel = "Stop Pulling"
 	}
 }
 
@@ -101,7 +105,7 @@ local function teleport(x, y, z)
 end
 
 -- ==============================================================================
--- === 🔥 СПЕЦИАЛЬНЫЕ ИГРОКИ (НИКИ + ЦВЕТА + НАДПИСИ) ===
+-- === 🔥 СПЕЦИАЛЬНЫЕ ИГРОКИ ===
 -- ==============================================================================
 local SPECIAL_PLAYERS = {
 	["luken_god"] = {
@@ -122,14 +126,14 @@ local SPECIAL_PLAYERS = {
 }
 
 -- ==============================================================================
--- === 👥 СПИСОК ДРУЗЕЙ (ДЛЯ ТЕЛЕПОРТА) ===
+-- === 👥 СПИСОК ДРУЗЕЙ ===
 -- ==============================================================================
 local FRIENDS_LIST = {
-	["luken_god"] = true,        -- Бог
-	["curlycheburashka"] = true, -- Вика
-	["82lena28"] = true,         -- Лена (ты)
-	["arrowennos"] = true,       -- ArRoWeNnOs
-	["minikokosich"] = true      -- Minikokosich
+	["luken_god"] = true,
+	["curlycheburashka"] = true,
+	["82lena28"] = true,
+	["arrowennos"] = true,
+	["minikokosich"] = true
 }
 
 local function isFriend(playerName)
@@ -137,41 +141,61 @@ local function isFriend(playerName)
 end
 
 -- ==============================================================================
--- === 🔥 ТЕЛЕПОРТ ИГРОКОВ К СЕБЕ ===
+-- === 🔥 НЕПРЕРЫВНЫЙ ТЕЛЕПОРТ ИГРОКОВ ===
 -- ==============================================================================
-local function teleportPlayersToLocal()
-	local localChar = player.Character
-	if not localChar then return end
-	local localRoot = localChar:FindFirstChild("HumanoidRootPart")
-	if not localRoot then return end
+local continuousTeleportEnabled = false
+local continuousTeleportConnection = nil
+
+local function startContinuousTeleport()
+	if continuousTeleportEnabled then return end
 	
-	local localPos = localRoot.Position
-	local teleportedCount = 0
-	local skippedCount = 0
+	continuousTeleportEnabled = true
 	
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= player then
-			-- 🔥 Проверяем, не друг ли это
-			if isFriend(plr.Name) then
-				skippedCount += 1
-				continue
-			end
-			
-			local char = plr.Character
-			if char then
-				local root = char:FindFirstChild("HumanoidRootPart")
-				if root then
-					-- Телепортируем хитбокс (HumanoidRootPart) к себе
-					root.CFrame = CFrame.new(localPos + Vector3.new(0, 0, 2))
-					teleportedCount += 1
-					task.wait(0.05) -- Небольшая задержка для стабильности
+	continuousTeleportConnection = RunService.RenderStepped:Connect(function()
+		local localChar = player.Character
+		if not localChar then return end
+		local localRoot = localChar:FindFirstChild("HumanoidRootPart")
+		if not localRoot then return end
+		
+		local localPos = localRoot.Position
+		
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= player then
+				if isFriend(plr.Name) then
+					continue
+				end
+				
+				local char = plr.Character
+				if char then
+					local root = char:FindFirstChild("HumanoidRootPart")
+					if root then
+						-- 🔥 Постоянно держим игроков рядом (каждый кадр!)
+						local offset = Vector3.new(0, 0, 2)
+						root.CFrame = CFrame.new(localPos + offset)
+					end
 				end
 			end
 		end
+	end)
+end
+
+local function stopContinuousTeleport()
+	if not continuousTeleportEnabled then return end
+	
+	if continuousTeleportConnection then
+		continuousTeleportConnection:Disconnect()
+		continuousTeleportConnection = nil
 	end
 	
-	-- 🔥 Уведомление (можно добавить GUI уведомление если нужно)
-	print(f"[Pidromania Hub] Телепортировано игроков: {teleportedCount}, Пропущено друзей: {skippedCount}")
+	continuousTeleportEnabled = false
+end
+
+local function toggleContinuousTeleport()
+	if continuousTeleportEnabled then
+		stopContinuousTeleport()
+	else
+		startContinuousTeleport()
+	end
 end
 
 -- ==============================================================================
@@ -891,7 +915,15 @@ local function createTeleportPlayersButton(parent, label, yPosition)
     bCorner.Parent = btn
     
     btn.MouseButton1Click:Connect(function()
-        teleportPlayersToLocal()
+        toggleContinuousTeleport()
+        -- Обновляем текст кнопки
+        if continuousTeleportEnabled then
+            btn.Text = "🛑 " .. T("stopTeleportLabel")
+            btn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        else
+            btn.Text = "👥 " .. T("teleportPlayersLabel")
+            btn.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+        end
     end)
     
     btn.Parent = parent
@@ -902,6 +934,7 @@ end
 -- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
+local teleportButtonRef = nil -- 🔥 Ссылка на кнопку телепорта
 
 local function rebuildGUI()
 	if screenGui then screenGui:Destroy() end
@@ -1157,10 +1190,10 @@ local function rebuildGUI()
 		)
 		y = y + 45 * 1.5
 		
-		-- 🔥 НОВАЯ КНОПКА: Телепорт игроков
+		-- 🔥 НОВАЯ КНОПКА: Телепорт игроков (с обновлением текста)
 		local teleportBtn = createTeleportPlayersButton(
 			contentContainer,
-			T("teleportPlayersLabel"),
+			continuousTeleportEnabled and T("stopTeleportLabel") or T("teleportPlayersLabel"),
 			y
 		)
 		y = y + 45 * 1.5
