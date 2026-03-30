@@ -25,8 +25,7 @@ local translations = {
 		exitDoorLabel = "Показать выход (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
-		teleportPlayersLabel = "Притянуть игроков (Постоянно)",
-		stopTeleportLabel = "Остановить притяжение"
+		teleportPlayersLabel = "Телепорт игроков ко мне"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -42,8 +41,7 @@ local translations = {
 		exitDoorLabel = "Показати вихід (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
-		teleportPlayersLabel = "Притягнути гравців (Постійно)",
-		stopTeleportLabel = "Зупинити притягування"
+		teleportPlayersLabel = "Телепорт гравців до мене"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -59,8 +57,7 @@ local translations = {
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
 		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
-		teleportPlayersLabel = "Ойыншыларды тарту (Тұрақты)",
-		stopTeleportLabel = "Тартуды тоқтату"
+		teleportPlayersLabel = "Ойыншыларды маған телепорттау"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -76,8 +73,7 @@ local translations = {
 		exitDoorLabel = "Show Exit (ExitDoor)",
 		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
-		teleportPlayersLabel = "Pull Players (Continuous)",
-		stopTeleportLabel = "Stop Pulling"
+		teleportPlayersLabel = "Teleport Players to Me"
 	}
 }
 
@@ -169,7 +165,6 @@ local function startContinuousTeleport()
 				if char then
 					local root = char:FindFirstChild("HumanoidRootPart")
 					if root then
-						-- 🔥 Постоянно держим игроков рядом (каждый кадр!)
 						local offset = Vector3.new(0, 0, 2)
 						root.CFrame = CFrame.new(localPos + offset)
 					end
@@ -190,11 +185,11 @@ local function stopContinuousTeleport()
 	continuousTeleportEnabled = false
 end
 
-local function toggleContinuousTeleport()
-	if continuousTeleportEnabled then
-		stopContinuousTeleport()
-	else
+local function toggleContinuousTeleport(enabled)
+	if enabled then
 		startContinuousTeleport()
+	else
+		stopContinuousTeleport()
 	end
 end
 
@@ -898,43 +893,9 @@ local function createCloneButton(parent, label, yPosition)
 end
 
 -- ==============================================================================
--- === 🔥 КНОПКА ДЛЯ ТЕЛЕПОРТА ИГРОКОВ ===
--- ==============================================================================
-local function createTeleportPlayersButton(parent, label, yPosition)
-    local btn = Instance.new("TextButton")
-    btn.Text = "👥 " .. label
-    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
-    btn.Position = UDim2.new(0, 5, 0, yPosition)
-    btn.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
-    btn.TextColor3 = Color3.fromRGB(255, 220, 220)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14 * 1.5
-    btn.AutoButtonColor = true
-    local bCorner = Instance.new("UICorner")
-    bCorner.CornerRadius = UDim.new(0, 6)
-    bCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        toggleContinuousTeleport()
-        -- Обновляем текст кнопки
-        if continuousTeleportEnabled then
-            btn.Text = "🛑 " .. T("stopTeleportLabel")
-            btn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-        else
-            btn.Text = "👥 " .. T("teleportPlayersLabel")
-            btn.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
-        end
-    end)
-    
-    btn.Parent = parent
-    return btn
-end
-
--- ==============================================================================
 -- === GUI ===
 -- ==============================================================================
 local screenGui, mainFrame, contentContainer, leftPanel, minimizedFrame
-local teleportButtonRef = nil -- 🔥 Ссылка на кнопку телепорта
 
 local function rebuildGUI()
 	if screenGui then screenGui:Destroy() end
@@ -1190,12 +1151,16 @@ local function rebuildGUI()
 		)
 		y = y + 45 * 1.5
 		
-		-- 🔥 НОВАЯ КНОПКА: Телепорт игроков (с обновлением текста)
-		local teleportBtn = createTeleportPlayersButton(
+		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ: Телепорт игроков (вместо кнопки)
+		local teleportSwitch = createToggleSwitch(
 			contentContainer,
-			continuousTeleportEnabled and T("stopTeleportLabel") or T("teleportPlayersLabel"),
-			y
+			T("teleportPlayersLabel"),
+			continuousTeleportEnabled,
+			function(enabled)
+				toggleContinuousTeleport(enabled)
+			end
 		)
+		teleportSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
