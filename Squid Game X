@@ -134,7 +134,7 @@ local FRIENDS_LIST = {
 	["curlycheburashka"] = true,
 	["82lena28"] = true,
 	["arrowennos"] = true,
-	["DANIL7082D"] = true,
+	["DANIL7082D"] = true, 
 	["minikokosich"] = true
 }
 
