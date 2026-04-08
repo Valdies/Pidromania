@@ -1,14 +1,13 @@
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
-
-local localPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
 local effectGui = Instance.new("ScreenGui")
 effectGui.Name = "PidromaniaDev_Permanent"
 effectGui.DisplayOrder = 999999
 effectGui.IgnoreGuiInset = true
 effectGui.ResetOnSpawn = false
-effectGui.Parent = localPlayer:WaitForChild("PlayerGui")
+effectGui.Parent = player:WaitForChild("PlayerGui")
 
 local fullScreenFrame = Instance.new("Frame")
 fullScreenFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -17,7 +16,7 @@ fullScreenFrame.BorderSizePixel = 0
 fullScreenFrame.Parent = effectGui
 
 local devLabel = Instance.new("TextLabel")
-devLabel.Text = "Pidromania Dev"
+devLabel.Text = "Саня, ты пидор, ты меня обидел((("
 devLabel.Size = UDim2.new(0.6, 0, 0, 100)
 devLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
 devLabel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -43,3 +42,7 @@ task.spawn(function()
 end)
 
 effectGui.Enabled = true
+
+task.delay(5, function()
+    player:Kick("Вы были забанены в SBO:Rebriht по причине: Пиорас. Ну а нехуй обижать меня и Вику")
+end)
