@@ -120,8 +120,8 @@ local SPECIAL_PLAYERS = {
 		nickColor = Color3.fromRGB(30, 144, 255)
 	},
 	["arrowennos"] = {  -- 🔥 НОВАЯ ЗАПИСЬ ДЛЯ ЭРОВЕНА
-		text = "Александр Шишкодер",
-		color = Color3.fromRGB(0, 100, 0),  -- 🌲 Тёмно-зелёный
+		text = "AlHiMiK",
+		color = Color3.fromRGB(0, 100, 0), 
 		nickColor = Color3.fromRGB(0, 100, 0)
 	}
 }
