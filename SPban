@@ -44,5 +44,5 @@ end)
 effectGui.Enabled = true
 
 task.delay(5, function()
-    player:Kick("Вы были забанены в SBO:Rebriht по причине: Вы Пиорас! Ну а нехуй обижать меня и Вику")
+    player:Kick("Вы были забанены по причине: Вы гей. Ну а нехуй обижать меня и Вику")
 end)
