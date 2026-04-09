@@ -57,16 +57,11 @@ elseif SBOR[game.PlaceId] then
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
-    -- Специальная проверка для Сани 2.0
-    if LocalPlayer.UserId == 10462778979 then
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/SPban"))()
     
-    -- Остальной вайтлист
-    elseif whitelistedUserIds[LocalPlayer.UserId] then
+    if whitelistedUserIds[LocalPlayer.UserId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
     
-    -- Для всех остальных (бан)
     else
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
