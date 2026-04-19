@@ -29,7 +29,6 @@ local BF = {
 }
 
 local whitelistedUserIds = {
---[[
     [2964047089] = true, -- Кент (@VanAstrales)
     [9103392112] = true, -- Я (@huesos880055535)
     [493337194]  = true, -- Кокосик (@Minikokosich)
@@ -42,7 +41,6 @@ local whitelistedUserIds = {
     [10462778979] = true, -- Отсосаня 2.0
     [9715547061] = true, -- Тянка какая то (@make_legend2)
     [1923012479] = true  -- Лена1 (@82Lena28)
-]]--
 }
 
 local Players = game:GetService("Players")
