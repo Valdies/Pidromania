@@ -55,9 +55,11 @@ if whitelistedUserIds[LocalPlayer.UserId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Squid%20Game%20X"))()
 
     elseif BF[game.PlaceId] then
+        task.wait(10)
         -- loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/obf_PidromaniaHub%20-%20BloxFruits.lua"))()
 
     elseif SBOR[game.PlaceId] then
+        task.wait(10)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
 
