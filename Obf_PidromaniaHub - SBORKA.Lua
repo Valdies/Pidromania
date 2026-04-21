@@ -47,19 +47,17 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 if whitelistedUserIds[LocalPlayer.UserId] then
+    wait(10)
     if game.PlaceId == 136599248168660 then
         print("Pidromania Hub soon")
 
     elseif game.PlaceId == 7554888362 or game.PlaceId == 7559074529 then
-        task.wait(3)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Squid%20Game%20X"))()
 
     elseif BF[game.PlaceId] then
-        task.wait(3)
         -- loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/obf_PidromaniaHub%20-%20BloxFruits.lua"))()
 
     elseif SBOR[game.PlaceId] then
-        task.wait(3)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
 
