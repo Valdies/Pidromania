@@ -77,7 +77,7 @@ local function rebuildGUI()
 	-- 3. Счетчик
 	local counterLabel = Instance.new("TextLabel")
 	counterLabel.Name = "CounterLabel"
-	counterLabel.Text = "7"
+	counterLabel.Text = "8"
 	counterLabel.Size = UDim2.new(1, 0, 0.2, 0)
 	counterLabel.Position = UDim2.new(0, 0, 0.65, 0)
 	counterLabel.BackgroundTransparency = 1
@@ -91,7 +91,7 @@ local function rebuildGUI()
 
 	-- Логика обратного отсчета
 	task.spawn(function()
-		for i = 6, 0, -1 do
+		for i = 8, 0, -1 do
 			counterLabel.Text = tostring(i)
 			task.wait(1) 
 		end
