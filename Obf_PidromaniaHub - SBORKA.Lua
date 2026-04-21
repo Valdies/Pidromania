@@ -30,17 +30,19 @@ local BF = {
 
 local whitelistedUserIds = {
     [2964047089] = true, -- Кент (@VanAstrales)
-    [9103392112] = true, -- Я (@huesos880055535)
     [493337194]  = true, -- Кокосик (@Minikokosich)
     [4607304028] = true, -- Саня (@ArRoWeNn)
     [3270959865] = true, -- Влад (@luken_god)
-    [8656482649] = true, -- Лена2 (@TaCamayaLena28)
+
     [4550232169] = true, -- Петя (@Dog03071)
     [7947437575] = true, -- Вика (@CuRLyCHeBuRaSHKa)
-    [1205348792] = true,
+    [1205348792] = true, -- vvcbbhg
     [10462778979] = true, -- Отсосаня 2.0
     [9715547061] = true, -- Тянка какая то (@make_legend2)
+
+    [9103392112] = true, -- Я (@huesos880055535)
     [1923012479] = true  -- Лена1 (@82Lena28)
+    [8656482649] = true, -- Лена2 (@TaCamayaLena28)
 }
 
 local Players = game:GetService("Players")
@@ -63,9 +65,9 @@ if whitelistedUserIds[LocalPlayer.UserId] then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Message"))()
 
     else
-        print("Pidromania Hub soon")
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/mid/NoGame.txt"))()
     end
 
 else
-    --loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/mid/NoWhite.txt"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/mid/NoWhite.txt"))()
 end
