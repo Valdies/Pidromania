@@ -67,6 +67,5 @@ if whitelistedUserIds[LocalPlayer.UserId] then
     end
 
 else
-    --loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/PidHubWork"))()
-    --loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/BanNahuy"))()
+    --loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/mid/NoWhite.txt"))()
 end
