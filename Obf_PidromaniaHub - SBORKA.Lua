@@ -47,7 +47,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 if whitelistedUserIds[LocalPlayer.UserId] then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/Loading"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Valdies/Pidromania/refs/heads/main/mid/Loading.txt"))()
     wait(10)
     if game.PlaceId == 136599248168660 then
         print("Pidromania Hub soon")
