@@ -41,8 +41,8 @@ local whitelistedUserIds = {
     [9715547061] = true, -- Тянка какая то (@make_legend2)
 
     [9103392112] = true, -- Я (@huesos880055535)
-    [1923012479] = true  -- Лена1 (@82Lena28)
-    [8656482649] = true, -- Лена2 (@TaCamayaLena28)
+    [1923012479] = true,  -- Лена1 (@82Lena28)
+    [8656482649] = true -- Лена2 (@TaCamayaLena28)
 }
 
 local Players = game:GetService("Players")
