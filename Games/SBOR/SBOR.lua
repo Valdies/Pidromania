@@ -466,42 +466,42 @@ local FLOOR_2_PATHS = {
     ["Boss2"] = "Boss2",
     ["Miniboss"] = "Miniboss"
 }
-local PATH_BASE_URL_2 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/2%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_2 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/2%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_3_PATHS = {
     ["Башня"] = "Башня",
     ["Магазин"] = "Магазин"
 }
-local PATH_BASE_URL_3 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/3%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_3 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/3%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_4_PATHS = {
     ["Лабиринт"] = "Labirint",
     ["Шахта"] = "Shaxta"
 }
-local PATH_BASE_URL_4 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/4%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_4 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/4%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_5_PATHS = {
     ["Лабиринт"] = "Лабиринт"
 }
-local PATH_BASE_URL_5 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/5%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_5 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/5%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_8_PATHS = {
     ["Boss"] = "Boss"
 }
-local PATH_BASE_URL_8 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/8%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_8 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/8%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_14_PATHS = {
     ["BlueCristal"] = "BlueCristal",
     ["Boss1LeaderGrimm"] = "Boss1LeaderGrimm",
     ["RedCristal"] = "RedCristal"
 }
-local PATH_BASE_URL_14 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/14%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_14 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/14%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_16_PATHS = {
     ["LeaderGoblin"] = "LeaderGoblin",
     ["Two-HeadedGiant"] = "Two-HeadedGiant"
 }
-local PATH_BASE_URL_16 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/16%20%D1%8D2%D0%B0%D0%B6/"
+local PATH_BASE_URL_16 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/16%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_19_PATHS = {
     ["Frostveil Echo"] = "FrostveilEcho",
@@ -513,7 +513,7 @@ local FLOOR_19_PATHS = {
     ["Маяк"] = "Lighthouse",
     ["Церковь"] = "Church"
 }
-local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
+local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 -- ==============================================================================
 -- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЙ ===
