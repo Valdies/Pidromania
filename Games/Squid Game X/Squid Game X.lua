@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -25,7 +26,10 @@ local translations = {
 		exitDoorLabel = "Показать выход (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
-		teleportPlayersLabel = "Заморозить игроков у себя"
+		teleportPlayersLabel = "Заморозить игроков у себя",
+		winGlassLabel = "🏆 Победа в стекле",
+		takeBabyLabel = "Взять ребенка (Спам)",
+		tugOfWarLabel = "Канатка (Спам)"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -41,7 +45,10 @@ local translations = {
 		exitDoorLabel = "Показати вихід (ExitDoor)",
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
-		teleportPlayersLabel = "Заморозити гравців біля себе"
+		teleportPlayersLabel = "Заморозити гравців біля себе",
+		winGlassLabel = "🏆 Перемога у склі",
+		takeBabyLabel = "Взяти дитину (Спам)",
+		tugOfWarLabel = "Перетягування каната (Спам)"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -57,7 +64,10 @@ local translations = {
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
 		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
-		teleportPlayersLabel = "Ойыншыларды қатыру"
+		teleportPlayersLabel = "Ойыншыларды қатыру",
+		winGlassLabel = "🏆 Әйнекте жеңіс",
+		takeBabyLabel = "Баланы алу (Спам)",
+		tugOfWarLabel = "Арқан тарту (Спам)"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -73,7 +83,10 @@ local translations = {
 		exitDoorLabel = "Show Exit (ExitDoor)",
 		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
-		teleportPlayersLabel = "Freeze Players Near Me"
+		teleportPlayersLabel = "Freeze Players Near Me",
+		winGlassLabel = "🏆 Win Glass",
+		takeBabyLabel = "Take Baby (Spam)",
+		tugOfWarLabel = "Tug of War (Spam)"
 	}
 }
 
@@ -817,6 +830,89 @@ local function toggleGuardCamera(enabled)
 end
 
 -- ==============================================================================
+-- === 🏆 ПОБЕДА В СТЕКЛЕ ===
+-- ==============================================================================
+local function winGlass()
+    local success, err = pcall(function()
+        local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+        if not remotes then warn("Remotes not found"); return end
+        local glassRemote = remotes:WaitForChild("Glass", 5)
+        if not glassRemote then warn("Glass remote not found"); return end
+        
+        glassRemote:InvokeServer("PlayerWin")
+    end)
+    if not success then
+        warn("Win Glass Error: " .. tostring(err))
+    end
+end
+
+-- ==============================================================================
+-- === 👶 ВЗЯТЬ РЕБЕНКА (СПАМ) ===
+-- ==============================================================================
+local takeBabyEnabled = false
+local takeBabyThread = nil
+
+local function toggleTakeBaby(enabled)
+    if enabled == takeBabyEnabled then return end
+    takeBabyEnabled = enabled
+    
+    if enabled then
+        takeBabyThread = task.spawn(function()
+            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+            if not remotes then return end
+            local babyRemote = remotes:WaitForChild("BabyAction", 5)
+            if not babyRemote then return end
+            
+            while takeBabyEnabled do
+                pcall(function()
+                    babyRemote:FireServer()
+                end)
+                task.wait(0.1) -- 10 раз в секунду
+            end
+        end)
+    else
+        if takeBabyThread then
+            task.cancel(takeBabyThread)
+            takeBabyThread = nil
+        end
+    end
+end
+
+-- ==============================================================================
+-- === 🧶 КАНАТКА (СПАМ) ===
+-- ==============================================================================
+local tugOfWarEnabled = false
+local tugOfWarThread = nil
+
+local function toggleTugOfWar(enabled)
+    if enabled == tugOfWarEnabled then return end
+    tugOfWarEnabled = enabled
+    
+    if enabled then
+        tugOfWarThread = task.spawn(function()
+            local map = Workspace:WaitForChild("Map", 5)
+            if not map then return end
+            local tow = map:WaitForChild("TugOfWar", 5)
+            if not tow then return end
+            local remote = tow:WaitForChild("Remotes", 5):WaitForChild("Tester228505", 5)
+            if not remote then return end
+            
+            while tugOfWarEnabled do
+                pcall(function()
+                    remote:FireServer()
+                end)
+                task.wait(1/30) -- 30 раз в секунду
+            end
+        end)
+    else
+        if tugOfWarThread then
+            task.cancel(tugOfWarThread)
+            tugOfWarThread = nil
+        end
+    end
+end
+
+-- ==============================================================================
 -- === ПЕРЕКЛЮЧАТЕЛЬ ===
 -- ==============================================================================
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
@@ -912,6 +1008,31 @@ local function createCloneButton(parent, label, yPosition)
     
     btn.MouseButton1Click:Connect(function()
         spawnAllBridgeClones()
+    end)
+    
+    btn.Parent = parent
+    return btn
+end
+
+-- ==============================================================================
+-- === КНОПКА ПОБЕДЫ ===
+-- ==============================================================================
+local function createWinButton(parent, label, yPosition)
+    local btn = Instance.new("TextButton")
+    btn.Text = label
+    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
+    btn.Position = UDim2.new(0, 5, 0, yPosition)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) -- Зеленый цвет для победы
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14 * 1.5
+    btn.AutoButtonColor = true
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 6)
+    bCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        winGlass()
     end)
     
     btn.Parent = parent
@@ -1148,6 +1269,14 @@ local function rebuildGUI()
 		
 		local y = 30 * 1.5
 		
+		-- 1. Кнопка Победы
+		local winBtn = createWinButton(
+			contentContainer,
+			T("winGlassLabel"),
+			y
+		)
+		y = y + 45 * 1.5
+		
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -1187,6 +1316,30 @@ local function rebuildGUI()
 			end
 		)
 		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		y = y + 45 * 1.5
+
+		-- 👶 ПЕРЕКЛЮЧАТЕЛЬ: Взять ребенка
+		local babySwitch = createToggleSwitch(
+			contentContainer,
+			T("takeBabyLabel"),
+			takeBabyEnabled,
+			function(enabled)
+				toggleTakeBaby(enabled)
+			end
+		)
+		babySwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+		y = y + 45 * 1.5
+
+		-- 🧶 ПЕРЕКЛЮЧАТЕЛЬ: Канатка
+		local towSwitch = createToggleSwitch(
+			contentContainer,
+			T("tugOfWarLabel"),
+			tugOfWarEnabled,
+			function(enabled)
+				toggleTugOfWar(enabled)
+			end
+		)
+		towSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 45 * 1.5
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
