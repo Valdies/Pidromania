@@ -24,12 +24,17 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показать выход (ExitDoor)",
-		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
 		teleportPlayersLabel = "Заморозить игроков у себя",
 		winGlassLabel = "🏆 Победа на мосту",
 		takeBabyLabel = "Взять ребенка (Спам)",
-		tugOfWarLabel = "Канатка (Спам)"
+		tugOfWarLabel = "Канатка (Спам)",
+		
+		-- Новая секция
+		saveFriendTitle = "💾 Спасти друга",
+		selectFriendLabel = "1) Выбрать друга:",
+		freezeSelfLabel = "2) Заморозить себя",
+		tpFriendLabel = "3) Телепортировать друга"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -43,12 +48,16 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Показати вихід (ExitDoor)",
-		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
 		teleportPlayersLabel = "Заморозити гравців біля себе",
 		winGlassLabel = "🏆 Перемога на мосту",
 		takeBabyLabel = "Взяти дитину (Спам)",
-		tugOfWarLabel = "Перетягування каната (Спам)"
+		tugOfWarLabel = "Перетягування каната (Спам)",
+		
+		saveFriendTitle = "💾 Врятувати друга",
+		selectFriendLabel = "1) Обрати друга:",
+		freezeSelfLabel = "2) Заморозити себе",
+		tpFriendLabel = "3) Телепортувати друга"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -62,12 +71,16 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "Ағылшын (АҚШ)",
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
-		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
 		teleportPlayersLabel = "Ойыншыларды қатыру",
 		winGlassLabel = "🏆 Көпірде жеңіс",
 		takeBabyLabel = "Баланы алу (Спам)",
-		tugOfWarLabel = "Арқан тарту (Спам)"
+		tugOfWarLabel = "Арқан тарту (Спам)",
+		
+		saveFriendTitle = "💾 Досты құтқару",
+		selectFriendLabel = "1) Досты таңдау:",
+		freezeSelfLabel = "2) Өзіңді қатыру",
+		tpFriendLabel = "3) Досты телепортау"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -81,12 +94,16 @@ local translations = {
 		lang_kk = "Қазақ", 
 		lang_en = "English (US)",
 		exitDoorLabel = "Show Exit (ExitDoor)",
-		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
 		teleportPlayersLabel = "Freeze Players Near Me",
 		winGlassLabel = "🏆 Win on Bridge",
 		takeBabyLabel = "Take Baby (Spam)",
-		tugOfWarLabel = "Tug of War (Spam)"
+		tugOfWarLabel = "Tug of War (Spam)",
+		
+		saveFriendTitle = "💾 Save Friend",
+		selectFriendLabel = "1) Select Friend:",
+		freezeSelfLabel = "2) Freeze Self",
+		tpFriendLabel = "3) Teleport Friend"
 	}
 }
 
@@ -224,6 +241,88 @@ local function toggleFreezePlayers(enabled)
 	else
 		unfreezeAllPlayers()
 	end
+end
+
+-- ==============================================================================
+-- === 💾 СПАСТИ ДРУГА (НОВАЯ ЛОГИКА) ===
+-- ==============================================================================
+local selectedFriendName = nil
+local selfFreezeEnabled = false
+local selfFreezeConnection = nil
+
+-- Функция для получения списка игроков для Dropdown
+local function getPlayerListForDropdown()
+    local list = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            table.insert(list, plr.Name)
+        end
+    end
+    table.sort(list) -- Сортировка по алфавиту
+    return list
+end
+
+-- Заморозка самого себя
+local function toggleSelfFreeze(enabled)
+    if enabled == selfFreezeEnabled then return end
+    selfFreezeEnabled = enabled
+    
+    local char = player.Character
+    if not char then 
+        selfFreezeEnabled = false
+        return 
+    end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then 
+        selfFreezeEnabled = false
+        return 
+    end
+
+    if enabled then
+        -- Запоминаем текущую позицию и держим её
+        local freezePos = root.CFrame
+        selfFreezeConnection = RunService.RenderStepped:Connect(function()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                player.Character.HumanoidRootPart.CFrame = freezePos
+            else
+                -- Если респаун, отключаем
+                toggleSelfFreeze(false)
+            end
+        end)
+    else
+        if selfFreezeConnection then
+            selfFreezeConnection:Disconnect()
+            selfFreezeConnection = nil
+        end
+    end
+end
+
+-- Телепорт друга к себе
+local function teleportSelectedFriendToMe()
+    if not selectedFriendName then
+        warn("No friend selected!")
+        return
+    end
+    
+    local targetPlr = Players:FindFirstChild(selectedFriendName)
+    if not targetPlr then
+        warn("Player not found: " .. selectedFriendName)
+        return
+    end
+    
+    local char = targetPlr.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local myChar = player.Character
+    if not myChar then return end
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    
+    -- Телепорт с небольшим смещением, как в массовой заморозке
+    local offset = Vector3.new(0, 0, 3)
+    root.CFrame = CFrame.new(myRoot.Position + offset)
 end
 
 -- ==============================================================================
@@ -713,117 +812,6 @@ local function toggleExitDoorESP(enabled)
 end
 
 -- ==============================================================================
--- === 🔥 КАМЕРА НА GUARD ===
--- ==============================================================================
-local guardCamEnabled = false
-local guardCamConnection = nil
-local guardLine = nil
-
-local function getPlayerTeam(plr)
-    local team = plr.Team
-    if team then
-        return team.Name
-    end
-    return nil
-end
-
-local function findNearestGuard()
-    local nearestGuard = nil
-    local nearestDistance = math.huge
-    local localCharacter = player.Character
-    
-    if not localCharacter then return nil end
-    
-    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
-    if not localRoot then return nil end
-    
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player then
-            local teamName = getPlayerTeam(plr)
-            if teamName == "Guard" then
-                local character = plr.Character
-                if character then
-                    local root = character:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        local distance = (localRoot.Position - root.Position).Magnitude
-                        if distance < nearestDistance then
-                            nearestDistance = distance
-                            nearestGuard = plr
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return nearestGuard
-end
-
-local function updateGuardCamera()
-    local guard = findNearestGuard()
-    local localCharacter = player.Character
-    
-    if not localCharacter then return end
-    local localRoot = localCharacter:FindFirstChild("HumanoidRootPart")
-    if not localRoot then return end
-    if not Camera then Camera = workspace.CurrentCamera end
-    if not Camera then return end
-    
-    if guard and guard.Character then
-        local guardRoot = guard.Character:FindFirstChild("HumanoidRootPart")
-        if guardRoot then
-            local offset = Vector3.new(0, 2, 0)
-            Camera.CFrame = CFrame.lookAt(localRoot.Position + offset, guardRoot.Position + offset)
-            
-            local lookDirection = (guardRoot.Position - localRoot.Position).Unit
-            local targetCFrame = CFrame.new(localRoot.Position, localRoot.Position + lookDirection)
-            local currentCFrame = localRoot.CFrame
-            localRoot.CFrame = CFrame.new(currentCFrame.Position, lookDirection)
-            
-            if guardLine then guardLine:Remove() end
-            guardLine = Drawing.new("Line")
-            guardLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-            
-            local guardScreenPos, onScreen = Camera:WorldToViewportPoint(guardRoot.Position)
-            if onScreen then
-                guardLine.To = Vector2.new(guardScreenPos.X, guardScreenPos.Y)
-                guardLine.Color = Color3.fromRGB(255, 50, 50)
-                guardLine.Thickness = 3
-                guardLine.Transparency = 0.5
-                guardLine.Visible = true
-            else
-                guardLine.Visible = false
-            end
-        end
-    else
-        if guardLine then 
-            guardLine:Remove() 
-            guardLine = nil 
-        end
-    end
-end
-
-local function toggleGuardCamera(enabled)
-    if enabled == guardCamEnabled then return end
-    
-    if enabled then
-        if guardCamConnection then guardCamConnection:Disconnect() end
-        guardCamConnection = RunService.RenderStepped:Connect(updateGuardCamera)
-        guardCamEnabled = true
-    else
-        if guardCamConnection then 
-            guardCamConnection:Disconnect() 
-            guardCamConnection = nil 
-        end
-        guardCamEnabled = false
-        if guardLine then 
-            guardLine:Remove() 
-            guardLine = nil 
-        end
-    end
-end
-
--- ==============================================================================
 -- === 🏆 ПОБЕДА В СТЕКЛЕ (НА МОСТУ) ===
 -- ==============================================================================
 local function winGlass()
@@ -984,6 +972,86 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 end
 
 -- ==============================================================================
+-- === DROPDOWN ДЛЯ ВЫБОРА ДРУГА ===
+-- ==============================================================================
+local function createFriendDropdown(parent, label, yPosition, onSelect)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -10, 0, 60)
+    frame.Position = UDim2.new(0, 5, 0, yPosition)
+    frame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    local fCorner = Instance.new("UICorner")
+    fCorner.CornerRadius = UDim.new(0, 6)
+    fCorner.Parent = frame
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = label
+    lbl.Size = UDim2.new(1, -10, 0, 20)
+    lbl.Position = UDim2.new(0, 5, 0, 2)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -10, 1, -25)
+    scroll.Position = UDim2.new(0, 5, 0, 22)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scroll.ScrollBarThickness = 4
+    scroll.BackgroundTransparency = 1
+    scroll.Parent = frame
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.Parent = scroll
+
+    local function refreshList()
+        for _, child in ipairs(scroll:GetChildren()) do
+            if child:IsA("GuiObject") then child:Destroy() end
+        end
+        
+        local players = getPlayerListForDropdown()
+        local count = 0
+        
+        for _, name in ipairs(players) do
+            local btn = Instance.new("TextButton")
+            btn.Text = name
+            btn.Size = UDim2.new(1, 0, 0, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 12
+            btn.AutoButtonColor = true
+            local bCorner = Instance.new("UICorner")
+            bCorner.CornerRadius = UDim.new(0, 4)
+            bCorner.Parent = btn
+            
+            if name == selectedFriendName then
+                btn.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+            end
+
+            btn.MouseButton1Click:Connect(function()
+                selectedFriendName = name
+                refreshList() -- Обновить цвета
+                onSelect(name)
+            end)
+            
+            btn.Parent = scroll
+            count = count + 1
+        end
+        scroll.CanvasSize = UDim2.new(0, 0, 0, count * 22)
+    end
+    
+    refreshList()
+    
+    return frame, refreshList
+end
+
+-- ==============================================================================
 -- === КНОПКА ДЛЯ СПАВНА КЛОНОВ ===
 -- ==============================================================================
 local function createCloneButton(parent, label, yPosition)
@@ -1027,6 +1095,31 @@ local function createWinButton(parent, label, yPosition)
     
     btn.MouseButton1Click:Connect(function()
         winGlass()
+    end)
+    
+    btn.Parent = parent
+    return btn
+end
+
+-- ==============================================================================
+-- === КНОПКА ТЕЛЕПОРТА ДРУГА ===
+-- ==============================================================================
+local function createTpFriendButton(parent, label, yPosition)
+    local btn = Instance.new("TextButton")
+    btn.Text = label
+    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
+    btn.Position = UDim2.new(0, 5, 0, yPosition)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 100, 200) -- Синий цвет
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14 * 1.5
+    btn.AutoButtonColor = true
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 6)
+    bCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        teleportSelectedFriendToMe()
     end)
     
     btn.Parent = parent
@@ -1269,15 +1362,15 @@ local function rebuildGUI()
 			T("cloneBridgeLabel"),
 			y
 		)
-		y = y + 40 * 1.5 -- Чуть ближе
+		y = y + 40 * 1.5 
 		
-		-- 2. Победа на мосту (рядом с клонами)
+		-- 2. Победа на мосту
 		local winBtn = createWinButton(
 			contentContainer,
 			T("winGlassLabel"),
 			y
 		)
-		y = y + 40 * 1.5 -- Чуть ближе
+		y = y + 40 * 1.5 
 		
 		-- 3. Остальные переключатели
 		local exitSwitch = createToggleSwitch(
@@ -1289,18 +1382,7 @@ local function rebuildGUI()
 			end
 		)
 		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 35 * 1.5 -- Чуть ближе
-		
-		local guardSwitch = createToggleSwitch(
-			contentContainer,
-			T("guardCamLabel"),
-			guardCamEnabled,
-			function(enabled)
-				toggleGuardCamera(enabled)
-			end
-		)
-		guardSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 35 * 1.5 -- Чуть ближе
+		y = y + 35 * 1.5 
 		
 		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ: Заморозка игроков
 		local freezeSwitch = createToggleSwitch(
@@ -1312,7 +1394,7 @@ local function rebuildGUI()
 			end
 		)
 		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 35 * 1.5 -- Чуть ближе
+		y = y + 35 * 1.5 
 
 		-- 👶 ПЕРЕКЛЮЧАТЕЛЬ: Взять ребенка
 		local babySwitch = createToggleSwitch(
@@ -1324,7 +1406,7 @@ local function rebuildGUI()
 			end
 		)
 		babySwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 35 * 1.5 -- Чуть ближе
+		y = y + 35 * 1.5 
 
 		-- 🧶 ПЕРЕКЛЮЧАТЕЛЬ: Канатка
 		local towSwitch = createToggleSwitch(
@@ -1336,9 +1418,60 @@ local function rebuildGUI()
 			end
 		)
 		towSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 35 * 1.5 -- Чуть ближе
-		
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+		y = y + 35 * 1.5 
+
+        -- ==================================================================
+        -- === НОВАЯ СЕКЦИЯ: СПАСТИ ДРУГА ===
+        -- ==================================================================
+        y = y + 10 * 1.5 -- Отступ перед новой секцией
+        
+        local saveFriendLbl = Instance.new("TextLabel")
+        saveFriendLbl.Text = T("saveFriendTitle")
+        saveFriendLbl.Size = UDim2.new(1, 0, 0, 20 * 1.5)
+        saveFriendLbl.Position = UDim2.new(0, 5, 0, y)
+        saveFriendLbl.BackgroundTransparency = 1
+        saveFriendLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
+        saveFriendLbl.Font = Enum.Font.GothamBold
+        saveFriendLbl.TextSize = 14 * 1.5
+        saveFriendLbl.TextXAlignment = Enum.TextXAlignment.Left
+        saveFriendLbl.Parent = contentContainer
+        y = y + 25 * 1.5
+
+        -- 1) Выбор друга
+        local dropdownFrame, refreshDropdown = createFriendDropdown(
+            contentContainer,
+            T("selectFriendLabel"),
+            y,
+            function(name)
+                selectedFriendName = name
+            end
+        )
+        y = y + 70 * 1.5 -- Высота дропдауна
+
+        -- 2) Заморозить себя
+        local selfFreezeSwitch = createToggleSwitch(
+            contentContainer,
+            T("freezeSelfLabel"),
+            selfFreezeEnabled,
+            function(enabled)
+                toggleSelfFreeze(enabled)
+            end
+        )
+        selfFreezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+        y = y + 35 * 1.5
+
+        -- 3) Телепортировать друга
+        local tpFriendBtn = createTpFriendButton(
+            contentContainer,
+            T("tpFriendLabel"),
+            y
+        )
+        y = y + 40 * 1.5
+        
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+        
+        -- Обновляем список друзей при открытии вкладки
+        if refreshDropdown then refreshDropdown() end
 	end
 	
 	local menuY = 5
