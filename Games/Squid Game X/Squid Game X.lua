@@ -18,6 +18,7 @@ local translations = {
 		teleports = "Телепорты", 
 		settings = "Настройки", 
 		utilities = "Полезности",
+		saveFriend = "Спасти друга",
 		languageLabel = "Язык интерфейса:", 
 		lang_ru = "Русский", 
 		lang_uk = "Українська", 
@@ -26,15 +27,14 @@ local translations = {
 		exitDoorLabel = "Показать выход (ExitDoor)",
 		cloneBridgeLabel = "Создать клонов на мосту",
 		teleportPlayersLabel = "Заморозить игроков у себя",
-		winGlassLabel = "🏆 Победа на мосту",
 		takeBabyLabel = "Взять ребенка (Спам)",
 		tugOfWarLabel = "Канатка (Спам)",
 		
-		-- Новая секция
-		saveFriendTitle = "💾 Спасти друга",
+		-- Спасти друга
 		selectFriendLabel = "1) Выбрать друга:",
 		freezeSelfLabel = "2) Заморозить себя",
-		tpFriendLabel = "3) Телепортировать друга"
+		danceHint = "💃 Попросите друга потанцевать танец с другом",
+		tpFriendLabel = "4) Телепортировать друга (Магнит)"
 	},
 	uk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -42,6 +42,7 @@ local translations = {
 		teleports = "Телепорти", 
 		settings = "Налаштування", 
 		utilities = "Корисності",
+		saveFriend = "Врятувати друга",
 		languageLabel = "Мова інтерфейсу:", 
 		lang_ru = "Російська", 
 		lang_uk = "Українська", 
@@ -50,14 +51,13 @@ local translations = {
 		exitDoorLabel = "Показати вихід (ExitDoor)",
 		cloneBridgeLabel = "Створити клонів на мосту",
 		teleportPlayersLabel = "Заморозити гравців біля себе",
-		winGlassLabel = "🏆 Перемога на мосту",
 		takeBabyLabel = "Взяти дитину (Спам)",
 		tugOfWarLabel = "Перетягування каната (Спам)",
 		
-		saveFriendTitle = "💾 Врятувати друга",
 		selectFriendLabel = "1) Обрати друга:",
 		freezeSelfLabel = "2) Заморозити себе",
-		tpFriendLabel = "3) Телепортувати друга"
+		danceHint = "💃 Попросіть друга потанцювати танець з другом",
+		tpFriendLabel = "4) Телепортувати друга (Магніт)"
 	},
 	kk = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -65,6 +65,7 @@ local translations = {
 		teleports = "Телепорттар", 
 		settings = "Параметрлер", 
 		utilities = "Құралдар",
+		saveFriend = "Досты құтқару",
 		languageLabel = "Интерфейс тілі:", 
 		lang_ru = "Орыс", 
 		lang_uk = "Украин", 
@@ -73,14 +74,13 @@ local translations = {
 		exitDoorLabel = "Шығуды көрсету (ExitDoor)",
 		cloneBridgeLabel = "Көпірде клондар жасау",
 		teleportPlayersLabel = "Ойыншыларды қатыру",
-		winGlassLabel = "🏆 Көпірде жеңіс",
 		takeBabyLabel = "Баланы алу (Спам)",
 		tugOfWarLabel = "Арқан тарту (Спам)",
 		
-		saveFriendTitle = "💾 Досты құтқару",
 		selectFriendLabel = "1) Досты таңдау:",
 		freezeSelfLabel = "2) Өзіңді қатыру",
-		tpFriendLabel = "3) Досты телепортау"
+		danceHint = "💃 Досты би билеуге шақырыңыз",
+		tpFriendLabel = "4) Досты телепортау (Магнит)"
 	},
 	en = { 
 		hubTitle = "Pidromania Hub: Squid Game X", 
@@ -88,6 +88,7 @@ local translations = {
 		teleports = "Teleports", 
 		settings = "Settings", 
 		utilities = "Utilities",
+		saveFriend = "Save Friend",
 		languageLabel = "Interface language:", 
 		lang_ru = "Russian", 
 		lang_uk = "Ukrainian", 
@@ -96,14 +97,13 @@ local translations = {
 		exitDoorLabel = "Show Exit (ExitDoor)",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
 		teleportPlayersLabel = "Freeze Players Near Me",
-		winGlassLabel = "🏆 Win on Bridge",
 		takeBabyLabel = "Take Baby (Spam)",
 		tugOfWarLabel = "Tug of War (Spam)",
 		
-		saveFriendTitle = "💾 Save Friend",
 		selectFriendLabel = "1) Select Friend:",
 		freezeSelfLabel = "2) Freeze Self",
-		tpFriendLabel = "3) Teleport Friend"
+		danceHint = "💃 Ask friend to dance friend dance",
+		tpFriendLabel = "4) Teleport Friend (Magnet)"
 	}
 }
 
@@ -250,6 +250,9 @@ local selectedFriendName = nil
 local selfFreezeEnabled = false
 local selfFreezeConnection = nil
 
+local friendMagnetEnabled = false
+local friendMagnetConnection = nil
+
 -- Функция для получения списка игроков для Dropdown
 local function getPlayerListForDropdown()
     local list = {}
@@ -297,32 +300,45 @@ local function toggleSelfFreeze(enabled)
     end
 end
 
--- Телепорт друга к себе
-local function teleportSelectedFriendToMe()
-    if not selectedFriendName then
-        warn("No friend selected!")
-        return
+-- Магнит для друга (постоянный телепорт к себе)
+local function toggleFriendMagnet(enabled)
+    if enabled == friendMagnetEnabled then return end
+    friendMagnetEnabled = enabled
+    
+    if enabled then
+        if not selectedFriendName then
+            warn("No friend selected for magnet!")
+            friendMagnetEnabled = false
+            return
+        end
+        
+        friendMagnetConnection = RunService.RenderStepped:Connect(function()
+            local targetPlr = Players:FindFirstChild(selectedFriendName)
+            if not targetPlr then 
+                toggleFriendMagnet(false)
+                return 
+            end
+            
+            local myChar = player.Character
+            local targetChar = targetPlr.Character
+            
+            if myChar and targetChar then
+                local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+                local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+                
+                if myRoot and targetRoot then
+                    -- Телепорт с небольшим смещением, чтобы не застревать
+                    local offset = Vector3.new(0, 0, 3)
+                    targetRoot.CFrame = CFrame.new(myRoot.Position + offset)
+                end
+            end
+        end)
+    else
+        if friendMagnetConnection then
+            friendMagnetConnection:Disconnect()
+            friendMagnetConnection = nil
+        end
     end
-    
-    local targetPlr = Players:FindFirstChild(selectedFriendName)
-    if not targetPlr then
-        warn("Player not found: " .. selectedFriendName)
-        return
-    end
-    
-    local char = targetPlr.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local myChar = player.Character
-    if not myChar then return end
-    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    
-    -- Телепорт с небольшим смещением, как в массовой заморозке
-    local offset = Vector3.new(0, 0, 3)
-    root.CFrame = CFrame.new(myRoot.Position + offset)
 end
 
 -- ==============================================================================
@@ -812,23 +828,6 @@ local function toggleExitDoorESP(enabled)
 end
 
 -- ==============================================================================
--- === 🏆 ПОБЕДА В СТЕКЛЕ (НА МОСТУ) ===
--- ==============================================================================
-local function winGlass()
-    local success, err = pcall(function()
-        local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
-        if not remotes then warn("Remotes not found"); return end
-        local glassRemote = remotes:WaitForChild("Glass", 5)
-        if not glassRemote then warn("Glass remote not found"); return end
-        
-        glassRemote:InvokeServer("PlayerWin")
-    end)
-    if not success then
-        warn("Win Glass Error: " .. tostring(err))
-    end
-end
-
--- ==============================================================================
 -- === 👶 ВЗЯТЬ РЕБЕНКА (СПАМ) ===
 -- ==============================================================================
 local takeBabyEnabled = false
@@ -972,11 +971,11 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 end
 
 -- ==============================================================================
--- === DROPDOWN ДЛЯ ВЫБОРА ДРУГА ===
+-- === DROPDOWN ДЛЯ ВЫБОРА ДРУГА (УВЕЛИЧЕННЫЙ) ===
 -- ==============================================================================
 local function createFriendDropdown(parent, label, yPosition, onSelect)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -10, 0, 60)
+    frame.Size = UDim2.new(1, -10, 0, 180) -- Увеличено в 3 раза (было ~60)
     frame.Position = UDim2.new(0, 5, 0, yPosition)
     frame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     frame.BorderSizePixel = 0
@@ -1020,30 +1019,40 @@ local function createFriendDropdown(parent, label, yPosition, onSelect)
         for _, name in ipairs(players) do
             local btn = Instance.new("TextButton")
             btn.Text = name
-            btn.Size = UDim2.new(1, 0, 0, 20)
+            btn.Size = UDim2.new(1, 0, 0, 25) -- Чуть выше кнопки
             btn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
             btn.Font = Enum.Font.Gotham
-            btn.TextSize = 12
+            btn.TextSize = 14
             btn.AutoButtonColor = true
             local bCorner = Instance.new("UICorner")
             bCorner.CornerRadius = UDim.new(0, 4)
             bCorner.Parent = btn
             
+            -- Подсветка друзей зеленым
+            if isFriend(name) then
+                btn.BackgroundColor3 = Color3.fromRGB(30, 120, 30) -- Зеленый фон
+                btn.TextColor3 = Color3.fromRGB(200, 255, 200)
+            end
+
             if name == selectedFriendName then
-                btn.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+                btn.BorderColor3 = Color3.fromRGB(255, 255, 255)
+                btn.BorderMode = Enum.BorderMode.Inset
+                btn.BorderSizePixel = 2
+            else
+                btn.BorderSizePixel = 0
             end
 
             btn.MouseButton1Click:Connect(function()
                 selectedFriendName = name
-                refreshList() -- Обновить цвета
+                refreshList() -- Обновить цвета/рамки
                 onSelect(name)
             end)
             
             btn.Parent = scroll
             count = count + 1
         end
-        scroll.CanvasSize = UDim2.new(0, 0, 0, count * 22)
+        scroll.CanvasSize = UDim2.new(0, 0, 0, count * 27)
     end
     
     refreshList()
@@ -1070,56 +1079,6 @@ local function createCloneButton(parent, label, yPosition)
     
     btn.MouseButton1Click:Connect(function()
         spawnAllBridgeClones()
-    end)
-    
-    btn.Parent = parent
-    return btn
-end
-
--- ==============================================================================
--- === КНОПКА ПОБЕДЫ ===
--- ==============================================================================
-local function createWinButton(parent, label, yPosition)
-    local btn = Instance.new("TextButton")
-    btn.Text = label
-    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
-    btn.Position = UDim2.new(0, 5, 0, yPosition)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 150, 50) -- Зеленый цвет для победы
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14 * 1.5
-    btn.AutoButtonColor = true
-    local bCorner = Instance.new("UICorner")
-    bCorner.CornerRadius = UDim.new(0, 6)
-    bCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        winGlass()
-    end)
-    
-    btn.Parent = parent
-    return btn
-end
-
--- ==============================================================================
--- === КНОПКА ТЕЛЕПОРТА ДРУГА ===
--- ==============================================================================
-local function createTpFriendButton(parent, label, yPosition)
-    local btn = Instance.new("TextButton")
-    btn.Text = label
-    btn.Size = UDim2.new(1, -10, 0, 35 * 1.5)
-    btn.Position = UDim2.new(0, 5, 0, yPosition)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 100, 200) -- Синий цвет
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14 * 1.5
-    btn.AutoButtonColor = true
-    local bCorner = Instance.new("UICorner")
-    bCorner.CornerRadius = UDim.new(0, 6)
-    bCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        teleportSelectedFriendToMe()
     end)
     
     btn.Parent = parent
@@ -1364,15 +1323,7 @@ local function rebuildGUI()
 		)
 		y = y + 40 * 1.5 
 		
-		-- 2. Победа на мосту
-		local winBtn = createWinButton(
-			contentContainer,
-			T("winGlassLabel"),
-			y
-		)
-		y = y + 40 * 1.5 
-		
-		-- 3. Остальные переключатели
+		-- 2. Остальные переключатели
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -1419,25 +1370,24 @@ local function rebuildGUI()
 		)
 		towSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		y = y + 35 * 1.5 
-
-        -- ==================================================================
-        -- === НОВАЯ СЕКЦИЯ: СПАСТИ ДРУГА ===
-        -- ==================================================================
-        y = y + 10 * 1.5 -- Отступ перед новой секцией
         
-        local saveFriendLbl = Instance.new("TextLabel")
-        saveFriendLbl.Text = T("saveFriendTitle")
-        saveFriendLbl.Size = UDim2.new(1, 0, 0, 20 * 1.5)
-        saveFriendLbl.Position = UDim2.new(0, 5, 0, y)
-        saveFriendLbl.BackgroundTransparency = 1
-        saveFriendLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
-        saveFriendLbl.Font = Enum.Font.GothamBold
-        saveFriendLbl.TextSize = 14 * 1.5
-        saveFriendLbl.TextXAlignment = Enum.TextXAlignment.Left
-        saveFriendLbl.Parent = contentContainer
-        y = y + 25 * 1.5
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+	end
 
-        -- 1) Выбор друга
+    local function showSaveFriend()
+        clearContent()
+        local lbl = Instance.new("TextLabel")
+        lbl.Text = T("saveFriend")
+        lbl.Size = UDim2.new(1, 0, 0, 25 * 1.5)
+        lbl.BackgroundTransparency = 1
+        lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 14 * 1.5
+        lbl.Parent = contentContainer
+        
+        local y = 30 * 1.5
+
+        -- 1) Выбор друга (Большой список)
         local dropdownFrame, refreshDropdown = createFriendDropdown(
             contentContainer,
             T("selectFriendLabel"),
@@ -1446,7 +1396,7 @@ local function rebuildGUI()
                 selectedFriendName = name
             end
         )
-        y = y + 70 * 1.5 -- Высота дропдауна
+        y = y + 190 * 1.5 -- Отступ под большой дропдаун
 
         -- 2) Заморозить себя
         local selfFreezeSwitch = createToggleSwitch(
@@ -1460,19 +1410,36 @@ local function rebuildGUI()
         selfFreezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
         y = y + 35 * 1.5
 
-        -- 3) Телепортировать друга
-        local tpFriendBtn = createTpFriendButton(
+        -- 3) Текст подсказки
+        local hintLbl = Instance.new("TextLabel")
+        hintLbl.Text = T("danceHint")
+        hintLbl.Size = UDim2.new(1, -10, 0, 30)
+        hintLbl.Position = UDim2.new(0, 5, 0, y)
+        hintLbl.BackgroundTransparency = 1
+        hintLbl.TextColor3 = Color3.fromRGB(255, 255, 100)
+        hintLbl.Font = Enum.Font.GothamItalic
+        hintLbl.TextSize = 14
+        hintLbl.TextWrapped = true
+        hintLbl.Parent = contentContainer
+        y = y + 35 * 1.5
+
+        -- 4) Телепортировать друга (Магнит)
+        local magnetSwitch = createToggleSwitch(
             contentContainer,
             T("tpFriendLabel"),
-            y
+            friendMagnetEnabled,
+            function(enabled)
+                toggleFriendMagnet(enabled)
+            end
         )
-        y = y + 40 * 1.5
+        magnetSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+        y = y + 35 * 1.5
         
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
         
         -- Обновляем список друзей при открытии вкладки
         if refreshDropdown then refreshDropdown() end
-	end
+    end
 	
 	local menuY = 5
 	local function makeBtn(text, icon, cb)
@@ -1496,6 +1463,7 @@ local function rebuildGUI()
 	
 	makeBtn(T("teleports"), "🌐", showTeleports)
 	makeBtn(T("utilities"), "🛠️", showUtilities)
+    makeBtn(T("saveFriend"), "💾", showSaveFriend)
 	makeBtn(T("settings"), "⚙️", showSettings)
 	
 	showTeleports()
