@@ -1396,7 +1396,8 @@ local function rebuildGUI()
                 selectedFriendName = name
             end
         )
-        y = y + 190 * 1.5 -- Отступ под большой дропдаун
+        -- Исправлен отступ: теперь он считается от верхней точки дропдауна + его высота
+        y = y + 180 * 1.5 
 
         -- 2) Заморозить себя
         local selfFreezeSwitch = createToggleSwitch(
