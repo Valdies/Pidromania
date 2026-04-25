@@ -1374,73 +1374,58 @@ local function rebuildGUI()
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
 
-    local function showSaveFriend()
-        clearContent()
-        local lbl = Instance.new("TextLabel")
-        lbl.Text = T("saveFriend")
-        lbl.Size = UDim2.new(1, 0, 0, 25 * 1.5)
-        lbl.BackgroundTransparency = 1
-        lbl.TextColor3 = Color3.fromRGB(200, 200, 255)
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextSize = 14 * 1.5
-        lbl.Parent = contentContainer
-        
-        local y = 30 * 1.5
+    -- ==============================================================================
+-- === ФУНКЦИЯ ДЛЯ ВКЛАДКИ "СПАСТИ ДРУГА" ===
+-- ==============================================================================
+local function showSaveFriend()
+    clearContent()
+    local y = 5
+    local spacing = 3 -- Отступ между кнопками, как в телепортах
+    local btnHeight = 35 * 1.5
+    local switchHeight = 30 * 1.5
 
-        -- 1) Выбор друга (Большой список)
-        local dropdownFrame, refreshDropdown = createFriendDropdown(
-            contentContainer,
-            T("selectFriendLabel"),
-            y,
-            function(name)
-                selectedFriendName = name
-            end
-        )
-        -- Исправлен отступ: теперь он считается от верхней точки дропдауна + его высота
-        y = y + 180 * 1.5 
+    -- 1) Выбор друга (Dropdown)
+    local dropdown, refreshDropdown = createFriendDropdown(contentContainer, T("selectFriendLabel"), y, function(name)
+        selectedFriendName = name
+    end)
+    y = y + 180 + spacing -- Высота выпадающего списка увеличена для удобства
 
-        -- 2) Заморозить себя
-        local selfFreezeSwitch = createToggleSwitch(
-            contentContainer,
-            T("freezeSelfLabel"),
-            selfFreezeEnabled,
-            function(enabled)
-                toggleSelfFreeze(enabled)
-            end
-        )
-        selfFreezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-        y = y + 35 * 1.5
+    -- 2) Переключатель: Заморозить себя
+    local toggle1, set1 = createToggleSwitch(contentContainer, T("freezeSelfLabel"), selfFreezeEnabled, function(state)
+        toggleSelfFreeze(state)
+    end)
+    toggle1.Position = UDim2.new(0, 5, 0, y)
+    y = y + switchHeight + spacing
 
-        -- 3) Текст подсказки
-        local hintLbl = Instance.new("TextLabel")
-        hintLbl.Text = T("danceHint")
-        hintLbl.Size = UDim2.new(1, -10, 0, 30)
-        hintLbl.Position = UDim2.new(0, 5, 0, y)
-        hintLbl.BackgroundTransparency = 1
-        hintLbl.TextColor3 = Color3.fromRGB(255, 255, 100)
-        hintLbl.Font = Enum.Font.GothamItalic
-        hintLbl.TextSize = 14
-        hintLbl.TextWrapped = true
-        hintLbl.Parent = contentContainer
-        y = y + 35 * 1.5
+    -- 3) Текст-подсказка: Попросить потанцевать
+    local danceLabel = Instance.new("TextLabel")
+    danceLabel.Text = "  " .. T("danceHint")
+    danceLabel.Size = UDim2.new(1, -10, 0, btnHeight)
+    danceLabel.Position = UDim2.new(0, 5, 0, y)
+    danceLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    danceLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    danceLabel.Font = Enum.Font.GothamSemibold
+    danceLabel.TextSize = 13 * 1.5
+    danceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    danceLabel.Parent = contentContainer
+    
+    local dCorner = Instance.new("UICorner")
+    dCorner.CornerRadius = UDim.new(0, 6)
+    dCorner.Parent = danceLabel
+    y = y + btnHeight + spacing
 
-        -- 4) Телепортировать друга (Магнит)
-        local magnetSwitch = createToggleSwitch(
-            contentContainer,
-            T("tpFriendLabel"),
-            friendMagnetEnabled,
-            function(enabled)
-                toggleFriendMagnet(enabled)
-            end
-        )
-        magnetSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-        y = y + 35 * 1.5
-        
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
-        
-        -- Обновляем список друзей при открытии вкладки
-        if refreshDropdown then refreshDropdown() end
-    end
+    -- 4) Переключатель: Телепортировать друга (Магнит)
+    local toggle2, set2 = createToggleSwitch(contentContainer, T("tpFriendLabel"), friendMagnetEnabled, function(state)
+        toggleFriendMagnet(state)
+    end)
+    toggle2.Position = UDim2.new(0, 5, 0, y)
+    y = y + switchHeight + spacing
+
+    -- Обновляем размер скролла
+    contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+    
+    if refreshDropdown then refreshDropdown() end
+end
 	
 	local menuY = 5
 	local function makeBtn(text, icon, cb)
