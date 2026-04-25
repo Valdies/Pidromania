@@ -27,7 +27,7 @@ local translations = {
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Создать клонов на мосту",
 		teleportPlayersLabel = "Заморозить игроков у себя",
-		winGlassLabel = "🏆 Победа в стекле",
+		winGlassLabel = "🏆 Победа на мосту",
 		takeBabyLabel = "Взять ребенка (Спам)",
 		tugOfWarLabel = "Канатка (Спам)"
 	},
@@ -46,7 +46,7 @@ local translations = {
 		guardCamLabel = "Камера на Guard",
 		cloneBridgeLabel = "Створити клонів на мосту",
 		teleportPlayersLabel = "Заморозити гравців біля себе",
-		winGlassLabel = "🏆 Перемога у склі",
+		winGlassLabel = "🏆 Перемога на мосту",
 		takeBabyLabel = "Взяти дитину (Спам)",
 		tugOfWarLabel = "Перетягування каната (Спам)"
 	},
@@ -65,7 +65,7 @@ local translations = {
 		guardCamLabel = "Камера Guard",
 		cloneBridgeLabel = "Көпірде клондар жасау",
 		teleportPlayersLabel = "Ойыншыларды қатыру",
-		winGlassLabel = "🏆 Әйнекте жеңіс",
+		winGlassLabel = "🏆 Көпірде жеңіс",
 		takeBabyLabel = "Баланы алу (Спам)",
 		tugOfWarLabel = "Арқан тарту (Спам)"
 	},
@@ -84,7 +84,7 @@ local translations = {
 		guardCamLabel = "Camera on Guard",
 		cloneBridgeLabel = "Spawn Clones on Bridge",
 		teleportPlayersLabel = "Freeze Players Near Me",
-		winGlassLabel = "🏆 Win Glass",
+		winGlassLabel = "🏆 Win on Bridge",
 		takeBabyLabel = "Take Baby (Spam)",
 		tugOfWarLabel = "Tug of War (Spam)"
 	}
@@ -132,7 +132,7 @@ local SPECIAL_PLAYERS = {
 		color = Color3.fromRGB(30, 144, 255),
 		nickColor = Color3.fromRGB(30, 144, 255)
 	},
-	["arrowennos"] = {  -- 🔥 НОВАЯ ЗАПИСЬ ДЛЯ ЭРОВЕНА
+	["arrowennos"] = {  
 		text = "AlHiMiK",
 		color = Color3.fromRGB(0, 100, 0), 
 		nickColor = Color3.fromRGB(0, 100, 0)
@@ -160,7 +160,7 @@ end
 -- ==============================================================================
 local freezePlayersEnabled = false
 local freezePlayersConnection = nil
-local frozenPlayers = {} -- 🔥 Храним позиции замороженных игроков
+local frozenPlayers = {} 
 
 local function freezeAllPlayers()
 	if freezePlayersEnabled then return end
@@ -175,7 +175,6 @@ local function freezeAllPlayers()
 	
 	local localPos = localRoot.Position
 	
-	-- 🔥 Телепортируем всех врагов к себе и запоминаем их позиции
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= player then
 			if isFriend(plr.Name) then
@@ -186,25 +185,20 @@ local function freezeAllPlayers()
 			if char then
 				local root = char:FindFirstChild("HumanoidRootPart")
 				if root then
-					-- Телепортируем с небольшим смещением, чтобы не застревали
 					local offset = Vector3.new(0, 0, 3)
 					local freezePos = localPos + offset
 					root.CFrame = CFrame.new(freezePos)
-					
-					-- 🔥 Запоминаем позицию заморозки для этого игрока
 					frozenPlayers[plr] = freezePos
 				end
 			end
 		end
 	end
 	
-	-- 🔥 Постоянно держим их на зафиксированной позиции
 	freezePlayersConnection = RunService.RenderStepped:Connect(function()
 		for plr, freezePos in pairs(frozenPlayers) do
 			if plr and plr.Character then
 				local root = plr.Character:FindFirstChild("HumanoidRootPart")
 				if root then
-					-- 🔥 Держим их замороженными в точке телепорта (не у тебя!)
 					root.CFrame = CFrame.new(freezePos)
 				end
 			end
@@ -830,7 +824,7 @@ local function toggleGuardCamera(enabled)
 end
 
 -- ==============================================================================
--- === 🏆 ПОБЕДА В СТЕКЛЕ ===
+-- === 🏆 ПОБЕДА В СТЕКЛЕ (НА МОСТУ) ===
 -- ==============================================================================
 local function winGlass()
     local success, err = pcall(function()
@@ -1269,14 +1263,23 @@ local function rebuildGUI()
 		
 		local y = 30 * 1.5
 		
-		-- 1. Кнопка Победы
+		-- 1. Клоны
+		local cloneBtn = createCloneButton(
+			contentContainer,
+			T("cloneBridgeLabel"),
+			y
+		)
+		y = y + 40 * 1.5 -- Чуть ближе
+		
+		-- 2. Победа на мосту (рядом с клонами)
 		local winBtn = createWinButton(
 			contentContainer,
 			T("winGlassLabel"),
 			y
 		)
-		y = y + 45 * 1.5
+		y = y + 40 * 1.5 -- Чуть ближе
 		
+		-- 3. Остальные переключатели
 		local exitSwitch = createToggleSwitch(
 			contentContainer,
 			T("exitDoorLabel"),
@@ -1286,7 +1289,7 @@ local function rebuildGUI()
 			end
 		)
 		exitSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 45 * 1.5
+		y = y + 35 * 1.5 -- Чуть ближе
 		
 		local guardSwitch = createToggleSwitch(
 			contentContainer,
@@ -1297,14 +1300,7 @@ local function rebuildGUI()
 			end
 		)
 		guardSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 45 * 1.5
-		
-		local cloneBtn = createCloneButton(
-			contentContainer,
-			T("cloneBridgeLabel"),
-			y
-		)
-		y = y + 45 * 1.5
+		y = y + 35 * 1.5 -- Чуть ближе
 		
 		-- 🔥 ПЕРЕКЛЮЧАТЕЛЬ: Заморозка игроков
 		local freezeSwitch = createToggleSwitch(
@@ -1316,7 +1312,7 @@ local function rebuildGUI()
 			end
 		)
 		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 45 * 1.5
+		y = y + 35 * 1.5 -- Чуть ближе
 
 		-- 👶 ПЕРЕКЛЮЧАТЕЛЬ: Взять ребенка
 		local babySwitch = createToggleSwitch(
@@ -1328,7 +1324,7 @@ local function rebuildGUI()
 			end
 		)
 		babySwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 45 * 1.5
+		y = y + 35 * 1.5 -- Чуть ближе
 
 		-- 🧶 ПЕРЕКЛЮЧАТЕЛЬ: Канатка
 		local towSwitch = createToggleSwitch(
@@ -1340,7 +1336,7 @@ local function rebuildGUI()
 			end
 		)
 		towSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
-		y = y + 45 * 1.5
+		y = y + 35 * 1.5 -- Чуть ближе
 		
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
 	end
