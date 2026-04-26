@@ -9,7 +9,7 @@ if placeId == 7554888362 then
         HumanoidRootPart.CFrame = targetCFrame
     end
 elseif placeId == 7559074529 then
-    task.wait(30)
+    task.wait(40)
     local targetCFrame = CFrame.new(8037.54, -20000, 3718.87)
     Character = LocalPlayer.Character
     if Character then
