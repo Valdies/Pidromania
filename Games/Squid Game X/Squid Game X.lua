@@ -31,6 +31,7 @@ local translations = {
         teleportPlayersLabel = "Заморозить игроков у себя",
         takeBabyLabel = "Взять ребенка (Спам)",
         tugOfWarLabel = "Канатка (Спам)",
+        afkLabel = "АФК (Телепорт в бездну)", -- НОВОЕ
         -- Спасти друга
         selectFriendLabel = "1) Выбрать друга:",
         freezeSelfLabel = "2) Заморозить себя",
@@ -54,6 +55,7 @@ local translations = {
         teleportPlayersLabel = "Заморозити гравців біля себе",
         takeBabyLabel = "Взяти дитину (Спам)",
         tugOfWarLabel = "Перетягування каната (Спам)",
+        afkLabel = "АФК (Телепорт у прірву)", -- НОВОЕ
         selectFriendLabel = "1) Обрати друга:",
         freezeSelfLabel = "2) Заморозити себе",
         danceHint = "3) Попросіть друга потанцювати танець з другом",
@@ -76,6 +78,7 @@ local translations = {
         teleportPlayersLabel = "Ойыншыларды қатыру",
         takeBabyLabel = "Баланы алу (Спам)",
         tugOfWarLabel = "Арқан тарту (Спам)",
+        afkLabel = "АФК (Телепорт түбіне)", -- НОВОЕ
         selectFriendLabel = "1) Досты таңдау:",
         freezeSelfLabel = "2) Өзіңді қатыру",
         danceHint = "3) Досты би билеуге шақырыңыз",
@@ -98,6 +101,7 @@ local translations = {
         teleportPlayersLabel = "Freeze Players Near Me",
         takeBabyLabel = "Take Baby (Spam)",
         tugOfWarLabel = "Tug of War (Spam)",
+        afkLabel = "AFK (Teleport to Void)", -- НОВОЕ
         selectFriendLabel = "1) Select Friend:",
         freezeSelfLabel = "2) Freeze Self",
         danceHint = "3) Ask friend to dance friend dance",
@@ -119,7 +123,7 @@ local CUSTOM_TELEPORTS = {
     {"Стекло", 1280.30, 102.11, -955.72},
     {"🍽️ Безопасная зона (Ужин)", 8162.46, 48.53, 23396.95},
     {"Лодки", -2799.48, -785.78, 15508.45},
-    {"Лодки финиш", -4158.55, -788.55, 15585.78}
+    {"Лодки", -4158.55, -788.55, 15585.78}
 }
 
 local function teleport(x, y, z)
@@ -335,6 +339,23 @@ local function toggleFriendMagnet(enabled)
             friendMagnetConnection:Disconnect()
             friendMagnetConnection = nil
         end
+    end
+end
+
+-- ==============================================================================
+-- === 🌌 АФК ТЕЛЕПОРТ ===
+-- ==============================================================================
+local afkPosition = Vector3.new(-99.87, -50028.72, -96.75)
+
+local function toggleAfkMode(enabled)
+    if enabled then
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(afkPosition)
+            print("Телепортация выполнена на: " .. tostring(afkPosition))
+        end
+        -- Опционально: можно сразу выключить свитч, так как это разовое действие
+        -- Но оставим включенным, если захочешь добавить логику возврата позже
     end
 end
 
@@ -1371,6 +1392,18 @@ local function rebuildGUI()
             end
         )
         towSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
+        y = y + 35 * 1.5
+
+        -- 🌌 ПЕРЕКЛЮЧАТЕЛЬ: АФК
+        local afkSwitch = createToggleSwitch(
+            contentContainer,
+            T("afkLabel"),
+            false, -- Всегда выключено визуально, так как это разовая телепортация
+            function(enabled)
+                toggleAfkMode(enabled)
+            end
+        )
+        afkSwitch.Position = UDim2.new(0, 5 * 1.5, 0, y)
         y = y + 35 * 1.5
 
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
