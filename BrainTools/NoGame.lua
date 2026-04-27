@@ -3,7 +3,7 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
--- === GUI BUILDING: NO CHEAT MESSAGE + CIRCULAR TIMER ===
+-- === GUI BUILDING: NO CHEAT MESSAGE + TIMER (LEFT) + SKIP (RIGHT) ===
 -- ==============================================================================
 local screenGuiNoCheat = nil
 
@@ -94,13 +94,67 @@ local function createNoCheatGUI()
 	hintLabel.Parent = mainFrame
 
 	-- ==============================================================================
-	-- === КРУГОВОЙ ТАЙМЕР В ПРАВОМ НИЖНЕМ УГЛУ ===
+	-- === SKIP BUTTON (ПРАВЫЙ НИЖНИЙ УГОЛ) ===
+	-- ==============================================================================
+	local skipButton = Instance.new("TextButton")
+	skipButton.Name = "SkipButton"
+	skipButton.Text = "Skip"
+	skipButton.Size = UDim2.new(0, 100, 0, 40)
+	-- Позиция: Правый нижний угол
+	skipButton.Position = UDim2.new(1, -120, 1, -60) 
+	skipButton.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	skipButton.BorderSizePixel = 0
+	skipButton.TextColor3 = Color3.fromRGB(200, 200, 255)
+	skipButton.Font = Enum.Font.GothamBold
+	skipButton.TextSize = 24
+	skipButton.ZIndex = 305
+	skipButton.Parent = mainFrame
+
+	local skipCorner = Instance.new("UICorner")
+	skipCorner.CornerRadius = UDim.new(0, 8)
+	skipCorner.Parent = skipButton
+
+	-- Эффекты кнопки
+	skipButton.MouseEnter:Connect(function()
+		if skipButton.Parent then
+			TweenService:Create(skipButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(70, 70, 90) }):Play()
+		end
+	end)
+
+	skipButton.MouseLeave:Connect(function()
+		if skipButton.Parent then
+			TweenService:Create(skipButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(50, 50, 60) }):Play()
+		end
+	end)
+
+	-- Логика пропуска
+	skipButton.MouseButton1Click:Connect(function()
+		if not screenGuiNoCheat then return end
+
+		-- Мгновенное скрытие
+		local finalTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+		
+		TweenService:Create(mainFrame, finalTweenInfo, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(centerLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+		TweenService:Create(messageLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+		TweenService:Create(telegramLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+		TweenService:Create(hintLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+		TweenService:Create(skipButton, finalTweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+		
+		task.wait(0.3)
+		screenGuiNoCheat:Destroy()
+	end)
+
+
+	-- ==============================================================================
+	-- === КРУГОВОЙ ТАЙМЕР (ЛЕВЫЙ НИЖНИЙ УГОЛ) ===
 	-- ==============================================================================
 	
-	-- Контейнер для таймера (правый нижний угол)
+	-- Контейнер для таймера
 	local timerContainer = Instance.new("Frame")
 	timerContainer.Size = UDim2.new(0, 100, 0, 100) -- Размер круга
-	timerContainer.Position = UDim2.new(1, -120, 1, -120) -- Правый нижний угол с отступом
+	-- Позиция: Левый нижний угол (Отступ 20 слева, 120 снизу)
+	timerContainer.Position = UDim2.new(0, 20, 1, -120) 
 	timerContainer.BackgroundTransparency = 1
 	timerContainer.ZIndex = 300
 	timerContainer.Parent = mainFrame
@@ -109,7 +163,7 @@ local function createNoCheatGUI()
 	local bgCircle = Instance.new("ImageLabel")
 	bgCircle.Size = UDim2.new(1, 0, 1, 0)
 	bgCircle.BackgroundTransparency = 1
-	bgCircle.Image = "rbxassetid://4897627777" -- ID белого круга (можно заменить на свой)
+	bgCircle.Image = "rbxassetid://4897627777" -- ID белого круга
 	bgCircle.ImageColor3 = Color3.fromRGB(60, 60, 70)
 	bgCircle.ZIndex = 301
 	bgCircle.Parent = timerContainer
@@ -119,7 +173,7 @@ local function createNoCheatGUI()
 	progressCircle.Size = UDim2.new(1, 0, 1, 0)
 	progressCircle.BackgroundTransparency = 1
 	progressCircle.Image = "rbxassetid://4897627777" -- Тот же круг
-	progressCircle.ImageColor3 = Color3.fromRGB(100, 200, 255) -- Голубой, как Telegram
+	progressCircle.ImageColor3 = Color3.fromRGB(100, 200, 255) -- Голубой
 	progressCircle.ZIndex = 302
 	progressCircle.Parent = timerContainer
 
@@ -139,16 +193,11 @@ local function createNoCheatGUI()
 	-- Логика таймера
 	task.spawn(function()
 		for i = 4, 0, -1 do
+			if not screenGuiNoCheat or not screenGuiNoCheat.Parent then break end 
+			
 			timerText.Text = tostring(i)
 			
-			-- Анимируем исчезновение круга (поворот маски или прозрачность)
-			-- Так как Roblox не поддерживает прямую анимацию "заполнения" круга без плагинов,
-			-- мы будем использовать прозрачность + небольшой поворот для эффекта "исчезновения справа налево"
 			local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-			local goal = { ImageTransparency = 1 - (i / 10) } -- От 0 до 1
-			
-			-- Но чтобы сделать эффект "справа налево", лучше использовать Rotation
-			-- Начальный угол: 0, конечный: -360 (по часовой стрелке)
 			local rotationGoal = { Rotation = -360 * ((10 - i) / 10) }
 			
 			TweenService:Create(progressCircle, tweenInfo, rotationGoal):Play()
@@ -156,18 +205,20 @@ local function createNoCheatGUI()
 			task.wait(1)
 		end
 		
-		-- После окончания таймера можно скрыть весь UI или оставить
-		-- Например, плавно скрыть всё окно через 0.5 сек
-		local finalTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-		TweenService:Create(mainFrame, finalTweenInfo, { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(centerLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
-		TweenService:Create(messageLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
-		TweenService:Create(telegramLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
-		TweenService:Create(hintLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
-		TweenService:Create(timerContainer, finalTweenInfo, { BackgroundTransparency = 1 }):Play()
-		
-		task.wait(0.5)
-		screenGuiNoCheat:Destroy()
+		-- После окончания таймера скрываем всё окно
+		if screenGuiNoCheat and screenGuiNoCheat.Parent then
+			local finalTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+			TweenService:Create(mainFrame, finalTweenInfo, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(centerLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+			TweenService:Create(messageLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+			TweenService:Create(telegramLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+			TweenService:Create(hintLabel, finalTweenInfo, { TextTransparency = 1 }):Play()
+			TweenService:Create(timerContainer, finalTweenInfo, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(skipButton, finalTweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+			
+			task.wait(0.5)
+			screenGuiNoCheat:Destroy()
+		end
 	end)
 end
 
