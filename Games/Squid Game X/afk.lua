@@ -34,6 +34,6 @@ elseif placeId == 7559074529 then
     teleportToY(-40000)
     task.wait(0.5)
     teleportToY(-49000)
-    task.wait(1600)
+    task.wait(1700)
     TeleportService:Teleport(7554888362, LocalPlayer)
 end
