@@ -975,7 +975,7 @@ local function startGenericFarm(bossName, farmPos)
         platform = spawnPlatform(platformPos)
         teleport(playerPos)
     elseif isEasterFarm then
-        local platformPos = Vector3.new(24.45, 263, 400.73)
+        local platformPos = Vector3.new(24.45, 262, 400.73)
         local playerPos = platformPos + Vector3.new(0, 5, 0)
         farmPos = playerPos
         platform = spawnPlatform(platformPos)
