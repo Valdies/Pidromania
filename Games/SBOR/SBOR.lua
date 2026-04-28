@@ -40,6 +40,7 @@ local translations = {
         freezeToggle = "Фриз игрока на месте",
         respawnToggle = "Воскрешение на месте смерти",
         playerListToggle = "Список игроков на сервере",
+        safe1Toggle = "Safe 1 (Смерть при 2+ игроках)",
         autoMobWalk = "Автофарм близжайших мобов",
         languageLabel = "Язык интерфейса:",
         lang_ru = "Русский",
@@ -77,6 +78,7 @@ local translations = {
         freezeToggle = "Фріз гравця на місці",
         respawnToggle = "Відродження на місці смерті",
         playerListToggle = "Список гравців на сервері",
+        safe1Toggle = "Safe 1 (Смерть при 2+ гравцях)",
         autoMobWalk = "Автофарм найближчих мобів",
         languageLabel = "Мова інтерфейсу:",
         lang_ru = "Російська",
@@ -114,6 +116,7 @@ local translations = {
         freezeToggle = "Ойыншыны орнында тоқтату",
         respawnToggle = "Өлген жерде қайта туу",
         playerListToggle = "Сервердегі ойыншылар тізімі",
+        safe1Toggle = "Safe 1 (2+ ойыншыда өлу)",
         autoMobWalk = "Ең жақын мобтарды авто-фармдау",
         languageLabel = "Интерфейс тілі:",
         lang_ru = "Орыс",
@@ -151,6 +154,7 @@ local translations = {
         freezeToggle = "Freeze player in place",
         respawnToggle = "Respawn at death location",
         playerListToggle = "Player list on server",
+        safe1Toggle = "Safe 1 (Kill on 2+ players)",
         autoMobWalk = "Auto-farm nearest mobs",
         languageLabel = "Interface language:",
         lang_ru = "Russian",
@@ -541,6 +545,7 @@ local selectedMaterials = {}
 local autoWalkActive = false
 local autoWalkConnection = nil
 local mobsFolder = nil
+local safe1Active = false -- Переменная для Safe 1
 
 -- Настройки для авто-ходьбы к мобам
 local AUTO_WALK_CONFIG = {
@@ -773,8 +778,33 @@ local function destroyPlayerListGui()
 end
 
 -- ==============================================================================
--- === ФУНКЦИИ УТИЛИТ (Фриз, Воскрешение) ===
+-- === ФУНКЦИИ УТИЛИТ (Фриз, Воскрешение, Safe 1) ===
 -- ==============================================================================
+
+-- Логика Safe 1 (Смерть при 2+ игроках)
+local function startSafe1()
+    if safe1Active then return end
+    safe1Active = true
+    spawn(function()
+        while safe1Active do
+            if #Players:GetPlayers() >= 2 then
+                local char = player.Character
+                if char then
+                    local humanoid = char:FindFirstChild("Humanoid")
+                    if humanoid and humanoid.Health > 0 then
+                        humanoid.Health = 0 -- Убиваем персонажа
+                    end
+                end
+            end
+            task.wait(5) -- Проверка каждые 5 секунд
+        end
+    end)
+end
+
+local function stopSafe1()
+    safe1Active = false
+end
+
 local function toggleFreeze()
     isFrozen = not isFrozen
     if isFrozen then
@@ -1943,6 +1973,23 @@ local function rebuildGUI()
         title.Parent = contentContainer
         
         local yOffset = 30 * 1.5
+        
+        -- === НОВОЕ: Кнопка Safe 1 ===
+        local safe1Switch, _ = createToggleSwitch(
+            contentContainer,
+            T("safe1Toggle"),
+            safe1Active,
+            function(enabled)
+                if enabled then
+                    startSafe1()
+                else
+                    stopSafe1()
+                end
+            end
+        )
+        safe1Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset = yOffset + 35 * 1.5
+        -- ===========================
         
         local autoWalkSwitch, setAutoWalkState = createToggleSwitch(
             contentContainer,
