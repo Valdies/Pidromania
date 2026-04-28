@@ -1,5 +1,6 @@
 -- Конфигурация путей
 local baseUrl = "https://raw.githubusercontent.com/Valdies/Pidromania/main/"
+local WL_PAH_ID = 10880639270 -- ID твоего аккаунта-вайтлиста
 
 -- Таблицы идентификаторов игр (Place IDs)
 local SBOR_IDS = {
@@ -26,11 +27,11 @@ local whitelistedUserIds = {
     [4550232169] = true, -- Петя
     [7947437575] = true, -- Вика
     [1205348792] = true, -- vvcbbhg
-    [10462778979] = true, -- Отсосаня 2.0
-    [9715547061] = true, -- Тянка какая то
-    [9103392112] = true, -- Я
-    [1923012479] = true, -- Лена1
-    [8656482649] = true  -- Лена2
+    [10462778979] = true -- Отсосаня 2.0
+   -- [9715547061] = true, -- Тянка какая то
+   -- [9103392112] = true, -- Я
+   -- [1923012479] = true, -- Лена1
+   -- [8656482649] = true  -- Лена2
 }
 
 local Players = game:GetService("Players")
@@ -45,11 +46,19 @@ local function exec(path)
 end
 
 ---------------------------------------------------------
--- ЛОГИКА РАСПРЕДЕЛЕНИЯ
+-- ЛОГИКА ПРОВЕРКИ (ЦЕРБЕР ВНУТРИ МОЗГА)
 ---------------------------------------------------------
 
-if whitelistedUserIds[LocalPlayer.UserId] then
-    -- ДЛЯ ДРУЗЕЙ: Мгновенный запуск без Loading
+local isVip = whitelistedUserIds[LocalPlayer.UserId]
+local isFriend = false
+
+-- Проверка дружбы с аккаунтом-вайтлистом
+local success, _ = pcall(function()
+    isFriend = LocalPlayer:IsFriendsWith(WL_PAH_ID)
+end)
+
+if isFriend or isVip then
+    -- ПРОПУСКАЕМ НА БОРТ
     
     if game.PlaceId == 136599248168660 then
         print("Pidromania Hub soon")
@@ -72,8 +81,7 @@ if whitelistedUserIds[LocalPlayer.UserId] then
         exec("BrainTools/NoGame.lua")
     end
 else
-    -- ДЛЯ ЧУЖИХ (если запустили мозг напрямую):
-    -- Подгружаем NoWhite, ждем 5 сек и кикаем
+    -- ИГРОК ИДЕТ НАХУЙ (не VIP и не в друзьях)
     exec("BrainTools/NoWhite.lua")
     task.wait(5)
     LocalPlayer:Kick("\n[Pidromania Airlines]\nAccess Denied. Write to @Pidromania")
