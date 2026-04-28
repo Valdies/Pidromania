@@ -281,6 +281,9 @@ local BOSSES = {
 }
 
 local BOSS_FARMS = {
+    [10299594856] = {
+        {"Фарм: Центр (Пасха)", Vector3.new(24.45, 267.77, 400.73)}
+    },
     [4734865416] = {
         {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
         {"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}
@@ -375,8 +378,6 @@ local EXTRA_LOCATIONS = {
         {"Камни",  -270.87, 255.73, 325.78},
         {"Центр", 23.92, 237.75, 400.89}
     },
-
-
     [4734865416] = {
         {"Город", 415.57, 107.68, -276.72},
         {"Шахта", -436.26, 128.35, 154.04},
@@ -947,6 +948,7 @@ local function startGenericFarm(bossName, farmPos)
     local isCurrentlyVladimir = (bossName == "Владимир Красное Солнышко")
     local isCurrentlyFrostveil = (bossName == "Frostveil Echo")
     local isCurrentlyFloor8Mob = (bossName == "MobFarm" and game.PlaceId == 4737916764)
+    local isEasterFarm = (bossName == "Фарм: Центр (Пасха)" and game.PlaceId == 10299594856)
     local platform = nil
     
     -- Спавн платформ и телепорт для специфичных боссов
@@ -969,6 +971,12 @@ local function startGenericFarm(bossName, farmPos)
     elseif isCurrentlyFloor8Mob then
         local platformPos = Vector3.new(271.30, 34, -1441.69)
         local playerPos = Vector3.new(271.30, 36, -1441.69)
+        farmPos = playerPos
+        platform = spawnPlatform(platformPos)
+        teleport(playerPos)
+    elseif isEasterFarm then
+        local platformPos = Vector3.new(24.45, 263, 400.73)
+        local playerPos = platformPos + Vector3.new(0, 5, 0)
         farmPos = playerPos
         platform = spawnPlatform(platformPos)
         teleport(playerPos)
@@ -1006,16 +1014,19 @@ local function startGenericFarm(bossName, farmPos)
                             local shouldProcess = false
                             
                             -- Логика проверок дистанции для разных боссов и этажей
-                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob then
+                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
                                 local delta = torso.Position - farmPos
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
                                 
                                 -- Отдельная логика для Frostveil (тянем мобов снизу)
                                 if isCurrentlyFrostveil then
-                                    -- verticalDelta <= 0 (ниже нас), >= -50 (максимум на 50 стадов вниз)
-                                    -- horizontalDist <= 150 (радиус сбора по ширине. Если нужно стягивать вообще ВСЕХ со всей карты, можешь удалить "horizontalDist <= 150 and")
                                     if horizontalDist <= 10 and verticalDelta >= -50 and verticalDelta <= 0 then
+                                        shouldProcess = true
+                                    end
+                                -- Логика для Пасхи (радиус 15, только те, что ниже)
+                                elseif isEasterFarm then
+                                    if horizontalDist <= 4 and verticalDelta <= 0 then
                                         shouldProcess = true
                                     end
                                 else
@@ -1055,7 +1066,7 @@ local function startGenericFarm(bossName, farmPos)
                                 local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
                                 torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
                                 
-                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob) then
+                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm) then
                                     break
                                 end
                             end
@@ -1066,7 +1077,7 @@ local function startGenericFarm(bossName, farmPos)
             
             updateIndicator(foundAny)
             
-            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob then
+            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
                 task.wait(3)
             else
                 task.wait(0.1)
