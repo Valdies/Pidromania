@@ -65,11 +65,11 @@ if LocalPlayer.PlayerGui:FindFirstChild("DroneUI") then pcall(function() LocalPl
 local isPowered = true
 local camMode = "Orbit"
 local originalStats = {WalkSpeed = 16, JumpPower = 50}
-local DroneModel, PrimaryPart, EyePart
+local DroneModel, Hitbox, PrimaryPart, EyePart, linVel, alignOri
 local Props = {}
 local UI_Elements = {}
 local Keys = { W = false, A = false, S = false, D = false, Q = false, E = false }
-local currentPosition, currentVelocity = Vector3.zero, Vector3.zero
+local currentVelocity = Vector3.zero
 local orbitYaw, fpvRotation = 0, CFrame.identity
 local propSpin, currentPropSpeed, planeRoll, tiltX, tiltZ = 0, 0, 0, 0, 0
 
@@ -157,7 +157,8 @@ local function setCharacterState(stateName)
         originalStats.JumpPower = hum.JumpPower
         hum.WalkSpeed = 0
         hum.JumpPower = 0
-        hrp.Anchored = true 
+        -- Убрали заморозку, теперь персонаж падает если в воздухе!
+        hrp.Anchored = false 
         hum.PlatformStand = false
     elseif stateName == "Falling" then
         hrp.Anchored = false
@@ -169,6 +170,22 @@ local function setCharacterState(stateName)
         hum.PlatformStand = false
         hum.WalkSpeed = originalStats.WalkSpeed
         hum.JumpPower = originalStats.JumpPower
+    end
+end
+
+local function updateDroneAppearance()
+    if not DroneModel or not Hitbox then return end
+    Hitbox.CanCollide = CONFIG.Collision
+    
+    -- Устанавливаем прозрачность на 40% (0.4), чтобы дрон стал призраком, а не невидимкой
+    local alpha = CONFIG.Collision and 0 or 0.4
+    
+    if PrimaryPart then PrimaryPart.Transparency = alpha end
+    if EyePart then EyePart.Transparency = alpha end
+    
+    for _, p in ipairs(Props) do
+        p.Arm.Transparency = alpha
+        p.Prop.Transparency = CONFIG.Collision and 0.2 or 0.6
     end
 end
 
@@ -191,12 +208,36 @@ local function createDroneVehicle()
     local model = Instance.new("Model")
     model.Name = "LocalQuadcopter"
 
-    local body = Instance.new("Part", model)
-    body.Size = Vector3.new(1.2, 0.4, 1.2)
-    body.Color = Color3.fromRGB(30, 30, 40)
-    body.Anchored = true
-    body.CanCollide = false
-    PrimaryPart = body
+    -- Создаем невидимую ФИЗИЧЕСКУЮ КОРОБКУ
+    Hitbox = Instance.new("Part", model)
+    Hitbox.Name = "DroneHitbox"
+    Hitbox.Size = Vector3.new(2.2, 0.8, 2.2) 
+    Hitbox.Transparency = 1 
+    Hitbox.CanCollide = CONFIG.Collision
+    Hitbox.Anchored = false
+    Hitbox.Massless = false
+    Hitbox.CustomPhysicalProperties = PhysicalProperties.new(0.3, 0.1, 0.1, 1, 1)
+
+    local attach = Instance.new("Attachment", Hitbox)
+    linVel = Instance.new("LinearVelocity", Hitbox)
+    linVel.Attachment0 = attach
+    linVel.RelativeTo = Enum.ActuatorRelativeTo.World
+    linVel.MaxForce = 150000 
+    linVel.VectorVelocity = Vector3.zero
+
+    alignOri = Instance.new("AlignOrientation", Hitbox)
+    alignOri.Attachment0 = attach
+    alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    alignOri.MaxTorque = 150000
+    alignOri.Responsiveness = 40
+
+    -- Визуальные части (привязываются к хитбоксу через скрипт)
+    PrimaryPart = Instance.new("Part", model)
+    PrimaryPart.Size = Vector3.new(1.2, 0.4, 1.2)
+    PrimaryPart.Color = Color3.fromRGB(30, 30, 40)
+    PrimaryPart.Anchored = true
+    PrimaryPart.CanCollide = false
+    PrimaryPart.Massless = true
 
     EyePart = Instance.new("Part", model)
     EyePart.Size = Vector3.new(0.6, 0.45, 0.6)
@@ -339,8 +380,8 @@ local function createDroneUI()
 
     local btnCol = Instance.new("TextButton", contentFrame)
     btnCol.Size = UDim2.new(1, 0, 0, 30)
-    btnCol.Text = "Коллизия: ВКЛ"
-    btnCol.BackgroundColor3 = STYLE.Success
+    btnCol.Text = CONFIG.Collision and "Коллизия: ВКЛ" or "Коллизия: ВЫКЛ"
+    btnCol.BackgroundColor3 = CONFIG.Collision and STYLE.Success or STYLE.Danger
     btnCol.TextColor3 = Color3.new(1, 1, 1)
     btnCol.Font = STYLE.FontBold
     btnCol.TextSize = 12
@@ -350,6 +391,7 @@ local function createDroneUI()
         CONFIG.Collision = not CONFIG.Collision
         btnCol.Text = CONFIG.Collision and "Коллизия: ВКЛ" or "Коллизия: ВЫКЛ"
         btnCol.BackgroundColor3 = CONFIG.Collision and STYLE.Success or STYLE.Danger
+        updateDroneAppearance()
     end)
     
     local separator = Instance.new("Frame", contentFrame)
@@ -376,24 +418,19 @@ local function getSafeDronePosition()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         pos = LocalPlayer.Character.HumanoidRootPart.Position
     end
-    
     if pos.Y < -400 or pos.Y ~= pos.Y then
         local spawns = {}
         for _, obj in ipairs(Workspace:GetDescendants()) do
             if obj:IsA("SpawnLocation") then table.insert(spawns, obj) end
         end
-        if #spawns > 0 then
-            return spawns[math.random(1, #spawns)].Position + Vector3.new(0, 15, 0)
-        else
-            return Vector3.new(0, 150, 0)
-        end
+        if #spawns > 0 then return spawns[math.random(1, #spawns)].Position + Vector3.new(0, 15, 0)
+        else return Vector3.new(0, 150, 0) end
     end
     return pos + Vector3.new(0, CONFIG.HoverHeight, 0)
 end
 
 local function handleDroneInput(actionName, inputState, inputObject)
     if not ActiveModes.Piloting then return Enum.ContextActionResult.Pass end
-    
     local isPressed = (inputState == Enum.UserInputState.Begin)
     local key = inputObject.KeyCode
     
@@ -431,7 +468,6 @@ local function handleDroneInput(actionName, inputState, inputObject)
         end
         updateDroneUIHints()
     end
-    
     return Enum.ContextActionResult.Sink 
 end
 
@@ -440,8 +476,9 @@ local function toggleDroneSystem(state)
         isPowered = true
         DroneModel = createDroneVehicle()
         createDroneUI()
+        updateDroneAppearance()
         
-        currentPosition = getSafeDronePosition()
+        Hitbox.Position = getSafeDronePosition()
         orbitYaw = math.atan2(-Camera.CFrame.LookVector.X, -Camera.CFrame.LookVector.Z)
         fpvRotation = CFrame.Angles(0, orbitYaw, 0)
         tiltX, tiltZ = 0, 0 
@@ -453,12 +490,8 @@ local function toggleDroneSystem(state)
         updateDroneUIHints()
         
         ContextActionService:BindActionAtPriority(
-            "DroneControlsOverride",
-            handleDroneInput,
-            false,
-            Enum.ContextActionPriority.High.Value + 10,
-            Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D,
-            Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.B, Enum.KeyCode.J
+            "DroneControlsOverride", handleDroneInput, false, Enum.ContextActionPriority.High.Value + 10,
+            Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.B, Enum.KeyCode.J
         )
     else
         Camera.CameraType = Enum.CameraType.Custom
@@ -476,53 +509,21 @@ local function toggleDroneSystem(state)
     end
 end
 
+-- =====================================
+-- СОЗДАНИЕ ИНТЕРФЕЙСОВ...
+-- =====================================
 local function createMainUI()
     if CoreGui:FindFirstChild(uiName) then CoreGui[uiName]:Destroy() end
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = uiName; screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
-    screenGui.Parent = CoreGui
-
-    local frame = Instance.new("Frame")
-    frame.Name = "MainFrame"
-    frame.Size = UDim2.new(0, 280, 0, 230)
-    frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.MainOffsetY)
-    frame.BackgroundColor3 = STYLE.Background
-    frame.BorderSizePixel = 0; frame.Parent = screenGui
-    Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
-
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame
-    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
-
-    local title = Instance.new("TextLabel")
-    title.Text = "Pidromania Tools"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-    title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold
-    title.TextSize = 16; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
-
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Name = "ListContainer"; scrollFrame.Size = UDim2.new(1, -10, 1, -90)
-    scrollFrame.Position = UDim2.new(0, 5, 0, 45); scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 4; scrollFrame.ScrollBarImageColor3 = STYLE.Button
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y; scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scrollFrame.Parent = frame
-    Instance.new("UIListLayout", scrollFrame).Padding = UDim.new(0, 4)
-
-    local copyBtnFrame = Instance.new("Frame"); copyBtnFrame.Size = UDim2.new(1, -10, 0, 35)
-    copyBtnFrame.Position = UDim2.new(0, 5, 1, -40); copyBtnFrame.BackgroundTransparency = 1; copyBtnFrame.Parent = frame
-
-    local copyBtn = Instance.new("TextButton")
-    copyBtn.Name = "CopyAllBtn"; copyBtn.Size = UDim2.new(1, 0, 1, 0)
-    copyBtn.BackgroundColor3 = STYLE.Button; copyBtn.TextColor3 = Color3.fromRGB(240, 245, 255) 
-    copyBtn.Text = "COPY DATA"; copyBtn.Font = STYLE.FontBold; copyBtn.TextSize = 14; copyBtn.Parent = copyBtnFrame
-    Instance.new("UICorner", copyBtn).CornerRadius = STYLE.Corner
-
+    screenGui.Name = uiName; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.Parent = CoreGui
+    local frame = Instance.new("Frame"); frame.Name = "MainFrame"; frame.Size = UDim2.new(0, 280, 0, 230); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.MainOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.BorderSizePixel = 0; frame.Parent = screenGui; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
+    local header = Instance.new("Frame"); header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame; Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+    local title = Instance.new("TextLabel"); title.Text = "Pidromania Tools"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 16; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
+    local scrollFrame = Instance.new("ScrollingFrame"); scrollFrame.Name = "ListContainer"; scrollFrame.Size = UDim2.new(1, -10, 1, -90); scrollFrame.Position = UDim2.new(0, 5, 0, 45); scrollFrame.BackgroundTransparency = 1; scrollFrame.ScrollBarThickness = 4; scrollFrame.ScrollBarImageColor3 = STYLE.Button; scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y; scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0); scrollFrame.Parent = frame; Instance.new("UIListLayout", scrollFrame).Padding = UDim.new(0, 4)
+    local copyBtnFrame = Instance.new("Frame"); copyBtnFrame.Size = UDim2.new(1, -10, 0, 35); copyBtnFrame.Position = UDim2.new(0, 5, 1, -40); copyBtnFrame.BackgroundTransparency = 1; copyBtnFrame.Parent = frame
+    local copyBtn = Instance.new("TextButton"); copyBtn.Name = "CopyAllBtn"; copyBtn.Size = UDim2.new(1, 0, 1, 0); copyBtn.BackgroundColor3 = STYLE.Button; copyBtn.TextColor3 = Color3.fromRGB(240, 245, 255); copyBtn.Text = "COPY DATA"; copyBtn.Font = STYLE.FontBold; copyBtn.TextSize = 14; copyBtn.Parent = copyBtnFrame; Instance.new("UICorner", copyBtn).CornerRadius = STYLE.Corner
     copyBtn.MouseButton1Click:Connect(function()
-        if #listOrder == 0 then
-            copyBtn.BackgroundColor3 = STYLE.Danger; copyBtn.Text = "EMPTY!"
-            task.delay(1, function() copyBtn.BackgroundColor3 = STYLE.Button; copyBtn.Text = "COPY DATA" end)
-            return
-        end
+        if #listOrder == 0 then copyBtn.BackgroundColor3 = STYLE.Danger; copyBtn.Text = "EMPTY!"; task.delay(1, function() copyBtn.BackgroundColor3 = STYLE.Button; copyBtn.Text = "COPY DATA" end); return end
         local fullText = ""
         for i, coords in ipairs(listOrder) do fullText ..= labelsOrder[i] .. " - " .. coords .. "\n" end
         if setclipboard then setclipboard(fullText:sub(1, -2)) end
@@ -535,48 +536,23 @@ local function addCoordinateToUI(coordsString, label)
     local container = CoreGui:FindFirstChild(uiName):FindFirstChild("MainFrame"):FindFirstChild("ListContainer")
     if not container then return end
     local entry = Instance.new("Frame"); entry.Size = UDim2.new(1, 0, 0, 24); entry.BackgroundTransparency = 1; entry.Parent = container
-    local textLabel = Instance.new("TextLabel"); textLabel.Text = label .. " - " .. coordsString
-    textLabel.Size = UDim2.new(1, -5, 1, 0); textLabel.Position = UDim2.new(0, 5, 0, 0)
-    textLabel.BackgroundTransparency = 1; textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textLabel.Font = STYLE.Font; textLabel.TextSize = 16; textLabel.TextXAlignment = Enum.TextXAlignment.Left; textLabel.Parent = entry
+    local textLabel = Instance.new("TextLabel"); textLabel.Text = label .. " - " .. coordsString; textLabel.Size = UDim2.new(1, -5, 1, 0); textLabel.Position = UDim2.new(0, 5, 0, 0); textLabel.BackgroundTransparency = 1; textLabel.TextColor3 = Color3.fromRGB(255, 255, 255); textLabel.Font = STYLE.Font; textLabel.TextSize = 16; textLabel.TextXAlignment = Enum.TextXAlignment.Left; textLabel.Parent = entry
     task.wait(); container.CanvasPosition = Vector2.new(0, container.AbsoluteCanvasSize.Y)
 end
 
 local function createSettingsUI()
     if CoreGui:FindFirstChild(settingsUiName) then CoreGui[settingsUiName]:Destroy() end
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = settingsUiName; screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true 
-    screenGui.Parent = CoreGui
-
-    local frame = Instance.new("Frame")
-    frame.Name = "SettingsFrame"; frame.Size = UDim2.new(0, 280, 0, 200) 
-    frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY) 
-    frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui
-    Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
-
-    local header = Instance.new("Frame"); header.Size = UDim2.new(1, 0, 0, 30); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame
-    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
-    local title = Instance.new("TextLabel"); title.Text = "System Controls"
-    title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1
-    title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 14
-    title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
-
-    local listContainer = Instance.new("Frame"); listContainer.Size = UDim2.new(1, -10, 1, -35)
-    listContainer.Position = UDim2.new(0, 5, 0, 32); listContainer.BackgroundTransparency = 1; listContainer.Parent = frame
-    Instance.new("UIListLayout", listContainer).Padding = UDim.new(0, 5)
+    local screenGui = Instance.new("ScreenGui"); screenGui.Name = settingsUiName; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.Parent = CoreGui
+    local frame = Instance.new("Frame"); frame.Name = "SettingsFrame"; frame.Size = UDim2.new(0, 280, 0, 200); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
+    local header = Instance.new("Frame"); header.Size = UDim2.new(1, 0, 0, 30); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame; Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+    local title = Instance.new("TextLabel"); title.Text = "System Controls"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
+    local listContainer = Instance.new("Frame"); listContainer.Size = UDim2.new(1, -10, 1, -35); listContainer.Position = UDim2.new(0, 5, 0, 32); listContainer.BackgroundTransparency = 1; listContainer.Parent = frame; Instance.new("UIListLayout", listContainer).Padding = UDim.new(0, 5)
 
     local function createToggle(name, settingKey)
         local row = Instance.new("Frame"); row.Size = UDim2.new(1, 0, 0, 28); row.BackgroundTransparency = 1; row.Parent = listContainer
-        local label = Instance.new("TextLabel"); label.Text = name; label.Size = UDim2.new(0.6, 0, 1, 0)
-        label.BackgroundTransparency = 1; label.TextColor3 = Color3.fromRGB(255, 255, 255); label.Font = STYLE.Font
-        label.TextSize = 16; label.TextXAlignment = Enum.TextXAlignment.Left; label.Parent = row
-
-        local toggleBg = Instance.new("Frame"); toggleBg.Size = UDim2.new(0, 40, 0, 20); toggleBg.Position = UDim2.new(1, -45, 0.5, -10)
-        toggleBg.BackgroundColor3 = STYLE.Button; toggleBg.Parent = row; Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(0, 10)
-        
-        local toggleKnob = Instance.new("Frame"); toggleKnob.Size = UDim2.new(0, 16, 0, 16); toggleKnob.Position = UDim2.new(0, 2, 0.5, -8)
-        toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200); toggleKnob.Parent = toggleBg; Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(0, 8)
+        local label = Instance.new("TextLabel"); label.Text = name; label.Size = UDim2.new(0.6, 0, 1, 0); label.BackgroundTransparency = 1; label.TextColor3 = Color3.fromRGB(255, 255, 255); label.Font = STYLE.Font; label.TextSize = 16; label.TextXAlignment = Enum.TextXAlignment.Left; label.Parent = row
+        local toggleBg = Instance.new("Frame"); toggleBg.Size = UDim2.new(0, 40, 0, 20); toggleBg.Position = UDim2.new(1, -45, 0.5, -10); toggleBg.BackgroundColor3 = STYLE.Button; toggleBg.Parent = row; Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(0, 10)
+        local toggleKnob = Instance.new("Frame"); toggleKnob.Size = UDim2.new(0, 16, 0, 16); toggleKnob.Position = UDim2.new(0, 2, 0.5, -8); toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200); toggleKnob.Parent = toggleBg; Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(0, 8)
 
         local function updateState()
             if Settings[settingKey] then
@@ -595,20 +571,13 @@ local function createSettingsUI()
                 if settingKey == "DeleteEnabled" and not Settings.DeleteEnabled then ActiveModes.Deleting = false
                 elseif settingKey == "InspectEnabled" and not Settings.InspectEnabled then ActiveModes.Inspecting = false 
                 elseif settingKey == "PilotAllowed" and not Settings.PilotAllowed then
-                    if ActiveModes.Piloting then
-                        ActiveModes.Piloting = false
-                        toggleDroneSystem(false)
-                        showNotification("КВАДРОКОПТЕР", "ОТКЛЮЧЕН")
-                    end
+                    if ActiveModes.Piloting then ActiveModes.Piloting = false; toggleDroneSystem(false); showNotification("КВАДРОКОПТЕР", "ОТКЛЮЧЕН") end
                 end
             end
         end)
         ToggleUpdaters[settingKey] = updateState; updateState()
     end
-
-    createToggle("Log Coords (Z)", "RouteLog"); createToggle("Teleport (X)", "Teleport")
-    createToggle("Delete (C)", "DeleteEnabled"); createToggle("Inspect (V)", "InspectEnabled")
-    createToggle("Allow Pilot (H)", "PilotAllowed")
+    createToggle("Log Coords (Z)", "RouteLog"); createToggle("Teleport (X)", "Teleport"); createToggle("Delete (C)", "DeleteEnabled"); createToggle("Inspect (V)", "InspectEnabled"); createToggle("Allow Pilot (H)", "PilotAllowed")
 end
 
 local dropdownMode, spectatingPlayer, originalCameraSubject = nil, nil, nil
@@ -619,135 +588,51 @@ local dropdownList, dropdownLayout, remoteSpyList, remoteSpyLayout, httpSpyPage,
 
 local function createSpyUI()
     if CoreGui:FindFirstChild(spyUiName) then CoreGui[spyUiName]:Destroy() end
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = spyUiName; screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true 
-    screenGui.Parent = CoreGui
-
-    local frame = Instance.new("Frame")
-    frame.Name = "SpyFrame"
-    frame.Size = UDim2.new(0, 280, 0, 340) 
-    frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SpyOffsetY)
-    frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui
-    frame.ClipsDescendants = true
-    Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
-
-    local topBar = Instance.new("Frame")
-    topBar.Size = UDim2.new(1, 0, 0, 30); topBar.BackgroundColor3 = STYLE.Panel; topBar.Parent = frame
-    Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
-
-    local title = Instance.new("TextLabel"); title.Text = "Spy Utility | Pidromania"
-    title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0)
-    title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold
-    title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = topBar
-
-    local toolBar = Instance.new("Frame")
-    toolBar.Size = UDim2.new(1, 0, 0, 35); toolBar.Position = UDim2.new(0, 0, 0, 30)
-    toolBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30); toolBar.Parent = frame
-
-    local toolBarLayout = Instance.new("UIListLayout"); toolBarLayout.Parent = toolBar
-    toolBarLayout.FillDirection = Enum.FillDirection.Horizontal
-    toolBarLayout.Padding = UDim.new(0, 4); toolBarLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    local screenGui = Instance.new("ScreenGui"); screenGui.Name = spyUiName; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.Parent = CoreGui
+    local frame = Instance.new("Frame"); frame.Name = "SpyFrame"; frame.Size = UDim2.new(0, 280, 0, 340); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SpyOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui; frame.ClipsDescendants = true; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
+    local topBar = Instance.new("Frame"); topBar.Size = UDim2.new(1, 0, 0, 30); topBar.BackgroundColor3 = STYLE.Panel; topBar.Parent = frame; Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 8)
+    local title = Instance.new("TextLabel"); title.Text = "Spy Utility | Pidromania"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = topBar
+    local toolBar = Instance.new("Frame"); toolBar.Size = UDim2.new(1, 0, 0, 35); toolBar.Position = UDim2.new(0, 0, 0, 30); toolBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30); toolBar.Parent = frame
+    local toolBarLayout = Instance.new("UIListLayout"); toolBarLayout.Parent = toolBar; toolBarLayout.FillDirection = Enum.FillDirection.Horizontal; toolBarLayout.Padding = UDim.new(0, 4); toolBarLayout.VerticalAlignment = Enum.VerticalAlignment.Center
     local toolBarPadding = Instance.new("UIPadding", toolBar); toolBarPadding.PaddingLeft = UDim.new(0, 6)
 
     local function createToolbarButton(name, text)
-        local btn = Instance.new("TextButton"); btn.Name = name; btn.Parent = toolBar
-        btn.Size = UDim2.new(0, 64, 0, 24); btn.BackgroundColor3 = STYLE.Button 
-        btn.Font = Enum.Font.GothamSemibold; btn.TextColor3 = STYLE.TextMain; btn.Text = text; btn.TextSize = 11
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        local btn = Instance.new("TextButton"); btn.Name = name; btn.Parent = toolBar; btn.Size = UDim2.new(0, 64, 0, 24); btn.BackgroundColor3 = STYLE.Button; btn.Font = Enum.Font.GothamSemibold; btn.TextColor3 = STYLE.TextMain; btn.Text = text; btn.TextSize = 11; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         return btn
     end
+    buttons.spectate = createToolbarButton("SpectateButton", "👁 Spec"); buttons.teleport = createToolbarButton("TeleportButton", "⚡ TP"); buttons.remote = createToolbarButton("RemoteSpyButton", "📡 R.Spy"); buttons.http = createToolbarButton("HttpSpyButton", "🌐 HTTP")
 
-    buttons.spectate = createToolbarButton("SpectateButton", "👁 Spec")
-    buttons.teleport = createToolbarButton("TeleportButton", "⚡ TP")
-    buttons.remote = createToolbarButton("RemoteSpyButton", "📡 R.Spy")
-    buttons.http = createToolbarButton("HttpSpyButton", "🌐 HTTP")
-
-    local pagesFrame = Instance.new("Frame")
-    pagesFrame.Name = "PagesFrame"; pagesFrame.Size = UDim2.new(1, 0, 1, -65)
-    pagesFrame.Position = UDim2.new(0, 0, 0, 65); pagesFrame.BackgroundTransparency = 1; pagesFrame.Parent = frame
-
+    local pagesFrame = Instance.new("Frame"); pagesFrame.Name = "PagesFrame"; pagesFrame.Size = UDim2.new(1, 0, 1, -65); pagesFrame.Position = UDim2.new(0, 0, 0, 65); pagesFrame.BackgroundTransparency = 1; pagesFrame.Parent = frame
     local function createPage(name)
-        local sf = Instance.new("ScrollingFrame"); sf.Name = name; sf.Parent = pagesFrame
-        sf.Size = UDim2.new(1, 0, 1, 0); sf.BackgroundTransparency = 1; sf.BorderSizePixel = 0; sf.Visible = false
-        sf.ScrollBarImageColor3 = STYLE.Button; sf.ScrollBarThickness = 4
-        local layout = Instance.new("UIListLayout", sf); layout.Padding = UDim.new(0, 4)
-        local pad = Instance.new("UIPadding", sf); pad.PaddingLeft = UDim.new(0, 5); pad.PaddingRight = UDim.new(0, 5); pad.PaddingTop = UDim.new(0, 5); pad.PaddingBottom = UDim.new(0, 5)
-        return sf, layout
+        local sf = Instance.new("ScrollingFrame"); sf.Name = name; sf.Parent = pagesFrame; sf.Size = UDim2.new(1, 0, 1, 0); sf.BackgroundTransparency = 1; sf.BorderSizePixel = 0; sf.Visible = false; sf.ScrollBarImageColor3 = STYLE.Button; sf.ScrollBarThickness = 4; local layout = Instance.new("UIListLayout", sf); layout.Padding = UDim.new(0, 4); local pad = Instance.new("UIPadding", sf); pad.PaddingLeft = UDim.new(0, 5); pad.PaddingRight = UDim.new(0, 5); pad.PaddingTop = UDim.new(0, 5); pad.PaddingBottom = UDim.new(0, 5); return sf, layout
     end
-
-    dropdownList, dropdownLayout = createPage("DropdownList")
-    remoteSpyList, remoteSpyLayout = createPage("RemoteSpyList")
-    httpSpyPage, httpSpyLayout = createPage("HttpSpyPage")
+    dropdownList, dropdownLayout = createPage("DropdownList"); remoteSpyList, remoteSpyLayout = createPage("RemoteSpyList"); httpSpyPage, httpSpyLayout = createPage("HttpSpyPage")
     pages.spectate, pages.teleport, pages.remote, pages.http = dropdownList, dropdownList, remoteSpyList, httpSpyPage
 
-    local httpClearBtn = Instance.new("TextButton"); httpClearBtn.Parent = httpSpyPage
-    httpClearBtn.Size = UDim2.new(1, 0, 0, 25); httpClearBtn.BackgroundColor3 = STYLE.Danger
-    httpClearBtn.Font = STYLE.FontBold; httpClearBtn.TextColor3 = Color3.fromRGB(255, 220, 220)
-    httpClearBtn.Text = "🗑️ Clear HTTP Logs"; httpClearBtn.TextSize = 12; httpClearBtn.LayoutOrder = -1
-    Instance.new("UICorner", httpClearBtn).CornerRadius = UDim.new(0, 4)
-
-    httpClearBtn.MouseButton1Click:Connect(function()
-        for _, c in ipairs(httpSpyPage:GetChildren()) do if c.Name == "HttpLogEntry" then c:Destroy() end end
-        task.wait(); httpSpyPage.CanvasSize = UDim2.new(0, 0, 0, httpSpyLayout.AbsoluteContentSize.Y + 10)
-    end)
+    local httpClearBtn = Instance.new("TextButton"); httpClearBtn.Parent = httpSpyPage; httpClearBtn.Size = UDim2.new(1, 0, 0, 25); httpClearBtn.BackgroundColor3 = STYLE.Danger; httpClearBtn.Font = STYLE.FontBold; httpClearBtn.TextColor3 = Color3.fromRGB(255, 220, 220); httpClearBtn.Text = "🗑️ Clear HTTP Logs"; httpClearBtn.TextSize = 12; httpClearBtn.LayoutOrder = -1; Instance.new("UICorner", httpClearBtn).CornerRadius = UDim.new(0, 4)
+    httpClearBtn.MouseButton1Click:Connect(function() for _, c in ipairs(httpSpyPage:GetChildren()) do if c.Name == "HttpLogEntry" then c:Destroy() end end; task.wait(); httpSpyPage.CanvasSize = UDim2.new(0, 0, 0, httpSpyLayout.AbsoluteContentSize.Y + 10) end)
 end
-
-createMainUI()
-createSettingsUI()
-createSpyUI()
+createMainUI(); createSettingsUI(); createSpyUI()
 
 local function updateDropdownList()
     for _, c in ipairs(dropdownList:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     local players = Players:GetPlayers()
     table.sort(players, function(a, b) return a.Name:lower() < b.Name:lower() end)
-
     for _, plr in ipairs(players) do
         if plr ~= LocalPlayer then
-            local btn = Instance.new("TextButton"); btn.Parent = dropdownList; btn.Size = UDim2.new(1, -5, 0, 25)
-            btn.BackgroundColor3 = STYLE.Button; btn.Font = Enum.Font.GothamSemibold
-            btn.TextColor3 = STYLE.TextMain; btn.Text = string.format(" %s (@%s)", plr.DisplayName, plr.Name)
-            btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left
-            btn.TextTruncate = Enum.TextTruncate.AtEnd
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-
-            if (dropdownMode == "spectate" and spectatingPlayer == plr) or (dropdownMode == "teleport" and teleportingToPlayer == plr) then
-                btn.BackgroundColor3 = STYLE.InspectColor; btn.TextColor3 = Color3.fromRGB(200, 255, 200)
-            end
-
+            local btn = Instance.new("TextButton"); btn.Parent = dropdownList; btn.Size = UDim2.new(1, -5, 0, 25); btn.BackgroundColor3 = STYLE.Button; btn.Font = Enum.Font.GothamSemibold; btn.TextColor3 = STYLE.TextMain; btn.Text = string.format(" %s (@%s)", plr.DisplayName, plr.Name); btn.TextSize = 11; btn.TextXAlignment = Enum.TextXAlignment.Left; btn.TextTruncate = Enum.TextTruncate.AtEnd; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+            if (dropdownMode == "spectate" and spectatingPlayer == plr) or (dropdownMode == "teleport" and teleportingToPlayer == plr) then btn.BackgroundColor3 = STYLE.InspectColor; btn.TextColor3 = Color3.fromRGB(200, 255, 200) end
             btn.MouseButton1Click:Connect(function()
                 if dropdownMode == "spectate" then
-                    if spectatingPlayer == plr then
-                        if spectateCharConn then spectateCharConn:Disconnect(); spectateCharConn = nil end
-                        if originalCameraSubject then workspace.CurrentCamera.CameraSubject = originalCameraSubject end
-                        spectatingPlayer, originalCameraSubject = nil, nil
-                        updateDropdownList()
-                        return
-                    end
-                    if not spectatingPlayer and not originalCameraSubject then originalCameraSubject = workspace.CurrentCamera.CameraSubject end
-                    spectatingPlayer = plr
-                    if spectateCharConn then spectateCharConn:Disconnect(); spectateCharConn = nil end
+                    if spectatingPlayer == plr then if spectateCharConn then spectateCharConn:Disconnect(); spectateCharConn = nil end; if originalCameraSubject then workspace.CurrentCamera.CameraSubject = originalCameraSubject end; spectatingPlayer, originalCameraSubject = nil, nil; updateDropdownList(); return end
+                    if not spectatingPlayer and not originalCameraSubject then originalCameraSubject = workspace.CurrentCamera.CameraSubject end; spectatingPlayer = plr; if spectateCharConn then spectateCharConn:Disconnect(); spectateCharConn = nil end
                     local function setCam(char) local hum = char:FindFirstChildOfClass("Humanoid") or char; workspace.CurrentCamera.CameraSubject = hum end
-                    if plr.Character then setCam(plr.Character) end
-                    spectateCharConn = plr.CharacterAdded:Connect(setCam)
-                    updateDropdownList()
+                    if plr.Character then setCam(plr.Character) end; spectateCharConn = plr.CharacterAdded:Connect(setCam); updateDropdownList()
                 elseif dropdownMode == "teleport" then
-                    local lChar = LocalPlayer.Character
-                    if not lChar or not lChar:FindFirstChild("HumanoidRootPart") then return end
+                    local lChar = LocalPlayer.Character; if not lChar or not lChar:FindFirstChild("HumanoidRootPart") then return end
                     local lHRP = lChar.HumanoidRootPart
-                    if teleportingToPlayer == plr then
-                        if originalPosition then lHRP.CFrame = originalPosition end
-                        teleportingToPlayer, originalPosition = nil, nil
-                        updateDropdownList()
-                        return
-                    end
-                    local tChar = plr.Character
-                    if tChar and tChar:FindFirstChild("HumanoidRootPart") then
-                        if not originalPosition then originalPosition = lHRP.CFrame end
-                        lHRP.CFrame = tChar.HumanoidRootPart.CFrame
-                        teleportingToPlayer = plr
-                        updateDropdownList()
-                    end
+                    if teleportingToPlayer == plr then if originalPosition then lHRP.CFrame = originalPosition end; teleportingToPlayer, originalPosition = nil, nil; updateDropdownList(); return end
+                    local tChar = plr.Character; if tChar and tChar:FindFirstChild("HumanoidRootPart") then if not originalPosition then originalPosition = lHRP.CFrame end; lHRP.CFrame = tChar.HumanoidRootPart.CFrame; teleportingToPlayer = plr; updateDropdownList() end
                 end
             end)
         end
@@ -757,31 +642,15 @@ end
 
 local function updateRemoteSpyList()
     for _, c in ipairs(remoteSpyList:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
-    local remotes = {}
-    for _, r in ipairs(game:GetDescendants()) do if r:IsA("RemoteEvent") or r:IsA("RemoteFunction") then table.insert(remotes, r) end end
+    local remotes = {}; for _, r in ipairs(game:GetDescendants()) do if r:IsA("RemoteEvent") or r:IsA("RemoteFunction") then table.insert(remotes, r) end end
     table.sort(remotes, function(a, b) return a:GetFullName() < b:GetFullName() end)
-
     for _, r in ipairs(remotes) do
-        local rf = Instance.new("Frame"); rf.Name = r.Name; rf.Parent = remoteSpyList
-        rf.Size = UDim2.new(1, -5, 0, 30); rf.BackgroundColor3 = Color3.fromRGB(40, 40, 50); rf.BorderSizePixel = 0
-        Instance.new("UICorner", rf).CornerRadius = UDim.new(0, 4)
-
+        local rf = Instance.new("Frame"); rf.Name = r.Name; rf.Parent = remoteSpyList; rf.Size = UDim2.new(1, -5, 0, 30); rf.BackgroundColor3 = Color3.fromRGB(40, 40, 50); rf.BorderSizePixel = 0; Instance.new("UICorner", rf).CornerRadius = UDim.new(0, 4)
         local rPath, rType = r:GetFullName(), r:IsA("RemoteEvent") and "RE" or "RF"
-        local pathLbl = Instance.new("TextLabel"); pathLbl.Parent = rf; pathLbl.Size = UDim2.new(1, -105, 1, 0)
-        pathLbl.Position = UDim2.new(0, 4, 0, 0); pathLbl.BackgroundTransparency = 1; pathLbl.Font = Enum.Font.Gotham
-        pathLbl.TextColor3 = STYLE.TextSub; pathLbl.TextSize = 10; pathLbl.TextXAlignment = Enum.TextXAlignment.Left
-        pathLbl.Text = string.format("[%s] %s", rType, rPath); pathLbl.TextTruncate = Enum.TextTruncate.AtEnd
-        
-        local fireBtn = Instance.new("TextButton"); fireBtn.Parent = rf; fireBtn.Size = UDim2.new(0, 40, 0, 22)
-        fireBtn.Position = UDim2.new(1, -44, 0.5, -11); fireBtn.BackgroundColor3 = STYLE.Danger
-        fireBtn.Font = STYLE.FontBold; fireBtn.TextColor3 = Color3.fromRGB(255, 255, 255); fireBtn.Text = "Fire"; fireBtn.TextSize = 10
-        Instance.new("UICorner", fireBtn).CornerRadius = UDim.new(0, 4)
+        local pathLbl = Instance.new("TextLabel"); pathLbl.Parent = rf; pathLbl.Size = UDim2.new(1, -105, 1, 0); pathLbl.Position = UDim2.new(0, 4, 0, 0); pathLbl.BackgroundTransparency = 1; pathLbl.Font = Enum.Font.Gotham; pathLbl.TextColor3 = STYLE.TextSub; pathLbl.TextSize = 10; pathLbl.TextXAlignment = Enum.TextXAlignment.Left; pathLbl.Text = string.format("[%s] %s", rType, rPath); pathLbl.TextTruncate = Enum.TextTruncate.AtEnd
+        local fireBtn = Instance.new("TextButton"); fireBtn.Parent = rf; fireBtn.Size = UDim2.new(0, 40, 0, 22); fireBtn.Position = UDim2.new(1, -44, 0.5, -11); fireBtn.BackgroundColor3 = STYLE.Danger; fireBtn.Font = STYLE.FontBold; fireBtn.TextColor3 = Color3.fromRGB(255, 255, 255); fireBtn.Text = "Fire"; fireBtn.TextSize = 10; Instance.new("UICorner", fireBtn).CornerRadius = UDim.new(0, 4)
         fireBtn.MouseButton1Click:Connect(function() pcall(function() if r:IsA("RemoteEvent") then r:FireServer() else r:InvokeServer() end end) end)
-        
-        local copyBtn = Instance.new("TextButton"); copyBtn.Parent = rf; copyBtn.Size = UDim2.new(0, 55, 0, 22)
-        copyBtn.Position = UDim2.new(1, -102, 0.5, -11); copyBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 140)
-        copyBtn.Font = STYLE.FontBold; copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255); copyBtn.Text = "Copy"; copyBtn.TextSize = 10
-        Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 4)
+        local copyBtn = Instance.new("TextButton"); copyBtn.Parent = rf; copyBtn.Size = UDim2.new(0, 55, 0, 22); copyBtn.Position = UDim2.new(1, -102, 0.5, -11); copyBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 140); copyBtn.Font = STYLE.FontBold; copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255); copyBtn.Text = "Copy"; copyBtn.TextSize = 10; Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 4)
         copyBtn.MouseButton1Click:Connect(function() if setclipboard then setclipboard(rPath) end end)
     end
     remoteSpyList.CanvasSize = UDim2.new(0, 0, 0, remoteSpyLayout.AbsoluteContentSize.Y + 10)
@@ -790,159 +659,80 @@ end
 local function setActiveSpyPage(pageName)
     if pageName == "spectate" or pageName == "teleport" then dropdownMode = pageName; updateDropdownList() end
     if pageName == "remote" then updateRemoteSpyList() end
-    activeSpyPage = pageName
-    for name, page in pairs(pages) do page.Visible = (name == pageName or (pageName == "teleport" and name == "spectate")) end
-    for name, btn in pairs(buttons) do 
-        if name == pageName then btn.BackgroundColor3 = Color3.fromRGB(80, 50, 100); btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else btn.BackgroundColor3 = STYLE.Button; btn.TextColor3 = STYLE.TextMain end
-    end
+    activeSpyPage = pageName; for name, page in pairs(pages) do page.Visible = (name == pageName or (pageName == "teleport" and name == "spectate")) end
+    for name, btn in pairs(buttons) do if name == pageName then btn.BackgroundColor3 = Color3.fromRGB(80, 50, 100); btn.TextColor3 = Color3.fromRGB(255, 255, 255) else btn.BackgroundColor3 = STYLE.Button; btn.TextColor3 = STYLE.TextMain end end
 end
-
-buttons.spectate.MouseButton1Click:Connect(function() setActiveSpyPage("spectate") end)
-buttons.teleport.MouseButton1Click:Connect(function() setActiveSpyPage("teleport") end)
-buttons.remote.MouseButton1Click:Connect(function() setActiveSpyPage("remote") end)
-buttons.http.MouseButton1Click:Connect(function() setActiveSpyPage("http") end)
+buttons.spectate.MouseButton1Click:Connect(function() setActiveSpyPage("spectate") end); buttons.teleport.MouseButton1Click:Connect(function() setActiveSpyPage("teleport") end); buttons.remote.MouseButton1Click:Connect(function() setActiveSpyPage("remote") end); buttons.http.MouseButton1Click:Connect(function() setActiveSpyPage("http") end)
 
 local function logHttpRequest(...)
-    local parts = {...}
-    local logLabel = Instance.new("TextLabel"); logLabel.Name = "HttpLogEntry"; logLabel.Parent = httpSpyPage
-    logLabel.Size = UDim2.new(1, -5, 0, 0); logLabel.AutomaticSize = Enum.AutomaticSize.Y
-    logLabel.BackgroundTransparency = 1; logLabel.Font = Enum.Font.Gotham
-    logLabel.TextColor3 = Color3.fromRGB(200, 255, 200); logLabel.TextSize = 11
-    logLabel.TextWrapped = true; logLabel.TextXAlignment = Enum.TextXAlignment.Left
-    logLabel.Text = table.concat(parts, " ")
-    task.wait(); httpSpyPage.CanvasSize = UDim2.new(0, 0, 0, httpSpyLayout.AbsoluteContentSize.Y + 10)
+    local parts = {...}; local logLabel = Instance.new("TextLabel"); logLabel.Name = "HttpLogEntry"; logLabel.Parent = httpSpyPage; logLabel.Size = UDim2.new(1, -5, 0, 0); logLabel.AutomaticSize = Enum.AutomaticSize.Y; logLabel.BackgroundTransparency = 1; logLabel.Font = Enum.Font.Gotham; logLabel.TextColor3 = Color3.fromRGB(200, 255, 200); logLabel.TextSize = 11; logLabel.TextWrapped = true; logLabel.TextXAlignment = Enum.TextXAlignment.Left; logLabel.Text = table.concat(parts, " "); task.wait(); httpSpyPage.CanvasSize = UDim2.new(0, 0, 0, httpSpyLayout.AbsoluteContentSize.Y + 10)
 end
 
-local Hook = { Hooks = {}, Cache = setmetatable({}, {__mode = "k"}) }
-local Http = {}
-local UrlIntercepts = { ["http://127.0.0.1:6463/rpc?v=1"] = { Callback = function() return "" end } }
-
+local Hook = { Hooks = {}, Cache = setmetatable({}, {__mode = "k"}) }; local Http = {}; local UrlIntercepts = { ["http://127.0.0.1:6463/rpc?v=1"] = { Callback = function() return "" end } }
 local function HttpCallback(OldFunc, ...)
-    local Args = {...}
-    local Request = Http:ScanHTTPRequest(Args)
+    local Args = {...}; local Request = Http:ScanHTTPRequest(Args)
     if not Request or not Request.Url then return OldFunc(...) end
-
-    logHttpRequest(string.format("[%s]: %s", Request.IsPost and "POST" or "GET", Request.Url))
-    if Request.Body then logHttpRequest(string.format("  ↳ [Body] %s", tostring(Request.Body))) end
-
-    local Responce, Intercept = nil, Http:FindIntercept(Request.Url)
-    if not Intercept or Intercept.PassResponce then
-        local s, r = pcall(OldFunc, ...)
-        Responce = r
-    end
+    logHttpRequest(string.format("[%s]: %s", Request.IsPost and "POST" or "GET", Request.Url)); if Request.Body then logHttpRequest(string.format("  ↳ [Body] %s", tostring(Request.Body))) end
+    local Responce, Intercept = nil, Http:FindIntercept(Request.Url); if not Intercept or Intercept.PassResponce then local s, r = pcall(OldFunc, ...); Responce = r end
     if not Intercept then return Responce end
-
-    local Spoofed = Intercept.Callback
-    if Typeof(Spoofed) == "function" then Spoofed = Intercept.PassResponce and Spoofed(Responce, Request) or Spoofed(Request) end
-    if Request.IsTable then return Hook:Hook(Responce or {}, { ["Body"] = Spoofed }) end
-    return Spoofed
+    local Spoofed = Intercept.Callback; if Typeof(Spoofed) == "function" then Spoofed = Intercept.PassResponce and Spoofed(Responce, Request) or Spoofed(Request) end
+    if Request.IsTable then return Hook:Hook(Responce or {}, { ["Body"] = Spoofed }) end; return Spoofed
 end
 Hook.Alliases = { ["HTTP_HOOK"] = HttpCallback }
-
 function Http:ScanHTTPRequest(Args)
-    local Request = {}
-    for _, Arg in next, Args do
-        if Typeof(Arg) == "string" then Request.Url = Arg; break
-        elseif Typeof(Arg) == "table" then
-            local Url = Arg.Url or Arg.url
-            if not Url then continue end
-            Request.Url = Url; Request.Body = Arg.Body or Arg.body; Request.IsPost = Request.Body and true or false
-            Request.IsTable = true; Request.Headers = Arg.Headers; break
-        end
-    end
-    return Request
+    local Request = {}; for _, Arg in next, Args do if Typeof(Arg) == "string" then Request.Url = Arg; break elseif Typeof(Arg) == "table" then local Url = Arg.Url or Arg.url; if not Url then continue end; Request.Url = Url; Request.Body = Arg.Body or Arg.body; Request.IsPost = Request.Body and true or false; Request.IsTable = true; Request.Headers = Arg.Headers; break end end; return Request
 end
-
 function Http:FindIntercept(Url) for UrlMatch, Data in next, UrlIntercepts do if Url:match(UrlMatch) then return Data end end return end
-
-function Hook:IsObject(Obj) return Typeof(Obj) == "Instance" end
-function Hook:AddRefernce(Inst, Hooks) if Inst then self.Hooks[Inst] = Hooks end end
-function Hook:GetCached(Inst) return self.Cache[Inst] end
-function Hook:AddCached(Inst, Proxy) self.Cache[Inst] = Proxy end
-
+function Hook:IsObject(Obj) return Typeof(Obj) == "Instance" end; function Hook:AddRefernce(Inst, Hooks) if Inst then self.Hooks[Inst] = Hooks end end; function Hook:GetCached(Inst) return self.Cache[Inst] end; function Hook:AddCached(Inst, Proxy) self.Cache[Inst] = Proxy end
 function Hook:Hook(Object, HooksList)
-    if self:GetCached(Object) then return self:GetCached(Object) end
-    local Proxy = newproxy(true)
-    local Meta = getmetatable(Proxy)
-    Meta.__index = function(self, Key)
-        local HookFunc = HooksList[Key]
-        if HookFunc then return HookFunc end
-        local Value = Object[Key]
-        if type(Value) == "function" then return function(self, ...) return Value(Object, ...) end end
-        return Value
-    end
-    Meta.__newindex = function(self, Key, New) Object[Key] = New end
-    Meta.__tostring = function() return tostring(Object) end
-    Meta.__metatable = getmetatable(Object)
-    self:AddCached(Object, Proxy)
-    return Proxy
+    if self:GetCached(Object) then return self:GetCached(Object) end; local Proxy = newproxy(true); local Meta = getmetatable(Proxy); Meta.__index = function(self, Key) local HookFunc = HooksList[Key]; if HookFunc then return HookFunc end; local Value = Object[Key]; if type(Value) == "function" then return function(self, ...) return Value(Object, ...) end end; return Value end; Meta.__newindex = function(self, Key, New) Object[Key] = New end; Meta.__tostring = function() return tostring(Object) end; Meta.__metatable = getmetatable(Object); self:AddCached(Object, Proxy); return Proxy
 end
-
 function Hook:ApplyHooks()
     for Object, Data in next, self.Hooks do
-        local IsObject = self:IsObject(Object)
-        local IsReadOnly = type(Object) == "table" and table.isfrozen(Object)
-        if IsReadOnly then setreadonly(Object, false) end
-
+        local IsObject = self:IsObject(Object); local IsReadOnly = type(Object) == "table" and table.isfrozen(Object); if IsReadOnly then setreadonly(Object, false) end
         for Key, Value in next, Data.Hooks do
-            local Success, OldValue = pcall(function() return Object[Key] end)
-            if not Success then continue end
-            if Typeof(OldValue) == "function" then
-                if IsObject then local OldFunc = OldValue; OldValue = function(self, ...) return OldFunc(Object, ...) end end
-                if iscclosure(OldValue) then OldValue = newcclosure(OldValue) end
-            end
-            if typeof(Value) == "string" and self.Alliases[Value] then
-                local CB = self.Alliases[Value]; Value = function(...) return CB(OldValue, ...) end
-            end
-            Data.Hooks[Key] = Value
-            if not IsObject then Object[Key] = Value end
+            local Success, OldValue = pcall(function() return Object[Key] end); if not Success then continue end
+            if Typeof(OldValue) == "function" then if IsObject then local OldFunc = OldValue; OldValue = function(self, ...) return OldFunc(Object, ...) end end; if iscclosure(OldValue) then OldValue = newcclosure(OldValue) end end
+            if typeof(Value) == "string" and self.Alliases[Value] then local CB = self.Alliases[Value]; Value = function(...) return CB(OldValue, ...) end end; Data.Hooks[Key] = Value; if not IsObject then Object[Key] = Value end
         end
-
-        if IsObject then
-            local Proxy = self:Hook(Object, Data.Hooks)
-            if Data.Globals then for _, Global in next, Data.Globals do GlobalENV[Global] = Proxy end end
-        elseif IsReadOnly then setreadonly(Object, true) end
+        if IsObject then local Proxy = self:Hook(Object, Data.Hooks); if Data.Globals then for _, Global in next, Data.Globals do GlobalENV[Global] = Proxy end end elseif IsReadOnly then setreadonly(Object, true) end
     end
 end
-
 Hook:AddRefernce(game, { Globals = {"game", "Game"}, Hooks = { ["HttpGet"] = "HTTP_HOOK", ["HttpGetAsync"] = "HTTP_HOOK", ["HttpPost"] = "HTTP_HOOK", ["HttpPostAsync"] = "HTTP_HOOK" } })
-Hook:AddRefernce(GlobalENV, { Hooks = { ["http_request"] = "HTTP_HOOK", ["request"] = "HTTP_HOOK" } })
-if http then Hook:AddRefernce(http, { Hooks = { ["request"] = "HTTP_HOOK" } }) end
-if syn then Hook:AddRefernce(syn, { Hooks = { ["request"] = "HTTP_HOOK" } }) end
-Hook:ApplyHooks()
-setActiveSpyPage("http")
+Hook:AddRefernce(GlobalENV, { Hooks = { ["http_request"] = "HTTP_HOOK", ["request"] = "HTTP_HOOK" } }); if http then Hook:AddRefernce(http, { Hooks = { ["request"] = "HTTP_HOOK" } }) end; if syn then Hook:AddRefernce(syn, { Hooks = { ["request"] = "HTTP_HOOK" } }) end
+Hook:ApplyHooks(); setActiveSpyPage("http")
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+    if UserInputService:GetFocusedTextBox() then return end
 
-    if input.KeyCode == Enum.KeyCode.Z and Settings.RouteLog then 
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local pos = char.HumanoidRootPart.Position
-            local coords = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
-            table.insert(listOrder, coords)
-            local lbl = #listOrder == 1 and "Start" or tostring(#listOrder - 1)
-            table.insert(labelsOrder, lbl)
-            addCoordinateToUI(coords, lbl)
-            if setclipboard then setclipboard(coords) end
+    if input.KeyCode == Enum.KeyCode.Z then
+        if Settings.RouteLog then 
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local pos = hrp.Position
+                    local coords = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
+                    table.insert(listOrder, coords)
+                    local lbl = #listOrder == 1 and "Start" or tostring(#listOrder - 1)
+                    table.insert(labelsOrder, lbl); addCoordinateToUI(coords, lbl)
+                    if setclipboard then setclipboard(coords) end
+                end
+            end
         end
-
-    elseif input.KeyCode == Enum.KeyCode.X and Settings.Teleport then 
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hit = mouse.Hit.Position
-            if hit.Y ~= math.huge and hit == hit then char.HumanoidRootPart.CFrame = CFrame.new(hit.X, hit.Y + 2, hit.Z) end
+    elseif input.KeyCode == Enum.KeyCode.X then
+        if Settings.Teleport then 
+            local char = LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local hit = mouse.Hit.Position
+                    if hit.Y ~= math.huge and hit == hit then char.HumanoidRootPart.CFrame = CFrame.new(hit.X, hit.Y + 2, hit.Z) end
+                end
+            end
         end
-
-    elseif input.KeyCode == Enum.KeyCode.C and Settings.DeleteEnabled then 
-        ActiveModes.Deleting = not ActiveModes.Deleting
-        showNotification("УДАЛЕНИЕ", ActiveModes.Deleting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
-
-    elseif input.KeyCode == Enum.KeyCode.V and Settings.InspectEnabled then 
-        ActiveModes.Inspecting = not ActiveModes.Inspecting
-        showNotification("ИНСПЕКТОР", ActiveModes.Inspecting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
-
+    elseif input.KeyCode == Enum.KeyCode.C and Settings.DeleteEnabled then ActiveModes.Deleting = not ActiveModes.Deleting; showNotification("УДАЛЕНИЕ", ActiveModes.Deleting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
+    elseif input.KeyCode == Enum.KeyCode.V and Settings.InspectEnabled then ActiveModes.Inspecting = not ActiveModes.Inspecting; showNotification("ИНСПЕКТОР", ActiveModes.Inspecting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
     elseif input.KeyCode == Enum.KeyCode.H then
         if Settings.PilotAllowed then
             ActiveModes.Piloting = not ActiveModes.Piloting
@@ -951,57 +741,25 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         else
             showNotification("КВАДРОКОПТЕР", "СНАЧАЛА РАЗРЕШИТЕ В НАСТРОЙКАХ")
         end
-
     elseif input.KeyCode == Enum.KeyCode.G then
         isUiVisible = not isUiVisible 
-        local mainGui = CoreGui:FindFirstChild(uiName)
-        local setGui = CoreGui:FindFirstChild(settingsUiName)
-        local spyGui = CoreGui:FindFirstChild(spyUiName)
+        local mainGui = CoreGui:FindFirstChild(uiName); local setGui = CoreGui:FindFirstChild(settingsUiName); local spyGui = CoreGui:FindFirstChild(spyUiName)
         local twInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        
-        local function toggleFrame(guiObj, targetY)
-            if guiObj then
-                local frame = guiObj:FindFirstChildOfClass("Frame")
-                if frame then TweenService:Create(frame, twInfo, {Position = UDim2.new(1, isUiVisible and CONFIG.UiOffsetX or 50, 0, targetY)}):Play() end
-            end
-        end
-
-        toggleFrame(mainGui, CONFIG.MainOffsetY)
-        toggleFrame(setGui, CONFIG.SettingsOffsetY)
-        toggleFrame(spyGui, CONFIG.SpyOffsetY)
+        local function toggleFrame(guiObj, targetY) if guiObj then local frame = guiObj:FindFirstChildOfClass("Frame"); if frame then TweenService:Create(frame, twInfo, {Position = UDim2.new(1, isUiVisible and CONFIG.UiOffsetX or 50, 0, targetY)}):Play() end end end
+        toggleFrame(mainGui, CONFIG.MainOffsetY); toggleFrame(setGui, CONFIG.SettingsOffsetY); toggleFrame(spyGui, CONFIG.SpyOffsetY)
     end
 end)
 
 local canInteract = true
 mouse.Button1Down:Connect(function()
     if not canInteract then return end
-    
-    local target = mouse.Target
-    if not target then return end
-
-    -- Режим удаления
+    local target = mouse.Target; if not target then return end
     if ActiveModes.Deleting then
-        if target:IsA("BasePart") and target.Anchored then
-            pcall(function() target:Destroy() end)
-            canInteract = false
-            task.spawn(function() task.wait(0.3); canInteract = true end)
-        end
-        
-    -- Режим инспектора
+        if target:IsA("BasePart") and target.Anchored then pcall(function() target:Destroy() end); canInteract = false; task.spawn(function() task.wait(0.3); canInteract = true end) end
     elseif ActiveModes.Inspecting then
-        warn("--- [ 🔍 ИНСПЕКТОР ] ---")
-        print("Имя: " .. target.Name)
-        print("Класс: " .. target.ClassName)
-        print("Полный путь: " .. target:GetFullName())
-        
-        -- Если это физический объект, дополнительно выводим его координаты
-        if target:IsA("BasePart") then
-            print(string.format("Позиция: %.2f, %.2f, %.2f", target.Position.X, target.Position.Y, target.Position.Z))
-        end
-        print("------------------------")
-        
-        canInteract = false
-        task.spawn(function() task.wait(0.3); canInteract = true end)
+        warn("--- [ 🔍 ИНСПЕКТОР ] ---"); print("Имя: " .. target.Name); print("Класс: " .. target.ClassName); print("Полный путь: " .. target:GetFullName())
+        if target:IsA("BasePart") then print(string.format("Позиция: %.2f, %.2f, %.2f", target.Position.X, target.Position.Y, target.Position.Z)) end
+        print("------------------------"); canInteract = false; task.spawn(function() task.wait(0.3); canInteract = true end)
     end
 end)
 
@@ -1022,13 +780,19 @@ Players.PlayerRemoving:Connect(function(p)
     if activeSpyPage == "spectate" or activeSpyPage == "teleport" then updateDropdownList() end
 end)
 
+-- ==========================================
+-- ИДЕАЛЬНАЯ ФИЗИКА ДРОНА С LINEARVELOCITY
+-- ==========================================
 GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
-    if not ActiveModes.Piloting or not DroneModel then return end
+    if not ActiveModes.Piloting or not Hitbox then return end
 
     local moveInput = Vector3.zero
     local droneRotationMatrix = CFrame.identity
 
     if isPowered then
+        linVel.Enabled = true
+        alignOri.Enabled = true
+
         if camMode == "Plane" then
             local screenSize = Camera.ViewportSize
             local mouseX, mouseY = mouse.X, mouse.Y
@@ -1055,7 +819,6 @@ GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
 
             planeRoll = planeRoll + ((-offsetX * math.rad(60)) - planeRoll) * 0.1
             droneRotationMatrix = fpvRotation * CFrame.Angles(0, 0, planeRoll)
-
         else
             local flatLook = Vector3.new(Camera.CFrame.LookVector.X, 0, Camera.CFrame.LookVector.Z)
             local lookDir = flatLook.Magnitude > 0.001 and flatLook.Unit or Vector3.new(0, 0, -1)
@@ -1089,100 +852,33 @@ GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
 
         if moveInput.Magnitude > 0.001 then moveInput = moveInput.Unit else moveInput = Vector3.zero end
         
-        local currentMaxSpeed = CONFIG.DroneSpeed
-        local targetVelocity = moveInput * currentMaxSpeed
+        -- Устанавливаем целевую скорость для физического движка Роблокса
+        local targetVelocity = moveInput * CONFIG.DroneSpeed
         currentVelocity = currentVelocity:Lerp(targetVelocity, CONFIG.Acceleration * dt)
+
+        linVel.VectorVelocity = currentVelocity
+        alignOri.CFrame = droneRotationMatrix
 
         currentPropSpeed = math.min(2000, currentPropSpeed + 4000 * dt)
     else
-        currentVelocity = currentVelocity - Vector3.new(0, Workspace.Gravity * dt, 0)
-        currentVelocity = currentVelocity * (1 - 0.5 * dt) 
-
-        if camMode == "Plane" then
-            planeRoll = planeRoll * 0.95
-            droneRotationMatrix = fpvRotation * CFrame.Angles(0, 0, planeRoll)
-        else
-            tiltX = tiltX * 0.95
-            tiltZ = tiltZ * 0.95
-            droneRotationMatrix = CFrame.Angles(0, orbitYaw, 0) * CFrame.Angles(math.rad(tiltX), 0, math.rad(tiltZ))
-        end
+        -- Если двигатели выключены - отдаем дрон гравитации
+        linVel.Enabled = false
+        alignOri.Enabled = false
+        
+        -- Считываем реальную скорость и позицию, чтобы при включении не было резких дерганий
+        currentVelocity = Hitbox.AssemblyLinearVelocity
+        local tumbleCFrame = Hitbox.CFrame - Hitbox.Position
+        
+        -- Обновляем переменные угла камеры, чтобы при включении он продолжал смотреть куда упал
+        orbitYaw = math.atan2(-tumbleCFrame.LookVector.X, -tumbleCFrame.LookVector.Z)
+        fpvRotation = tumbleCFrame
+        tiltX, tiltZ, planeRoll = 0, 0, 0
 
         currentPropSpeed = math.max(0, currentPropSpeed - 1500 * dt)
     end
 
-    local moveStep = currentVelocity * dt
-    local isGrounded = false
-
-    -- === ИДЕАЛЬНАЯ СИСТЕМА КОЛЛИЗИЙ V3 ===
-    if CONFIG.Collision then
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = {DroneModel, LocalPlayer.Character}
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        params.RespectCanCollide = true -- ИГНОРИРУЕТ НЕВИДИМЫЕ ТРИГГЕРЫ (Исправляет баги с залипанием в воздухе)
-        
-        local castSize = Vector3.new(1.8, 0.4, 1.8) -- Blockcast точнее, покрывает всю плоскость дрона с лопастями
-        local testPos = currentPosition
-        local remainingMove = moveStep
-        
-        for bounce = 1, 4 do
-            if remainingMove.Magnitude < 0.001 then break end
-            
-            local hit = Workspace:Blockcast(CFrame.new(testPos), castSize, remainingMove, params)
-            
-            if hit then
-                if hit.Distance <= 0.01 then
-                    -- Если дрон уже залез в текстуру, агрессивно выталкиваем
-                    local pushDir = hit.Normal.Magnitude > 0 and hit.Normal or Vector3.new(0, 1, 0)
-                    testPos += pushDir * 0.1
-                    
-                    local vDot = currentVelocity:Dot(pushDir)
-                    if vDot < 0 then currentVelocity -= pushDir * vDot end
-                else
-                    -- Двигаемся почти до упора
-                    local safeDist = math.max(0, hit.Distance - 0.01)
-                    local step = remainingMove.Unit * safeDist
-                    testPos += step
-                    
-                    -- Скольжение вдоль стены/пола/потолка
-                    local leftover = remainingMove - step
-                    remainingMove = leftover - hit.Normal * leftover:Dot(hit.Normal)
-                    
-                    -- Гасим скорость удара
-                    local vDot = currentVelocity:Dot(hit.Normal)
-                    if vDot < 0 then 
-                        currentVelocity -= hit.Normal * vDot 
-                        if hit.Normal.Y > 0.7 then isGrounded = true end
-                    end
-                end
-            else
-                testPos += remainingMove
-                break
-            end
-        end
-
-        -- СИСТЕМА АНТИ-КЛИП (Аварийный возврат)
-        -- Если на скорости дрон пробил стену, этот код вернет его обратно!
-        local overlapParams = OverlapParams.new()
-        overlapParams.FilterDescendantsInstances = {DroneModel, LocalPlayer.Character}
-        overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-        overlapParams.RespectCanCollide = true
-
-        local overlaps = Workspace:GetPartBoundsInBox(CFrame.new(testPos), Vector3.new(1, 0.2, 1), overlapParams)
-        if #overlaps > 0 then
-            testPos = currentPosition -- Отменяем весь кривой кадр движения
-            currentVelocity = Vector3.zero -- Мгновенная остановка
-        end
-
-        moveStep = testPos - currentPosition
-    end
-    
-    if not isPowered and isGrounded then 
-        currentVelocity = currentVelocity * 0.85 
-    end
-
-    currentPosition += moveStep
-
-    local finalCFrame = CFrame.new(currentPosition) * droneRotationMatrix
+    -- Визуальное перемещение частей дрона к невидимому хитбоксу
+    local finalCFrame = Hitbox.CFrame
     PrimaryPart.CFrame = finalCFrame
     EyePart.CFrame = finalCFrame * CFrame.new(0, 0, -0.3)
     
