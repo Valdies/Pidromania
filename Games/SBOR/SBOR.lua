@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -50,7 +51,12 @@ local translations = {
         pathLoading = "⏳ Загрузка...",
         pathError = "❌ Ошибка!",
         pathSuccess = "✅ Запущен!",
-        noPathsForFloor = "Для этого этажа нет путей."
+        noPathsForFloor = "Для этого этажа нет путей.",
+        roomsAndLocs = "Комнаты и Локации: %s (%s)",
+        noExtraLocs = "⚠️ Для этого этажа нет дополнительных локаций.",
+        youAreOnFloor = "Вы на этаже: %s (ID: %d)",
+        pathsTitle = "Пути (Paths)",
+        farmPrefix = "Farm: "
     },
     uk = {
         hubTitle = "Pidromania Hub: Sword Blox Online",
@@ -88,7 +94,12 @@ local translations = {
         pathLoading = "⏳ Завантаження...",
         pathError = "❌ Помилка!",
         pathSuccess = "✅ Запущено!",
-        noPathsForFloor = "Для цього поверху немає шляхів."
+        noPathsForFloor = "Для цього поверху немає шляхів.",
+        roomsAndLocs = "Кімнати та Локації: %s (%s)",
+        noExtraLocs = "⚠️ Для цього поверху немає додаткових локацій.",
+        youAreOnFloor = "Ви на поверсі: %s (ID: %d)",
+        pathsTitle = "Шляхи (Авто-скрипти)",
+        farmPrefix = "Фарм: "
     },
     kk = {
         hubTitle = "Pidromania Hub: Sword Blox Online",
@@ -126,7 +137,12 @@ local translations = {
         pathLoading = "⏳ Жүктеу...",
         pathError = "❌ Қате!",
         pathSuccess = "✅ Іске қосылды!",
-        noPathsForFloor = "Бұл қабатқа жолдар жоқ."
+        noPathsForFloor = "Бұл қабатқа жолдар жоқ.",
+        roomsAndLocs = "Бөлмелер мен Локациялар: %s (%s)",
+        noExtraLocs = "⚠️ Бұл қабатта қосымша локациялар жоқ.",
+        youAreOnFloor = "Сіз мына қабаттасыз: %s (ID: %d)",
+        pathsTitle = "Жолдар (Авто-скрипттер)",
+        farmPrefix = "Фарм: "
     },
     en = {
         hubTitle = "Pidromania Hub: Sword Blox Online",
@@ -164,13 +180,78 @@ local translations = {
         pathLoading = "⏳ Loading...",
         pathError = "❌ Error!",
         pathSuccess = "✅ Started!",
-        noPathsForFloor = "No paths for this floor."
+        noPathsForFloor = "No paths for this floor.",
+        roomsAndLocs = "Rooms & Locations: %s (%s)",
+        noExtraLocs = "⚠️ No extra locations for this floor.",
+        youAreOnFloor = "You are on floor: %s (ID: %d)",
+        pathsTitle = "Paths (Scripts)",
+        farmPrefix = "Farm: "
     }
 }
 
--- Функция для получения строки перевода по ключу
 local function T(key)
     return translations[currentLang][key] or ("???" .. key .. "???")
+end
+
+-- ==============================================================================
+-- === ПЕРЕМЕННЫЕ СОСТОЯНИЯ ===
+-- ==============================================================================
+local isFrozen = false
+local freezeConnection = nil
+local resurrectionActive = false
+local resurrectionConnections = {}
+local currentFarmMode = nil
+local individualFreezeConnection = nil
+local screenGui = nil
+local indicator = nil
+local playerListGui = nil
+local playerListUpdateLoop = nil
+local materialFarmActive = false
+local fishFarmActive = false
+local selectedMaterials = {}
+local autoWalkActive = false
+local autoWalkConnection = nil
+local mobsFolder = nil
+local safe1Active = false
+local playerListActive = false
+
+-- ==============================================================================
+-- === 💾 СОХРАНЕНИЕ / ЗАГРУЗКА НАСТРОЕК ===
+-- ==============================================================================
+local FOLDER_NAME = "PidromaniaHub"
+local FILE_NAME = FOLDER_NAME .. "/SBOR_Config.json"
+
+local function SaveConfig()
+    if writefile and isfolder then
+        if not isfolder(FOLDER_NAME) then makefolder(FOLDER_NAME) end
+        local data = { 
+            language = currentLang,
+            safe1 = safe1Active,
+            respawn = resurrectionActive,
+            playerList = playerListActive,
+            autoWalk = autoWalkActive,
+            fishFarm = fishFarmActive,
+            materialFarm = materialFarmActive,
+            ores = selectedMaterials
+        }
+        pcall(function() writefile(FILE_NAME, HttpService:JSONEncode(data)) end)
+    end
+end
+
+local function LoadConfig()
+    if readfile and isfile and isfile(FILE_NAME) then
+        pcall(function()
+            local data = HttpService:JSONDecode(readfile(FILE_NAME))
+            if data.language and translations[data.language] then currentLang = data.language end
+            if type(data.safe1) == "boolean" then safe1Active = data.safe1 end
+            if type(data.respawn) == "boolean" then resurrectionActive = data.respawn end
+            if type(data.playerList) == "boolean" then playerListActive = data.playerList end
+            if type(data.autoWalk) == "boolean" then autoWalkActive = data.autoWalk end
+            if type(data.fishFarm) == "boolean" then fishFarmActive = data.fishFarm end
+            if type(data.materialFarm) == "boolean" then materialFarmActive = data.materialFarm end
+            if type(data.ores) == "table" then selectedMaterials = data.ores end
+        end)
+    end
 end
 
 -- ==============================================================================
@@ -178,7 +259,7 @@ end
 -- ==============================================================================
 local FLOORS = {
     --{-2,  "Зимний ивент", 86400682391969}, НИ В КОЕМ СЛУЧАЕ НЕ УДАЛЯТЬ
-    --{-1, "Пасхальный ивент", 10299594856}, НИ В КОЕМ СЛУЧАЕ НЕ УДАЛЯТЬ
+    {-1, "Пасхальный ивент", 10299594856}, НИ В КОЕМ СЛУЧАЕ НЕ УДАЛЯТЬ
     {1,  "Town Of Beginnings", 4733293382},
     {2,  "Swordsman Fields", 4734865416},
     {3,  "Swamp Lands", 4735703075},
@@ -535,27 +616,6 @@ local FLOOR_19_PATHS = {
 }
 local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
--- ==============================================================================
--- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЙ ===
--- ==============================================================================
-local isFrozen = false
-local freezeConnection = nil
-local resurrectionActive = false
-local resurrectionConnections = {}
-local currentFarmMode = nil
-local individualFreezeConnection = nil
-local screenGui = nil
-local indicator = nil
-local playerListGui = nil
-local playerListUpdateLoop = nil
-local materialFarmActive = false
-local fishFarmActive = false
-local selectedMaterials = {}
-local autoWalkActive = false
-local autoWalkConnection = nil
-local mobsFolder = nil
-local safe1Active = false -- Переменная для Safe 1
-
 -- Настройки для авто-ходьбы к мобам
 local AUTO_WALK_CONFIG = {
     WalkSpeed = 30,
@@ -568,7 +628,6 @@ local AUTO_WALK_CONFIG = {
 -- === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 -- ==============================================================================
 
--- Функция телепортации игрока по координатам
 local function teleport(pos)
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -576,7 +635,6 @@ local function teleport(pos)
     end
 end
 
--- Создание платформы в воздухе (для фарма некоторых боссов)
 local function spawnPlatform(pos)
     local platform = Instance.new("Part")
     platform.Name = "PidromaniaPlatform"
@@ -590,7 +648,6 @@ local function spawnPlatform(pos)
     return platform
 end
 
--- Заморозка персонажа в одной точке (сохраняет позицию каждый кадр)
 local function freezePlayer()
     local char = player.Character
     if not char then return end
@@ -609,7 +666,6 @@ local function freezePlayer()
     end)
 end
 
--- Снятие заморозки
 local function unfreezePlayer()
     if individualFreezeConnection then
         individualFreezeConnection:Disconnect()
@@ -617,7 +673,6 @@ local function unfreezePlayer()
     end
 end
 
--- Инициализация индикатора фарма (квадратик сбоку)
 local function initGUI()
     if screenGui then return end
     
@@ -634,14 +689,12 @@ local function initGUI()
     indicator.Parent = screenGui
 end
 
--- Обновление цвета индикатора (зеленый - моб найден, красный - нет)
 local function updateIndicator(isNear)
     if indicator then
         indicator.BackgroundColor3 = isNear and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
     end
 end
 
--- Поиск папки с мобами в Workspace
 local function findMobsFolder()
     local folder = Workspace:FindFirstChild("Mobs")
     if not folder then
@@ -654,7 +707,6 @@ local function findMobsFolder()
     return folder
 end
 
--- Получение уровня игрока из различных параметров (для списка игроков и ESP)
 local function getPlayerLevel(plr)
     local stats = plr:FindFirstChild("PlayerStats")
     if stats then
@@ -762,7 +814,6 @@ local function createPlayerListGui()
     
     updateList()
     
-    -- Цикл обновления списка каждые 5 секунд
     playerListUpdateLoop = spawn(function()
         while playerListGui and playerListGui.Parent do
             task.wait(5)
@@ -790,7 +841,6 @@ end
 -- === ФУНКЦИИ УТИЛИТ (Фриз, Воскрешение, Safe 1) ===
 -- ==============================================================================
 
--- Логика Safe 1 (Смерть при 2+ игроках)
 local function startSafe1()
     if safe1Active then return end
     safe1Active = true
@@ -801,11 +851,11 @@ local function startSafe1()
                 if char then
                     local humanoid = char:FindFirstChild("Humanoid")
                     if humanoid and humanoid.Health > 0 then
-                        humanoid.Health = 0 -- Убиваем персонажа
+                        humanoid.Health = 0
                     end
                 end
             end
-            task.wait(5) -- Проверка каждые 5 секунд
+            task.wait(5)
         end
     end)
 end
@@ -821,7 +871,7 @@ local function toggleFreeze()
         if character then
             local hrp = character:FindFirstChild("HumanoidRootPart")
             if hrp then
-                freezePosition = hrp.CFrame
+                local freezePosition = hrp.CFrame
                 if freezeConnection then freezeConnection:Disconnect() end
                 
                 freezeConnection = RunService.RenderStepped:Connect(function()
@@ -853,7 +903,6 @@ local function cleanupResurrection()
     resurrectionActive = false
 end
 
--- Сохраняет позицию каждую секунду и возвращает туда при смерти
 local function setupResurrection()
     if resurrectionActive then return end
     cleanupResurrection()
@@ -906,7 +955,7 @@ local function setupResurrection()
 end
 
 -- ==============================================================================
--- === ЛОГИКА AUTO-WALK (Авто-ходьба к мобам) ===
+-- === ЛОГИКА AUTO-WALK ===
 -- ==============================================================================
 local function startAutoWalk()
     if autoWalkActive then return end
@@ -933,7 +982,6 @@ local function startAutoWalk()
         local nearestMob = nil
         local nearestDist = AUTO_WALK_CONFIG.MaxDistance
         
-        -- Поиск ближайшего моба
         for _, mob in ipairs(mobsFolder:GetChildren()) do
             if mob:IsA("Model") or mob:IsA("BasePart") then
                 local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
@@ -947,7 +995,6 @@ local function startAutoWalk()
             end
         end
         
-        -- Движение к найденному мобу
         if nearestMob then
             local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
             if targetPart then
@@ -970,11 +1017,6 @@ local function stopAutoWalk()
     end
 end
 
-player.CharacterAdded:Connect(function(char)
-    task.wait(1)
-    local humanoid = char:FindFirstChild("Humanoid")
-end)
-
 -- ==============================================================================
 -- === ЛОГИКА ФАРМА БОССОВ (Телепорт мобов к игроку) ===
 -- ==============================================================================
@@ -990,7 +1032,6 @@ local function startGenericFarm(bossName, farmPos)
     local isEasterFarm = (bossName == "Фарм: Центр (Пасха)" and game.PlaceId == 10299594856)
     local platform = nil
     
-    -- Спавн платформ и телепорт для специфичных боссов
     if isFrontman then
         local platformPos = Vector3.new(-38.32, 80.40, -285.61)
         platform = spawnPlatform(platformPos)
@@ -1037,7 +1078,6 @@ local function startGenericFarm(bossName, farmPos)
         local isFloor19 = (placeId == 130463264320898)
         local isCurrentlyFrontman = (bossName == "Frontman")
         
-        -- Главный цикл фарма
         while currentFarmMode == bossName do
             local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then break end
@@ -1052,24 +1092,20 @@ local function startGenericFarm(bossName, farmPos)
                         if torso and torso:IsA("BasePart") then
                             local shouldProcess = false
                             
-                            -- Логика проверок дистанции для разных боссов и этажей
                             if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
                                 local delta = torso.Position - farmPos
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
                                 
-                                -- Отдельная логика для Frostveil (тянем мобов снизу)
                                 if isCurrentlyFrostveil then
                                     if horizontalDist <= 10 and verticalDelta >= -50 and verticalDelta <= 0 then
                                         shouldProcess = true
                                     end
-                                -- Логика для Пасхи (радиус 15, только те, что ниже)
                                 elseif isEasterFarm then
                                     if horizontalDist <= 4 and verticalDelta <= 0 then
                                         shouldProcess = true
                                     end
                                 else
-                                    -- Старая логика для остальных боссов
                                     if horizontalDist <= 15 then
                                         if isCurrentlyVladimir or isCurrentlyFloor8Mob then
                                             if verticalDelta >= 0 and verticalDelta <= 50 then
@@ -1097,7 +1133,6 @@ local function startGenericFarm(bossName, farmPos)
                                 end
                             end
                             
-                            -- Если моб в зоне видимости, телепортируем его к игроку
                             if shouldProcess then
                                 foundAny = true
                                 torso.Anchored = true
@@ -1207,7 +1242,16 @@ local function stopFishFarm()
     fishFarmActive = false
 end
 
--- Вспомогательная функция для создания кнопок-переключателей
+-- Загрузка настроек
+LoadConfig()
+if safe1Active then startSafe1() end
+if resurrectionActive then setupResurrection() end
+if autoWalkActive then startAutoWalk() end
+if materialFarmActive then startMaterialFarm() end
+if fishFarmActive then startFishFarm() end
+if playerListActive then createPlayerListGui() end
+
+-- Вспомогательная функция для переключателей
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     local switchFrame = Instance.new("Frame")
     switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -1272,6 +1316,7 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
             isEnabled = not isEnabled
             onToggle(isEnabled)
             updateToggle()
+            SaveConfig()
         end
     end)
     
@@ -1291,14 +1336,12 @@ local function rebuildGUI()
         screenGuiMain:Destroy()
     end
     
-    -- Главный слой интерфейса
     screenGuiMain = Instance.new("ScreenGui")
     screenGuiMain.Name = "PidromaniaHub"
     screenGuiMain.ResetOnSpawn = false
     screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGuiMain.Parent = player:WaitForChild("PlayerGui")
     
-    -- Основное окно (можно перемещать)
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
     mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
@@ -1312,14 +1355,12 @@ local function rebuildGUI()
     mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
     mainFrameCorner.Parent = mainFrame
     
-    -- Невидимый слой для корректного перетаскивания окна
     local dragDetector = Instance.new("Frame")
     dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
     dragDetector.Position = UDim2.new(0, 0, 0, 0)
     dragDetector.BackgroundTransparency = 1
     dragDetector.Parent = mainFrame
     
-    -- Свернутая панель
     local minimizedFrame = Instance.new("Frame")
     minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
     minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
@@ -1350,7 +1391,6 @@ local function rebuildGUI()
         end
     end)
     
-    -- Шапка основного меню (Верхняя полоса)
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
     header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -1386,7 +1426,6 @@ local function rebuildGUI()
     author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
     author.Parent = header
     
-    -- Кнопка сворачивания меню
     local minimizeBtn = Instance.new("TextButton")
     minimizeBtn.Text = "--"
     minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
@@ -1402,7 +1441,6 @@ local function rebuildGUI()
         minimizedFrame.Visible = true
     end)
     
-    -- Создание левой панели навигации
     local leftPanel = Instance.new("Frame")
     leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
     leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
@@ -1414,7 +1452,6 @@ local function rebuildGUI()
     cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
     cornerLeft.Parent = leftPanel
     
-    -- Правая панель, где отображается выбранный контент (кнопки, тоглы и т.д.)
     local rightPanel = Instance.new("Frame")
     rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
     rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
@@ -1611,7 +1648,7 @@ local function rebuildGUI()
         end
         
         local headerLabel = Instance.new("TextLabel")
-        headerLabel.Text = "Комнаты и Локации: " .. currentFloor[1] .. " (" .. currentFloor[2] .. ")"
+        headerLabel.Text = string.format(T("roomsAndLocs"), currentFloor[1], currentFloor[2])
         headerLabel.Size = UDim2.new(1, 0, 0, 25 * 1.5)
         headerLabel.BackgroundTransparency = 1
         headerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -1624,7 +1661,7 @@ local function rebuildGUI()
         
         if #extraLocations == 0 then
             local infoLabel = Instance.new("TextLabel")
-            infoLabel.Text = "⚠️ Для этого этажа нет дополнительных локаций."
+            infoLabel.Text = T("noExtraLocs")
             infoLabel.Size = UDim2.new(1, 0, 0, 20 * 1.5)
             infoLabel.BackgroundTransparency = 1
             infoLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
@@ -1701,7 +1738,7 @@ local function rebuildGUI()
             local bossName, farmPos = unpack(farmData)
             local isActive = (currentFarmMode == bossName)
             
-            local switchFrame, setState = createToggleSwitch(contentContainer, "Farm: " .. bossName, isActive, function(enabled)
+            local switchFrame, setState = createToggleSwitch(contentContainer, T("farmPrefix") .. bossName, isActive, function(enabled)
                 stopAllFarms()
                 if enabled then
                     startGenericFarm(bossName, farmPos)
@@ -1774,6 +1811,7 @@ local function rebuildGUI()
                     selectedMaterials[matName],
                     function(enabled)
                         selectedMaterials[matName] = enabled
+                        SaveConfig()
                     end
                 )
                 switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
@@ -1786,19 +1824,21 @@ local function rebuildGUI()
             T("startFarmBtn"),
             materialFarmActive,
             function(enabled)
+                materialFarmActive = enabled
                 if enabled then
                     local anySelected = false
                     for _, state in pairs(selectedMaterials) do
                         if state then anySelected = true break end
                     end
                     if not anySelected then
-                        enabled = false
+                        materialFarmActive = false
                     else
                         startMaterialFarm()
                     end
                 else
                     stopMaterialFarm()
                 end
+                SaveConfig()
             end
         )
         activeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset + 10 * 1.5)
@@ -1808,11 +1848,13 @@ local function rebuildGUI()
             T("autoFish"),
             fishFarmActive,
             function(enabled)
+                fishFarmActive = enabled
                 if enabled then
                     startFishFarm()
                 else
                     stopFishFarm()
                 end
+                SaveConfig()
             end
         )
         fishToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset + 10 * 1.5 + 45 * 1.5)
@@ -1824,7 +1866,7 @@ local function rebuildGUI()
     local function showPaths()
         clearContent()
         local title = Instance.new("TextLabel")
-        title.Text = "Пути (Paths)"
+        title.Text = T("pathsTitle")
         title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
         title.BackgroundTransparency = 1
         title.TextColor3 = Color3.fromRGB(200, 200, 255)
@@ -1856,7 +1898,7 @@ local function rebuildGUI()
             yOffset = yOffset + 30 * 1.5
         else
             local infoLabel = Instance.new("TextLabel")
-            infoLabel.Text = string.format("Вы на этаже: %s (ID: %d)", currentFloorData[2], currentFloorData[1])
+            infoLabel.Text = string.format(T("youAreOnFloor"), currentFloorData[2], currentFloorData[1])
             infoLabel.Size = UDim2.new(1, 0, 0, 20 * 1.5)
             infoLabel.BackgroundTransparency = 1
             infoLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
@@ -1870,7 +1912,6 @@ local function rebuildGUI()
             local pathsForFloor = nil
             local pathBaseUrl = nil
             
-            -- Выбор путей в зависимости от текущего этажа
             if currentFloorData[1] == 2 then
                 pathsForFloor = FLOOR_2_PATHS
                 pathBaseUrl = PATH_BASE_URL_2
@@ -1924,7 +1965,6 @@ local function rebuildGUI()
                     corner.CornerRadius = UDim.new(0, 6 * 1.5)
                     corner.Parent = pathBtn
                     
-                    -- Загрузка и запуск файла
                     pathBtn.MouseButton1Click:Connect(function()
                         local originalText = pathBtn.Text
                         pathBtn.Text = T("pathLoading")
@@ -1983,33 +2023,27 @@ local function rebuildGUI()
         
         local yOffset = 30 * 1.5
         
-        -- === НОВОЕ: Кнопка Safe 1 ===
         local safe1Switch, _ = createToggleSwitch(
             contentContainer,
             T("safe1Toggle"),
             safe1Active,
             function(enabled)
-                if enabled then
-                    startSafe1()
-                else
-                    stopSafe1()
-                end
+                safe1Active = enabled
+                if enabled then startSafe1() else stopSafe1() end
+                SaveConfig()
             end
         )
         safe1Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
-        -- ===========================
         
         local autoWalkSwitch, setAutoWalkState = createToggleSwitch(
             contentContainer,
             T("autoMobWalk"),
             autoWalkActive,
             function(enabled)
-                if enabled then
-                    startAutoWalk()
-                else
-                    stopAutoWalk()
-                end
+                autoWalkActive = enabled
+                if enabled then startAutoWalk() else stopAutoWalk() end
+                SaveConfig()
             end
         )
         autoWalkSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
@@ -2022,21 +2056,17 @@ local function rebuildGUI()
         yOffset = yOffset + 35 * 1.5
         
         local resSwitch, setResState = createToggleSwitch(contentContainer, T("respawnToggle"), resurrectionActive, function(enabled)
-            if enabled then
-                setupResurrection()
-            else
-                cleanupResurrection()
-            end
+            resurrectionActive = enabled
+            if enabled then setupResurrection() else cleanupResurrection() end
+            SaveConfig()
         end)
         resSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
         
-        local playerListSwitch, _ = createToggleSwitch(contentContainer, T("playerListToggle"), playerListGui ~= nil, function(enabled)
-            if enabled then
-                createPlayerListGui()
-            else
-                destroyPlayerListGui()
-            end
+        local playerListSwitch, _ = createToggleSwitch(contentContainer, T("playerListToggle"), playerListActive, function(enabled)
+            playerListActive = enabled
+            if enabled then createPlayerListGui() else destroyPlayerListGui() end
+            SaveConfig()
         end)
         playerListSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
@@ -2081,7 +2111,8 @@ local function rebuildGUI()
             
             btn.MouseButton1Click:Connect(function()
                 currentLang = lang.code
-                rebuildGUI() -- Полностью перестраиваем GUI на новом языке
+                SaveConfig()
+                rebuildGUI()
             end)
             btn.Parent = contentContainer
             yOffset = yOffset + 35 * 1.5
@@ -2163,7 +2194,7 @@ end
 rebuildGUI()
 
 -- ==============================================================================
--- === ESP (ПОДСВЕТКА ИГРОКОВ: ИМЯ И УРОВЕНЬ) ===
+-- === НОВЫЙ ESP ИГРОКОВ (С ПОДСВЕТКОЙ УРОВНЕЙ И ТИТУЛОВ) ===
 -- ==============================================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
@@ -2173,167 +2204,124 @@ end
 local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
--- Удаление ESP при выходе игрока
-local function removeEsp(player)
-    if EspObjects[player] then
-        for _, obj in pairs(EspObjects[player]) do
-            if obj and obj.Destroy then
-                obj:Destroy()
-            end
-        end
-        EspObjects[player] = nil
-    end
-end
-
--- Перевод 3D-координат в 2D (координаты экрана)
-local function toScreen(point)
-    local pos, onScreen = Camera:WorldToViewportPoint(point)
-    return Vector2.new(pos.X, pos.Y), onScreen
-end
-
--- Обновление ESP рамок и текста
-local function updateEsp(player)
-    if player == LocalPlayer or not player.Character then return end
-    local character = player.Character
-    local head = character:FindFirstChild("Head")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not head or not rootPart then return end
-    
-    local headPos, headVisible = toScreen(head.Position)
-    local rootPos, rootVisible = toScreen(rootPart.Position)
-    
-    -- Если игрок не на экране, скрываем ESP
-    if not (headVisible and rootVisible) then
-        if EspObjects[player] then
-            for _, obj in pairs(EspObjects[player]) do
-                if obj then obj.Visible = false end
-            end
-        end
-        return
-    end
-    
-    -- Расчеты для рамки
-    local footOffset = Vector3.new(0, -3, 0)
-    local feetWorld = rootPart.Position + footOffset
-    local feetPos, _ = toScreen(feetWorld)
-    local fullHeight = math.abs(headPos.Y - feetPos.Y)
-    local scaledHeight = fullHeight * 1.5
-    local width = scaledHeight * 0.6
-    local centerY = (headPos.Y + feetPos.Y) / 2
-    local boxY = centerY - scaledHeight / 2
-    local boxX = headPos.X - width / 2
-    
-    -- Создаем объекты Drawing, если их еще нет
-    if not EspObjects[player] then
-        local box = Drawing.new("Square")
-        box.Color = Color3.fromRGB(255, 0, 0)
-        box.Thickness = 2
-        box.Filled = false
-        
-        local nameText = Drawing.new("Text")
-        nameText.Color = Color3.fromRGB(255, 255, 255)
-        nameText.Outline = true
-        nameText.Center = true
-        nameText.Size = 20
-        
-        local levelText = Drawing.new("Text")
-        levelText.Color = Color3.fromRGB(0, 255, 255)
-        levelText.Outline = true
-        levelText.Center = true
-        levelText.Size = 18
-        
-        EspObjects[player] = {box = box, name = nameText, level = levelText}
-    end
-    
-    -- Применяем координаты и размеры
-    local esp = EspObjects[player]
-    esp.box.Size = Vector2.new(width, scaledHeight)
-    esp.box.Position = Vector2.new(boxX, boxY)
-    esp.box.Visible = true
-    
-    -- Логика подсветки особых игроков (по никам)
-    if player.Name == "huesos880055535" then
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        esp.level.Text = "Lvl: Dominus"
-        esp.level.Color = Color3.fromRGB(138, 43, 226)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    elseif player.Name == "ArRoWeNn" then
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        esp.level.Text = "Lvl: Immortal"
-        esp.level.Color = Color3.fromRGB(255, 215, 0)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    elseif player.Name == "Minikokosich" then
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        esp.level.Text = "Lvl: Guardian"
-        esp.level.Color = Color3.fromRGB(30, 144, 255)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    elseif player.Name == "CuRLyCHeBuRaSHKa" then
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        esp.level.Text = "Lvl: Cuddle"
-        esp.level.Color = Color3.fromRGB(255, 20, 147)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    elseif player.Name == "luken_god" then
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        esp.level.Text = "Lvl: 12000"
-        esp.level.Color = Color3.fromRGB(0, 255, 0)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    else
-        esp.name.Text = player.Name
-        esp.name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-        esp.name.Visible = true
-        local level = getPlayerLevel(player)
-        esp.level.Text = "Lvl: " .. tostring(level)
-        esp.level.Color = Color3.fromRGB(0, 255, 255)
-        esp.level.Position = Vector2.new(headPos.X, headPos.Y - 5)
-        esp.level.Visible = true
-    end
-end
+local SPECIAL_PLAYERS = {
+    ["huesos880055535"] = { text = "Lvl: Owner", color = Color3.fromRGB(138, 43, 226) },
+    ["arrowenn"] = { text = "Lvl: Immortal", color = Color3.fromRGB(255, 215, 0) },
+    ["minikokosich"] = { text = "Lvl: Guardian", color = Color3.fromRGB(30, 144, 255) },
+    ["curlycheburashka"] = { text = "Lvl: Cuddle", color = Color3.fromRGB(255, 20, 147) },
+    ["luken_god"] = { text = "Lvl: 12000", color = Color3.fromRGB(0, 255, 0) }
+}
 
 -- Удаление ESP при выходе игрока
-Players.PlayerRemoving:Connect(removeEsp)
-
--- Подключение ESP ко всем текущим игрокам
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        spawn(function()
-            while player and player.Character do
-                updateEsp(player)
-                RunService.RenderStepped:Wait()
+local function removeEsp(playerName)
+    if EspObjects[playerName] then
+        for _, drawing in pairs(EspObjects[playerName]) do
+            if drawing.Remove then 
+                drawing.Visible = false 
+                drawing:Remove() 
             end
-        end)
+        end
+        EspObjects[playerName] = nil
     end
 end
 
--- Подключение ESP к заходящим игрокам
-Players.PlayerAdded:Connect(function(player)
-    if player == LocalPlayer then return end
-    spawn(function()
-        while player and player.Character do
-            updateEsp(player)
-            RunService.RenderStepped:Wait()
-        end
-    end)
+Players.PlayerRemoving:Connect(function(plr)
+    removeEsp(plr.Name)
 end)
 
--- Основной цикл обновления ESP каждый кадр
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        updateEsp(player)
+-- Перевод 3D-координат в 2D (координаты экрана)
+local function toScreen(pos, CameraObj)
+    if not CameraObj then return Vector2.new(0,0), false end
+    local vp, on = CameraObj:WorldToViewportPoint(pos)
+    return Vector2.new(vp.X, vp.Y), on
+end
+
+spawn(function()
+    while true do
+        local Cam = workspace.CurrentCamera
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr == LocalPlayer then continue end
+            
+            local pName = plr.Name
+            local char = plr.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local head = char and char:FindFirstChild("Head")
+
+            -- Если игрок мертв или модель не прогрузилась — прячем ESP
+            if not char or not hum or not root or not head or hum.Health <= 0 then
+                if EspObjects[pName] then
+                    for _, d in pairs(EspObjects[pName]) do d.Visible = false end
+                end
+                continue
+            end
+
+            local pNameLower = string.lower(pName)
+            local specialData = SPECIAL_PLAYERS[pNameLower]
+            
+            -- Подсветка модели (Highlight)
+            if specialData and not char:FindFirstChild("EspHighlight") then
+                local hl = Instance.new("Highlight") 
+                hl.Name = "EspHighlight" 
+                hl.FillColor = specialData.color 
+                hl.OutlineColor = specialData.color 
+                hl.FillTransparency = 0.7 
+                hl.Parent = char
+            end
+
+            -- Создаем рамки и текст, если их еще нет
+            if not EspObjects[pName] then
+                EspObjects[pName] = {
+                    box = Drawing.new("Square"), 
+                    name = Drawing.new("Text"), 
+                    level = Drawing.new("Text")
+                }
+                EspObjects[pName].box.Thickness = 2 
+                EspObjects[pName].box.Filled = false
+                EspObjects[pName].name.Size = 20 
+                EspObjects[pName].name.Outline = true 
+                EspObjects[pName].name.Center = true
+                EspObjects[pName].level.Size = 18 
+                EspObjects[pName].level.Outline = true 
+                EspObjects[pName].level.Center = true
+            end
+
+            local e = EspObjects[pName]
+            local hPos, hVis = toScreen(head.Position, Cam)
+            local rPos, rVis = toScreen(root.Position - Vector3.new(0, 3, 0), Cam)
+
+            if hVis and rVis then
+                local height = math.abs(hPos.Y - rPos.Y) * 1.5
+                local width = height * 0.6
+                
+                -- Настраиваем рамку
+                e.box.Size = Vector2.new(width, height) 
+                e.box.Position = Vector2.new(hPos.X - width/2, hPos.Y - height*0.15)
+                e.box.Color = specialData and specialData.color or Color3.fromRGB(255, 0, 0)
+                e.box.Visible = true
+                
+                -- Настраиваем имя
+                e.name.Text = pName 
+                e.name.Color = Color3.fromRGB(255, 255, 255)
+                e.name.Position = Vector2.new(hPos.X, hPos.Y - 25)
+                e.name.Visible = true
+
+                -- Настраиваем уровень/титул
+                if specialData then
+                    e.level.Text = specialData.text 
+                    e.level.Color = specialData.color 
+                else
+                    e.level.Text = "Lvl: " .. tostring(getPlayerLevel(plr))
+                    e.level.Color = Color3.fromRGB(0, 255, 255) 
+                end
+                e.level.Position = Vector2.new(hPos.X, hPos.Y - 5) 
+                e.level.Visible = true
+            else
+                e.box.Visible = false 
+                e.name.Visible = false 
+                e.level.Visible = false 
+            end
+        end
+        RunService.RenderStepped:Wait()
     end
 end)
