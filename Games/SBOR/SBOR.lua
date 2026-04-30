@@ -8,6 +8,7 @@ local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -55,7 +56,7 @@ local translations = {
         roomsAndLocs = "Комнаты и Локации: %s (%s)",
         noExtraLocs = "⚠️ Для этого этажа нет дополнительных локаций.",
         youAreOnFloor = "Вы на этаже: %s (ID: %d)",
-        pathsTitle = "Пути (Paths)",
+        pathsTitle = "Пути",
         farmPrefix = "Farm: "
     },
     uk = {
@@ -98,7 +99,7 @@ local translations = {
         roomsAndLocs = "Кімнати та Локації: %s (%s)",
         noExtraLocs = "⚠️ Для цього поверху немає додаткових локацій.",
         youAreOnFloor = "Ви на поверсі: %s (ID: %d)",
-        pathsTitle = "Шляхи (Авто-скрипти)",
+        pathsTitle = "Шляхи",
         farmPrefix = "Фарм: "
     },
     kk = {
@@ -141,7 +142,7 @@ local translations = {
         roomsAndLocs = "Бөлмелер мен Локациялар: %s (%s)",
         noExtraLocs = "⚠️ Бұл қабатта қосымша локациялар жоқ.",
         youAreOnFloor = "Сіз мына қабаттасыз: %s (ID: %d)",
-        pathsTitle = "Жолдар (Авто-скрипттер)",
+        pathsTitle = "Жолдар",
         farmPrefix = "Фарм: "
     },
     en = {
@@ -184,7 +185,7 @@ local translations = {
         roomsAndLocs = "Rooms & Locations: %s (%s)",
         noExtraLocs = "⚠️ No extra locations for this floor.",
         youAreOnFloor = "You are on floor: %s (ID: %d)",
-        pathsTitle = "Paths (Scripts)",
+        pathsTitle = "Paths",
         farmPrefix = "Farm: "
     }
 }
@@ -210,10 +211,10 @@ local materialFarmActive = false
 local fishFarmActive = false
 local selectedMaterials = {}
 local autoWalkActive = false
-local autoWalkConnection = nil
 local mobsFolder = nil
 local safe1Active = false
 local playerListActive = false
+local autoClickerActive = false
 
 -- ==============================================================================
 -- === SAVE / LOAD CONFIG ===
@@ -258,8 +259,7 @@ end
 -- === GAME DATABASES ===
 -- ==============================================================================
 local FLOORS = {
-    -- {-2,  "Зимний ивент", 86400682391969}, -- DO NOT DELETE
-    {-1, "Пасхальный ивент", 10299594856}, -- DO NOT DELETE
+    {-1, "Пасхальный ивент", 10299594856},
     {1,  "Town Of Beginnings", 4733293382},
     {2,  "Swordsman Fields", 4734865416},
     {3,  "Swamp Lands", 4735703075},
@@ -378,6 +378,7 @@ local BOSS_FARMS = {
         {"Фарм: Центр (Пасха)", Vector3.new(24.45, 267.77, 400.73)}
     },
     [4734865416] = {
+        {"MobFarm", Vector3.new(-1042.60, -250, -553.53)},
         {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
         {"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}
     },
@@ -594,7 +595,7 @@ local AUTO_WALK_CONFIG = {
 }
 
 -- ==============================================================================
--- === FUNCTIONS ===
+-- === FUNCTIONS (HELPERS) ===
 -- ==============================================================================
 local function teleport(pos)
     local char = player.Character
@@ -614,6 +615,28 @@ local function spawnPlatform(pos)
     platform.CanCollide = true
     platform.Parent = Workspace
     return platform
+end
+
+local function initGUI()
+    if screenGui then return end
+    
+    screenGui = Instance.new("ScreenGui")
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 40, 0, 40)
+    indicator.Position = UDim2.new(0, 49, 0, 249)
+    indicator.BackgroundColor3 = Color3.new(1, 0, 0)
+    indicator.BorderSizePixel = 0
+    indicator.BackgroundTransparency = 0
+    indicator.Parent = screenGui
+end
+
+local function updateIndicator(isNear)
+    if indicator then
+        indicator.BackgroundColor3 = isNear and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+    end
 end
 
 local function freezePlayer()
@@ -638,28 +661,6 @@ local function unfreezePlayer()
     if individualFreezeConnection then
         individualFreezeConnection:Disconnect()
         individualFreezeConnection = nil
-    end
-end
-
-local function initGUI()
-    if screenGui then return end
-    
-    screenGui = Instance.new("ScreenGui")
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-    
-    indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0, 40, 0, 40)
-    indicator.Position = UDim2.new(0, 49, 0, 249)
-    indicator.BackgroundColor3 = Color3.new(1, 0, 0)
-    indicator.BorderSizePixel = 0
-    indicator.BackgroundTransparency = 0
-    indicator.Parent = screenGui
-end
-
-local function updateIndicator(isNear)
-    if indicator then
-        indicator.BackgroundColor3 = isNear and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
     end
 end
 
@@ -704,6 +705,18 @@ local function getPlayerLevel(plr)
     end
     
     return "?"
+end
+
+-- ==============================================================================
+-- === LOGIC FARM CONTROL (STOP ALL) ===
+-- ==============================================================================
+local function stopAllFarms()
+    currentFarmMode = nil
+    autoClickerActive = false
+    unfreezePlayer()
+    if indicator then
+        updateIndicator(false)
+    end
 end
 
 -- ==============================================================================
@@ -808,7 +821,6 @@ end
 -- ==============================================================================
 -- === TOGGLE UTILS ===
 -- ==============================================================================
-
 local function startSafe1()
     if safe1Active then return end
     safe1Active = true
@@ -820,10 +832,11 @@ local function startSafe1()
                     local humanoid = char:FindFirstChild("Humanoid")
                     if humanoid and humanoid.Health > 0 then
                         humanoid.Health = 0
+                        char:BreakJoints() -- Надежное уничтожение персонажа
                     end
                 end
             end
-            task.wait(5)
+            task.wait(3)
         end
     end)
 end
@@ -927,82 +940,108 @@ end
 -- ==============================================================================
 local function startAutoWalk()
     if autoWalkActive then return end
-    mobsFolder = findMobsFolder()
-    
-    if not mobsFolder then return end
-    
     autoWalkActive = true
-    autoWalkConnection = RunService.RenderStepped:Connect(function()
-        if not autoWalkActive then return end
-        if not mobsFolder then
-            mobsFolder = findMobsFolder()
-            if not mobsFolder then return end
-        end
-        
-        local char = player.Character
-        if not char then return end
-        
-        local humanoid = char:FindFirstChild("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not hrp then return end
-        
-        local playerPos = hrp.Position
-        local nearestMob = nil
-        local nearestDist = AUTO_WALK_CONFIG.MaxDistance
-        
-        for _, mob in ipairs(mobsFolder:GetChildren()) do
-            if mob:IsA("Model") or mob:IsA("BasePart") then
-                local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
-                if targetPart then
-                    local dist = (playerPos - targetPart.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestMob = mob
+    
+    spawn(function()
+        while autoWalkActive do
+            local char = player.Character
+            local humanoid = char and char:FindFirstChild("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            if not char or not humanoid or not hrp or humanoid.Health <= 0 then
+                task.wait(1)
+                continue
+            end
+            
+            local folder = findMobsFolder()
+            if not folder then
+                task.wait(1)
+                continue
+            end
+            
+            local playerPos = hrp.Position
+            local nearestMob = nil
+            local nearestPart = nil
+            local nearestDist = AUTO_WALK_CONFIG.MaxDistance
+            
+            for _, mob in ipairs(folder:GetChildren()) do
+                if mob:IsA("Model") then
+                    local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob:FindFirstChild("UpperTorso") or mob.PrimaryPart
+                    if targetPart then
+                        -- Проверяем, жив ли моб, если у него есть какой-либо Humanoid
+                        local hum = mob:FindFirstChildOfClass("Humanoid")
+                        if hum and hum.Health <= 0 then
+                            continue
+                        end
+                        
+                        local dist = (playerPos - targetPart.Position).Magnitude
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            nearestMob = mob
+                            nearestPart = targetPart
+                        end
                     end
                 end
             end
-        end
-        
-        if nearestMob then
-            local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
-            if targetPart then
+            
+            if nearestMob and nearestPart then
                 if nearestDist > AUTO_WALK_CONFIG.StopDistance then
-                    humanoid:MoveTo(targetPart.Position)
+                    humanoid:MoveTo(nearestPart.Position)
                 else
                     humanoid:MoveTo(hrp.Position)
                 end
             end
+            
+            task.wait(0.2)
         end
     end)
 end
 
 local function stopAutoWalk()
-    if not autoWalkActive then return end
     autoWalkActive = false
-    if autoWalkConnection then
-        autoWalkConnection:Disconnect()
-        autoWalkConnection = nil
-    end
 end
-
-player.CharacterAdded:Connect(function(char)
-    task.wait(1)
-    local humanoid = char:FindFirstChild("Humanoid")
-end)
 
 -- ==============================================================================
 -- === LOGIC BOSS FARM ===
 -- ==============================================================================
+local function startAutoClicker()
+    if autoClickerActive then return end
+    autoClickerActive = true
+    spawn(function()
+        while autoClickerActive do
+            local char = player.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if not char or not hum or hum.Health <= 0 then
+                stopAllFarms()
+                break
+            end
+            
+            pcall(function()
+                -- Кликаем в нижний правый угол экрана
+                local cam = workspace.CurrentCamera
+                local cornerX = cam and cam.ViewportSize.X or 2000
+                local cornerY = cam and cam.ViewportSize.Y or 2000
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton1(Vector2.new(cornerX - 5, cornerY - 5))
+            end)
+            local delay = 1.0 + (math.random() * 0.5)
+            task.wait(delay)
+        end
+    end)
+end
+
 local function startGenericFarm(bossName, farmPos)
     currentFarmMode = bossName
     initGUI()
     updateIndicator(false)
+    startAutoClicker()
     
     local isFrontman = (bossName == "Frontman")
     local isCurrentlyVladimir = (bossName == "Владимир Красное Солнышко")
     local isCurrentlyFrostveil = (bossName == "Frostveil Echo")
     local isCurrentlyFloor8Mob = (bossName == "MobFarm" and game.PlaceId == 4737916764)
     local isEasterFarm = (bossName == "Фарм: Центр (Пасха)" and game.PlaceId == 10299594856)
+    local isCurrentlyFloor2Mob = (bossName == "MobFarm" and game.PlaceId == 4734865416)
     local platform = nil
     
     if isFrontman then
@@ -1033,6 +1072,12 @@ local function startGenericFarm(bossName, farmPos)
         farmPos = playerPos
         platform = spawnPlatform(platformPos)
         teleport(playerPos)
+    elseif isCurrentlyFloor2Mob then
+        local platformPos = Vector3.new(-1042.60, -250, -553.53)
+        local playerPos = platformPos + Vector3.new(0, 5, 0)
+        farmPos = playerPos
+        platform = spawnPlatform(platformPos)
+        teleport(playerPos)
     else
         teleport(farmPos)
         task.wait(0.3)
@@ -1052,8 +1097,15 @@ local function startGenericFarm(bossName, farmPos)
         local isCurrentlyFrontman = (bossName == "Frontman")
         
         while currentFarmMode == bossName do
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then break end
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            
+            -- Выключение фарма в случае смерти
+            if not hrp or not hum or hum.Health <= 0 then
+                stopAllFarms()
+                break
+            end
             
             local mobsFolder = findMobsFolder()
             local foundAny = false
@@ -1065,7 +1117,7 @@ local function startGenericFarm(bossName, farmPos)
                         if torso and torso:IsA("BasePart") then
                             local shouldProcess = false
                             
-                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
+                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob then
                                 local delta = torso.Position - farmPos
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
@@ -1076,6 +1128,11 @@ local function startGenericFarm(bossName, farmPos)
                                     end
                                 elseif isEasterFarm then
                                     if horizontalDist <= 4 and verticalDelta <= 0 then
+                                        shouldProcess = true
+                                    end
+                                elseif isCurrentlyFloor2Mob then
+                                    -- Мобы от 0 до -40 стадов НИЖЕ игрока
+                                    if horizontalDist <= 15 and verticalDelta >= -40 and verticalDelta <= 0 then
                                         shouldProcess = true
                                     end
                                 else
@@ -1113,7 +1170,7 @@ local function startGenericFarm(bossName, farmPos)
                                 local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
                                 torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
                                 
-                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm) then
+                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob) then
                                     break
                                 end
                             end
@@ -1124,7 +1181,7 @@ local function startGenericFarm(bossName, farmPos)
             
             updateIndicator(foundAny)
             
-            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
+            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob then
                 task.wait(3)
             else
                 task.wait(0.1)
@@ -1137,14 +1194,6 @@ local function startGenericFarm(bossName, farmPos)
         end
         updateIndicator(false)
     end)
-end
-
-local function stopAllFarms()
-    currentFarmMode = nil
-    unfreezePlayer()
-    if indicator then
-        updateIndicator(false)
-    end
 end
 
 -- ==============================================================================
@@ -1710,11 +1759,11 @@ local function rebuildGUI()
             local isActive = (currentFarmMode == bossName)
             
             local switchFrame, setState = createToggleSwitch(contentContainer, T("farmPrefix") .. bossName, isActive, function(enabled)
-                stopAllFarms()
                 if enabled then
+                    stopAllFarms()
                     startGenericFarm(bossName, farmPos)
                 else
-                    currentFarmMode = nil
+                    stopAllFarms()
                 end
             end)
             switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
@@ -2142,14 +2191,6 @@ end
 local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
-local SPECIAL_PLAYERS = {
-    ["huesos880055535"] = { text = "Lvl: Dominus", color = Color3.fromRGB(138, 43, 226) },
-    ["arrowenn"] = { text = "Lvl: Immortal", color = Color3.fromRGB(255, 215, 0) },
-    ["minikokosich"] = { text = "Lvl: Guardian", color = Color3.fromRGB(30, 144, 255) },
-    ["curlycheburashka"] = { text = "Lvl: Cuddle", color = Color3.fromRGB(255, 20, 147) },
-    ["luken_god"] = { text = "Lvl: 12000", color = Color3.fromRGB(0, 255, 0) }
-}
-
 local function removeEsp(playerName)
     if EspObjects[playerName] then
         for _, drawing in pairs(EspObjects[playerName]) do
@@ -2191,18 +2232,6 @@ spawn(function()
                 continue
             end
 
-            local pNameLower = string.lower(pName)
-            local specialData = SPECIAL_PLAYERS[pNameLower]
-            
-            if specialData and not char:FindFirstChild("EspHighlight") then
-                local hl = Instance.new("Highlight") 
-                hl.Name = "EspHighlight" 
-                hl.FillColor = specialData.color 
-                hl.OutlineColor = specialData.color 
-                hl.FillTransparency = 0.7 
-                hl.Parent = char
-            end
-
             if not EspObjects[pName] then
                 EspObjects[pName] = {
                     box = Drawing.new("Square"), 
@@ -2229,7 +2258,7 @@ spawn(function()
                 
                 e.box.Size = Vector2.new(width, height) 
                 e.box.Position = Vector2.new(hPos.X - width/2, hPos.Y - height*0.15)
-                e.box.Color = specialData and specialData.color or Color3.fromRGB(255, 0, 0)
+                e.box.Color = Color3.fromRGB(255, 0, 0)
                 e.box.Visible = true
                 
                 e.name.Text = pName 
@@ -2237,13 +2266,9 @@ spawn(function()
                 e.name.Position = Vector2.new(hPos.X, hPos.Y - 25)
                 e.name.Visible = true
 
-                if specialData then
-                    e.level.Text = specialData.text 
-                    e.level.Color = specialData.color 
-                else
-                    e.level.Text = "Lvl: " .. tostring(getPlayerLevel(plr))
-                    e.level.Color = Color3.fromRGB(0, 255, 255) 
-                end
+                e.level.Text = "Lvl: " .. tostring(getPlayerLevel(plr))
+                e.level.Color = Color3.fromRGB(0, 255, 255) 
+                
                 e.level.Position = Vector2.new(hPos.X, hPos.Y - 5) 
                 e.level.Visible = true
             else
