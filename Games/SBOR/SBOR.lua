@@ -1,5 +1,5 @@
 -- ==============================================================================
--- === ПОДКЛЮЧЕНИЕ СЕРВИСОВ ИГРЫ ===
+-- === INITIALIZATION ===
 -- ==============================================================================
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -11,9 +11,9 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
--- === ЛОКАЛИЗАЦИЯ (ПЕРЕВОДЫ) ===
+-- === TRANSLATIONS ===
 -- ==============================================================================
-local currentLang = "ru" -- Язык по умолчанию
+local currentLang = "ru" 
 local translations = {
     ru = {
         hubTitle = "Pidromania Hub: Sword Blox Online",
@@ -194,7 +194,7 @@ local function T(key)
 end
 
 -- ==============================================================================
--- === ПЕРЕМЕННЫЕ СОСТОЯНИЯ ===
+-- === STATE VARIABLES ===
 -- ==============================================================================
 local isFrozen = false
 local freezeConnection = nil
@@ -216,7 +216,7 @@ local safe1Active = false
 local playerListActive = false
 
 -- ==============================================================================
--- === 💾 СОХРАНЕНИЕ / ЗАГРУЗКА НАСТРОЕК ===
+-- === SAVE / LOAD CONFIG ===
 -- ==============================================================================
 local FOLDER_NAME = "PidromaniaHub"
 local FILE_NAME = FOLDER_NAME .. "/SBOR_Config.json"
@@ -255,11 +255,11 @@ local function LoadConfig()
 end
 
 -- ==============================================================================
--- === БАЗЫ ДАННЫХ ИГРЫ (Этажи, Боссы, Координаты) ===
+-- === GAME DATABASES ===
 -- ==============================================================================
 local FLOORS = {
-    --{-2,  "Зимний ивент", 86400682391969}, НИ В КОЕМ СЛУЧАЕ НЕ УДАЛЯТЬ
-    {-1, "Пасхальный ивент", 10299594856}, НИ В КОЕМ СЛУЧАЕ НЕ УДАЛЯТЬ
+    -- {-2,  "Зимний ивент", 86400682391969}, -- DO NOT DELETE
+    {-1, "Пасхальный ивент", 10299594856}, -- DO NOT DELETE
     {1,  "Town Of Beginnings", 4733293382},
     {2,  "Swordsman Fields", 4734865416},
     {3,  "Swamp Lands", 4735703075},
@@ -290,7 +290,6 @@ local BOSSES = {
 		{"Kringlewrath The Iron Saint", -265, 21, 2679},
 		{"Аврора ебаная", -2, 72, -1010}
 	},
-
     [4734865416] = {
         {"Shadesworn the Corrupted", 414, -1174, -461},
         {"Illfang The Kobold Lord", -1003, 1928, -727}
@@ -466,7 +465,6 @@ local BOSS_FARMS = {
     }
 }
 
--- === ТАБЛИЦА ДОПОЛНИТЕЛЬНЫХ ЛОКАЦИЙ ===
 local EXTRA_LOCATIONS = {
     [10299594856] = {
         {"Камни",  -270.87, 255.73, 325.78},
@@ -501,7 +499,7 @@ local EXTRA_LOCATIONS = {
         {"Комната босса", -1279.13, 1913.99, -426.48}
     },
     [4736984932] = {
-        {"None", 0.0, 0.0, 0.0}
+        {"Empty", 0.0, 0.0, 0.0}
     },
     [4737916764] = {
         {"Вход в башню", 2687.15, -654.41, 470.80},
@@ -529,23 +527,23 @@ local EXTRA_LOCATIONS = {
         {"Комната босса", -1193.62, 1092.96, -9792.50}
     },
     [5136611550] = {
-        {"None", 0.0, 0.0, 0.0}
+        {"Empty", 0.0, 0.0, 0.0}
     },
     [4733293091] = {
         {"Яйцо босса", -1557.81, -1322.58, 1580.20}
     },
     [11987483716] = {
-        {"None", 0.0, 0.0, 0.0}
+        {"Empty", 0.0, 0.0, 0.0}
     },
     [11987539001] = {
         {"Деревня", -991.45, 239.96, -956.28},
         {"Гигас", -1434.15, 170.36, -2159.10}
     },
     [12632324801] = {
-        {"None", 0.0, 0.0, 0.0}
+        {"Empty", 0.0, 0.0, 0.0}
     },
     [94066307314492] = {
-        {"NPC Кошак", -715.74, 14.95, 49.26},
+        {"NPC Koshak", -715.74, 14.95, 49.26},
         {"Тхунг", -1445.02, 253.41, -133.76}
     },
     [130463264320898] = {
@@ -561,73 +559,43 @@ local EXTRA_LOCATIONS = {
 }
 
 -- ==============================================================================
--- === КОНФИГУРАЦИЯ ПУТЕЙ (Загрузка файлов с GitHub) ===
+-- === КОНФИГУРАЦИЯ ПУТЕЙ ===
 -- ==============================================================================
-local FLOOR_2_PATHS = {
-    ["Boss2"] = "Boss2",
-    ["Miniboss"] = "Miniboss"
-}
+local FLOOR_2_PATHS = {["Boss2"] = "Boss2", ["Miniboss"] = "Miniboss"}
 local PATH_BASE_URL_2 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/2%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_3_PATHS = {
-    ["Башня"] = "Башня",
-    ["Магазин"] = "Магазин"
-}
+local FLOOR_3_PATHS = {["Башня"] = "Башня", ["Магазин"] = "Магазин"}
 local PATH_BASE_URL_3 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/3%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_4_PATHS = {
-    ["Лабиринт"] = "Labirint",
-    ["Шахта"] = "Shaxta"
-}
+local FLOOR_4_PATHS = {["Лабиринт"] = "Labirint", ["Шахта"] = "Shaxta"}
 local PATH_BASE_URL_4 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/4%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_5_PATHS = {
-    ["Лабиринт"] = "Лабиринт"
-}
+local FLOOR_5_PATHS = {["Лабиринт"] = "Лабиринт"}
 local PATH_BASE_URL_5 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/5%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_8_PATHS = {
-    ["Boss"] = "Boss"
-}
+local FLOOR_8_PATHS = {["Boss"] = "Boss"}
 local PATH_BASE_URL_8 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/8%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_14_PATHS = {
-    ["BlueCristal"] = "BlueCristal",
-    ["Boss1LeaderGrimm"] = "Boss1LeaderGrimm",
-    ["RedCristal"] = "RedCristal"
-}
+local FLOOR_14_PATHS = {["BlueCristal"] = "BlueCristal", ["Boss1LeaderGrimm"] = "Boss1LeaderGrimm", ["RedCristal"] = "RedCristal"}
 local PATH_BASE_URL_14 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/14%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local FLOOR_16_PATHS = {
-    ["LeaderGoblin"] = "LeaderGoblin",
-    ["Two-HeadedGiant"] = "Two-HeadedGiant"
-}
+local FLOOR_16_PATHS = {["LeaderGoblin"] = "LeaderGoblin", ["Two-HeadedGiant"] = "Two-HeadedGiant"}
 local PATH_BASE_URL_16 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/16%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
 local FLOOR_19_PATHS = {
-    ["Frostveil Echo"] = "FrostveilEcho",
-    ["Ice Spirit"] = "IceSpirit",
-    ["Владимир К.С."] = "Vladimir",
-    ["Дом вендиго"] = "WendigoHouse",
-    ["Лабиринт вендиго"] = "WendigoMaze",
-    ["Ледяной замок"] = "IceCastle",
-    ["Маяк"] = "Lighthouse",
-    ["Церковь"] = "Church"
+    ["Frostveil Echo"] = "FrostveilEcho", ["Ice Spirit"] = "IceSpirit", ["Владимир К.С."] = "Vladimir", 
+    ["Дом вендиго"] = "WendigoHouse", ["Лабиринт вендиго"] = "WendigoMaze", ["Ледяной замок"] = "IceCastle", 
+    ["Маяк"] = "Lighthouse", ["Церковь"] = "Church"
 }
 local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
--- Настройки для авто-ходьбы к мобам
 local AUTO_WALK_CONFIG = {
-    WalkSpeed = 30,
-    NormalSpeed = 16,
-    MaxDistance = 1500,
-    StopDistance = 6.5
+    WalkSpeed = 30, NormalSpeed = 16, MaxDistance = 1500, StopDistance = 6.5
 }
 
 -- ==============================================================================
--- === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+-- === FUNCTIONS ===
 -- ==============================================================================
-
 local function teleport(pos)
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -739,7 +707,7 @@ local function getPlayerLevel(plr)
 end
 
 -- ==============================================================================
--- === ИНТЕРФЕЙС СПИСКА ИГРОКОВ (Player List) ===
+-- === PLAYER LIST GUI ===
 -- ==============================================================================
 local function createPlayerListGui()
     if playerListGui then return end
@@ -838,7 +806,7 @@ local function destroyPlayerListGui()
 end
 
 -- ==============================================================================
--- === ФУНКЦИИ УТИЛИТ (Фриз, Воскрешение, Safe 1) ===
+-- === TOGGLE UTILS ===
 -- ==============================================================================
 
 local function startSafe1()
@@ -955,7 +923,7 @@ local function setupResurrection()
 end
 
 -- ==============================================================================
--- === ЛОГИКА AUTO-WALK ===
+-- === LOGIC AUTO-WALK ===
 -- ==============================================================================
 local function startAutoWalk()
     if autoWalkActive then return end
@@ -1017,8 +985,13 @@ local function stopAutoWalk()
     end
 end
 
+player.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    local humanoid = char:FindFirstChild("Humanoid")
+end)
+
 -- ==============================================================================
--- === ЛОГИКА ФАРМА БОССОВ (Телепорт мобов к игроку) ===
+-- === LOGIC BOSS FARM ===
 -- ==============================================================================
 local function startGenericFarm(bossName, farmPos)
     currentFarmMode = bossName
@@ -1175,7 +1148,7 @@ local function stopAllFarms()
 end
 
 -- ==============================================================================
--- === ФАРМ РЕСУРСОВ И РЫБЫ ===
+-- === LOGIC MATERIAL & FISH FARM ===
 -- ==============================================================================
 local function startMaterialFarm()
     if materialFarmActive then return end
@@ -1242,7 +1215,7 @@ local function stopFishFarm()
     fishFarmActive = false
 end
 
--- Загрузка настроек
+-- Загрузка конфига
 LoadConfig()
 if safe1Active then startSafe1() end
 if resurrectionActive then setupResurrection() end
@@ -1251,7 +1224,9 @@ if materialFarmActive then startMaterialFarm() end
 if fishFarmActive then startFishFarm() end
 if playerListActive then createPlayerListGui() end
 
--- Вспомогательная функция для переключателей
+-- ==============================================================================
+-- === UI SWITCH LOGIC ===
+-- ==============================================================================
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     local switchFrame = Instance.new("Frame")
     switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -1327,7 +1302,7 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
 end
 
 -- ==============================================================================
--- === ГЕНЕРАЦИЯ ГЛАВНОГО GUI МЕНЮ ===
+-- === MAIN UI GENERATION ===
 -- ==============================================================================
 local screenGuiMain = nil
 
@@ -1506,7 +1481,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     end
     
-    -- Раздел "Этажи"
     local function showFloors()
         clearContent()
         local title = Instance.new("TextLabel")
@@ -1545,7 +1519,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * (35 * 1.5) + (40 * 1.5))
     end
     
-    -- Раздел "Телепорты к мобам"
     local function showBosses()
         clearContent()
         local currentPlaceId = game.PlaceId
@@ -1622,7 +1595,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, #bosses * (35 * 1.5) + (40 * 1.5))
     end
     
-    -- Раздел "Телепорт к локациям"
     local function showBossRooms()
         clearContent()
         local currentPlaceId = game.PlaceId
@@ -1704,7 +1676,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
     end
     
-    -- Раздел "Фарм боссов"
     local function showBossFarms()
         clearContent()
         local currentPlaceId = game.PlaceId
@@ -1752,7 +1723,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
     end
     
-    -- Раздел "Фарм ресурсов"
     local function showMaterialFarm()
         clearContent()
         local title = Instance.new("TextLabel")
@@ -1862,7 +1832,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5 + 45 * 1.5 + 45 * 1.5)
     end
     
-    -- Раздел "Пути" (Загрузка скриптов-путей с GitHub)
     local function showPaths()
         clearContent()
         local title = Instance.new("TextLabel")
@@ -1974,14 +1943,14 @@ local function rebuildGUI()
                         local success, result = pcall(function()
                             local scriptCode = game:HttpGet(url)
                             if not scriptCode or scriptCode == "" then
-                                error("Файл пуст или не найден (404). Проверь имя файла на GitHub!")
+                                error("Error 404")
                             end
                             local func = loadstring(scriptCode)
                             if func then
                                 func()
                                 return true
                             else
-                                error("loadstring вернул nil")
+                                error("loadstring nil")
                             end
                         end)
                         
@@ -2009,7 +1978,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
     end
     
-    -- Раздел "Инструменты" (Фриз, Воскрешение, ESP)
     local function showConvenience()
         clearContent()
         local title = Instance.new("TextLabel")
@@ -2074,7 +2042,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
     end
     
-    -- Раздел "Настройки" (Смена языка)
     local function showSettings()
         clearContent()
         local title = Instance.new("TextLabel")
@@ -2120,7 +2087,6 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
     end
     
-    -- Создание кнопок навигации слева
     local floorBtn = createMenuItem(T("floor"), "🌍")
     local teleportsBtn = createMenuItem(T("teleports"), "🌐")
     local bossRoomsBtn = createMenuItem(T("bossRooms"), "🚪")
@@ -2130,7 +2096,6 @@ local function rebuildGUI()
     local toolsBtn = createMenuItem(T("tools"), "🛠️")
     local settingsBtn = createMenuItem(T("settings"), "⚙️")
     
-    -- Подсветка выбранной вкладки
     local function selectButton(btn)
         for _, b in ipairs(menuItems) do
             b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
@@ -2138,44 +2103,18 @@ local function rebuildGUI()
         btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
     end
     
-    floorBtn.MouseButton1Click:Connect(function()
-        selectButton(floorBtn)
-        showFloors()
-    end)
-    teleportsBtn.MouseButton1Click:Connect(function()
-        selectButton(teleportsBtn)
-        showBosses()
-    end)
-    bossRoomsBtn.MouseButton1Click:Connect(function()
-        selectButton(bossRoomsBtn)
-        showBossRooms()
-    end)
-    bossFarmBtn.MouseButton1Click:Connect(function()
-        selectButton(bossFarmBtn)
-        showBossFarms()
-    end)
-    materialFarmBtn.MouseButton1Click:Connect(function()
-        selectButton(materialFarmBtn)
-        showMaterialFarm()
-    end)
-    pathsBtn.MouseButton1Click:Connect(function()
-        selectButton(pathsBtn)
-        showPaths()
-    end)
-    toolsBtn.MouseButton1Click:Connect(function()
-        selectButton(toolsBtn)
-        showConvenience()
-    end)
-    settingsBtn.MouseButton1Click:Connect(function()
-        selectButton(settingsBtn)
-        showSettings()
-    end)
+    floorBtn.MouseButton1Click:Connect(function() selectButton(floorBtn) showFloors() end)
+    teleportsBtn.MouseButton1Click:Connect(function() selectButton(teleportsBtn) showBosses() end)
+    bossRoomsBtn.MouseButton1Click:Connect(function() selectButton(bossRoomsBtn) showBossRooms() end)
+    bossFarmBtn.MouseButton1Click:Connect(function() selectButton(bossFarmBtn) showBossFarms() end)
+    materialFarmBtn.MouseButton1Click:Connect(function() selectButton(materialFarmBtn) showMaterialFarm() end)
+    pathsBtn.MouseButton1Click:Connect(function() selectButton(pathsBtn) showPaths() end)
+    toolsBtn.MouseButton1Click:Connect(function() selectButton(toolsBtn) showConvenience() end)
+    settingsBtn.MouseButton1Click:Connect(function() selectButton(settingsBtn) showSettings() end)
     
-    -- Инициализация первой вкладки при запуске
     selectButton(floorBtn)
     showFloors()
     
-    -- Бинд на "G" для скрытия/показа меню
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode.G then
@@ -2190,11 +2129,10 @@ local function rebuildGUI()
     end)
 end
 
--- Запуск сборки интерфейса
 rebuildGUI()
 
 -- ==============================================================================
--- === НОВЫЙ ESP ИГРОКОВ (С ПОДСВЕТКОЙ УРОВНЕЙ И ТИТУЛОВ) ===
+-- === ESP (ПОДСВЕТКА ИГРОКОВ: ИМЯ И УРОВЕНЬ) ===
 -- ==============================================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
@@ -2205,14 +2143,13 @@ local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
 local SPECIAL_PLAYERS = {
-    ["huesos880055535"] = { text = "Lvl: Owner", color = Color3.fromRGB(138, 43, 226) },
+    ["huesos880055535"] = { text = "Lvl: Dominus", color = Color3.fromRGB(138, 43, 226) },
     ["arrowenn"] = { text = "Lvl: Immortal", color = Color3.fromRGB(255, 215, 0) },
     ["minikokosich"] = { text = "Lvl: Guardian", color = Color3.fromRGB(30, 144, 255) },
     ["curlycheburashka"] = { text = "Lvl: Cuddle", color = Color3.fromRGB(255, 20, 147) },
     ["luken_god"] = { text = "Lvl: 12000", color = Color3.fromRGB(0, 255, 0) }
 }
 
--- Удаление ESP при выходе игрока
 local function removeEsp(playerName)
     if EspObjects[playerName] then
         for _, drawing in pairs(EspObjects[playerName]) do
@@ -2229,7 +2166,6 @@ Players.PlayerRemoving:Connect(function(plr)
     removeEsp(plr.Name)
 end)
 
--- Перевод 3D-координат в 2D (координаты экрана)
 local function toScreen(pos, CameraObj)
     if not CameraObj then return Vector2.new(0,0), false end
     local vp, on = CameraObj:WorldToViewportPoint(pos)
@@ -2248,7 +2184,6 @@ spawn(function()
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local head = char and char:FindFirstChild("Head")
 
-            -- Если игрок мертв или модель не прогрузилась — прячем ESP
             if not char or not hum or not root or not head or hum.Health <= 0 then
                 if EspObjects[pName] then
                     for _, d in pairs(EspObjects[pName]) do d.Visible = false end
@@ -2259,7 +2194,6 @@ spawn(function()
             local pNameLower = string.lower(pName)
             local specialData = SPECIAL_PLAYERS[pNameLower]
             
-            -- Подсветка модели (Highlight)
             if specialData and not char:FindFirstChild("EspHighlight") then
                 local hl = Instance.new("Highlight") 
                 hl.Name = "EspHighlight" 
@@ -2269,7 +2203,6 @@ spawn(function()
                 hl.Parent = char
             end
 
-            -- Создаем рамки и текст, если их еще нет
             if not EspObjects[pName] then
                 EspObjects[pName] = {
                     box = Drawing.new("Square"), 
@@ -2294,19 +2227,16 @@ spawn(function()
                 local height = math.abs(hPos.Y - rPos.Y) * 1.5
                 local width = height * 0.6
                 
-                -- Настраиваем рамку
                 e.box.Size = Vector2.new(width, height) 
                 e.box.Position = Vector2.new(hPos.X - width/2, hPos.Y - height*0.15)
                 e.box.Color = specialData and specialData.color or Color3.fromRGB(255, 0, 0)
                 e.box.Visible = true
                 
-                -- Настраиваем имя
                 e.name.Text = pName 
                 e.name.Color = Color3.fromRGB(255, 255, 255)
                 e.name.Position = Vector2.new(hPos.X, hPos.Y - 25)
                 e.name.Visible = true
 
-                -- Настраиваем уровень/титул
                 if specialData then
                     e.level.Text = specialData.text 
                     e.level.Color = specialData.color 
