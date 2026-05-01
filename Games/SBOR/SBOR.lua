@@ -378,7 +378,7 @@ local BOSS_FARMS = {
         {"Фарм: Центр (Пасха)", Vector3.new(24.45, 267.77, 400.73)}
     },
     [4734865416] = {
-        {"MobFarm", Vector3.new(-1042.60, -250, -553.53)},
+        {"MobFarm", Vector3.new(-1042.60, -270, -553.53)},
         {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
         {"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}
     },
@@ -1073,7 +1073,7 @@ local function startGenericFarm(bossName, farmPos)
         platform = spawnPlatform(platformPos)
         teleport(playerPos)
     elseif isCurrentlyFloor2Mob then
-        local platformPos = Vector3.new(-1042.60, -250, -553.53)
+        local platformPos = Vector3.new(-1042.60, -275, -553.53)
         local playerPos = platformPos + Vector3.new(0, 5, 0)
         farmPos = playerPos
         platform = spawnPlatform(platformPos)
@@ -1132,7 +1132,7 @@ local function startGenericFarm(bossName, farmPos)
                                     end
                                 elseif isCurrentlyFloor2Mob then
                                     -- Мобы от 0 до -40 стадов НИЖЕ игрока
-                                    if horizontalDist <= 15 and verticalDelta >= -40 and verticalDelta <= 0 then
+                                    if horizontalDist <= 15 and verticalDelta >= -70 and verticalDelta <= 0 then
                                         shouldProcess = true
                                     end
                                 else
