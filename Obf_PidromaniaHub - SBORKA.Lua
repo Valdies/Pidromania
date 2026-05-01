@@ -34,7 +34,6 @@ local BF_IDS = {
 
 local whitelistedUserIds = {
     [10829797796] = true,
-    [9103392112] = true,
     [1923012479] = true,
     [8656482649] = true
 }
