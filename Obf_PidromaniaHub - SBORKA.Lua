@@ -1,8 +1,6 @@
--- Конфигурация путей
 local baseUrl = "https://raw.githubusercontent.com/Valdies/Pidromania/main/"
-local WL_PAH_ID = 10880639270 -- ID твоего аккаунта-вайтлиста
+local WL_PAH_ID = 10880639270
 
--- Таблицы идентификаторов игр (Place IDs)
 local SBOR_IDS = {
     [10299594856] = true,
     [4733278992] = true, 
@@ -34,28 +32,16 @@ local BF_IDS = {
     [85211729168715] = true
 }
 
-
 local whitelistedUserIds = {
-    [2964047089] = true, -- Кент
-    [493337194]  = true, -- Кокосик
-    [4607304028] = true, -- Саня
-    [3270959865] = true, -- Влад
-    [4550232169] = true, -- Петя
-    [7947437575] = true, -- Вика
-    [1205348792] = true, -- vvcbbhg
-    [10462778979] = true, -- Отсосаня 2.0
-    [9715547061] = true, -- Тянка какая то
-
-    [10829797796] = true, -- Лена3
-    [9103392112] = true, -- Я
-    [1923012479] = true, -- Лена1
-    [8656482649] = true  -- Лена2
+    [10829797796] = true,
+    [9103392112] = true,
+    [1923012479] = true,
+    [8656482649] = true
 }
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Универсальная функция загрузки
 local function exec(path)
     local s, res = pcall(function() return game:HttpGet(baseUrl .. path) end)
     if s and res then
@@ -63,41 +49,31 @@ local function exec(path)
     end
 end
 
-
-
 local isVip = whitelistedUserIds[LocalPlayer.UserId]
 local isFriend = false
 
--- Проверка дружбы с аккаунтом-вайтлистом
 local success, _ = pcall(function()
     isFriend = LocalPlayer:IsFriendsWith(WL_PAH_ID)
 end)
 
 if isFriend or isVip then
-    -- ПРОПУСКАЕМ НА БОРТ
-    
     if game.PlaceId == 136599248168660 then
         print("Pidromania Hub soon")
 
     elseif game.PlaceId == 7554888362 or game.PlaceId == 7559074529 then
-        -- Squid Game X
         exec("Games/Squid%20Game%20X/Squid%20Game%20X.lua")
 
     elseif BF_IDS[game.PlaceId] then
-        -- Blox Fruits
         exec("Games/Blox%20Fruits/BloxFruits.lua")
 
     elseif SBOR_IDS[game.PlaceId] then
-        -- SBO:R
         exec("Games/SBOR/SBOR.lua")
         exec("BrainTools/Message.lua")
 
     else
-        -- Если игры нет в списке поддержки
         exec("BrainTools/NoGame.lua")
     end
 else
-    -- ИГРОК ИДЕТ НАХУЙ (не VIP и не в друзьях)
     exec("BrainTools/NoWhite.lua")
     task.wait(5)
     LocalPlayer:Kick("\n[Pidromania Airlines]\nAccess Denied. Write to @Pidromania")
