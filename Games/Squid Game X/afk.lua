@@ -1,3 +1,4 @@
+print('hi')
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService") -- Добавляем сервис телепортации
 local LocalPlayer = Players.LocalPlayer
