@@ -8,7 +8,7 @@ local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local VirtualUser = game:GetService("VirtualUser")
+local VIM = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 -- ==============================================================================
@@ -56,7 +56,7 @@ local translations = {
         roomsAndLocs = "Комнаты и Локации: %s (%s)",
         noExtraLocs = "⚠️ Для этого этажа нет дополнительных локаций.",
         youAreOnFloor = "Вы на этаже: %s (ID: %d)",
-        pathsTitle = "Пути",
+        pathsTitle = "Пути (Paths)",
         farmPrefix = "Farm: "
     },
     uk = {
@@ -99,50 +99,7 @@ local translations = {
         roomsAndLocs = "Кімнати та Локації: %s (%s)",
         noExtraLocs = "⚠️ Для цього поверху немає додаткових локацій.",
         youAreOnFloor = "Ви на поверсі: %s (ID: %d)",
-        pathsTitle = "Шляхи",
-        farmPrefix = "Фарм: "
-    },
-    kk = {
-        hubTitle = "Pidromania Hub: Sword Blox Online",
-        byAuthor = "by @Pidromania",
-        floor = "Қабат",
-        teleports = "Телепорттар",
-        bossRooms = "Босс бөлмелері",
-        bossFarm = "Босс фармі",
-        materialFarm = "Ресурстарды фармдау",
-        paths = "Жолдар",
-        tools = "Құралдар",
-        settings = "Параметрлер",
-        selectFloor = "Қабатты таңдаңыз:",
-        unknownFloor = "Қате: белгісіз қабат",
-        noBosses = "Бұл қабатта босстар жоқ",
-        bossesOfFloor = "Қабат %d (%s) босстары:",
-        bossFarms = "Босс фармдары:",
-        noFarms = "Бұл қабатта фармдар жоқ",
-        matAndFish = "Ресурс пен балық фармі",
-        autoOreSelect = "Жинау үшін кенді таңдаңыз:",
-        noOresFound = "Бұл қабатта ресурстар табылмады.",
-        startFarmBtn = "🟢 АВТО-ЖИНАУДЫ ІСКЕ ҚОСУ",
-        warnNoSelection = "⚠️ Кем дегенде бір кен түрін таңдаңыз!",
-        autoFish = "Авто-балық аулау (әр минут сайын 10)",
-        freezeToggle = "Ойыншыны орнында тоқтату",
-        respawnToggle = "Өлген жерде қайта туу",
-        playerListToggle = "Сервердегі ойыншылар тізімі",
-        safe1Toggle = "Safe 1 (2+ ойыншыда өлу)",
-        autoMobWalk = "Ең жақын мобтарды авто-фармдау",
-        languageLabel = "Интерфейс тілі:",
-        lang_ru = "Орыс",
-        lang_uk = "Украин",
-        lang_kk = "Қазақ",
-        lang_en = "Ағылшын (АҚШ)",
-        pathLoading = "⏳ Жүктеу...",
-        pathError = "❌ Қате!",
-        pathSuccess = "✅ Іске қосылды!",
-        noPathsForFloor = "Бұл қабатқа жолдар жоқ.",
-        roomsAndLocs = "Бөлмелер мен Локациялар: %s (%s)",
-        noExtraLocs = "⚠️ Бұл қабатта қосымша локациялар жоқ.",
-        youAreOnFloor = "Сіз мына қабаттасыз: %s (ID: %d)",
-        pathsTitle = "Жолдар",
+        pathsTitle = "Шляхи (Авто-скрипти)",
         farmPrefix = "Фарм: "
     },
     en = {
@@ -185,13 +142,14 @@ local translations = {
         roomsAndLocs = "Rooms & Locations: %s (%s)",
         noExtraLocs = "⚠️ No extra locations for this floor.",
         youAreOnFloor = "You are on floor: %s (ID: %d)",
-        pathsTitle = "Paths",
+        pathsTitle = "Paths (Scripts)",
         farmPrefix = "Farm: "
     }
 }
+setmetatable(translations, {__index = function(t, k) return t.ru end})
 
 local function T(key)
-    return translations[currentLang][key] or ("???" .. key .. "???")
+    return translations[currentLang] and translations[currentLang][key] or translations.ru[key] or ("???" .. key .. "???")
 end
 
 -- ==============================================================================
@@ -211,10 +169,8 @@ local materialFarmActive = false
 local fishFarmActive = false
 local selectedMaterials = {}
 local autoWalkActive = false
-local mobsFolder = nil
 local safe1Active = false
 local playerListActive = false
-local autoClickerActive = false
 
 -- ==============================================================================
 -- === SAVE / LOAD CONFIG ===
@@ -233,7 +189,8 @@ local function SaveConfig()
             autoWalk = autoWalkActive,
             fishFarm = fishFarmActive,
             materialFarm = materialFarmActive,
-            ores = selectedMaterials
+            ores = selectedMaterials,
+            farmMode = currentFarmMode -- Сохраняем текущий режим фарма
         }
         pcall(function() writefile(FILE_NAME, HttpService:JSONEncode(data)) end)
     end
@@ -251,6 +208,7 @@ local function LoadConfig()
             if type(data.fishFarm) == "boolean" then fishFarmActive = data.fishFarm end
             if type(data.materialFarm) == "boolean" then materialFarmActive = data.materialFarm end
             if type(data.ores) == "table" then selectedMaterials = data.ores end
+            if type(data.farmMode) == "string" then currentFarmMode = data.farmMode end
         end)
     end
 end
@@ -283,165 +241,47 @@ local FLOORS = {
 }
 
 local BOSSES = {
-    [86400682391969] = {
-		{"Gingervale Attendant", -312, 21, 1984},
-		{"Gingervale Warden", -93, 22, 2015},
-		{"Aurelius Starless", -422, 132, 2420},
-		{"Kringlewrath The Iron Saint", -265, 21, 2679},
-		{"Аврора ебаная", -2, 72, -1010}
-	},
-    [4734865416] = {
-        {"Shadesworn the Corrupted", 414, -1174, -461},
-        {"Illfang The Kobold Lord", -1003, 1928, -727}
-    },
-    [4735703075] = {
-        {"Mob farm: in pit", -352.25, -15.14, 1049.83},
-        {"Lord Slug", 988, 2500, 591}
-    },
-    [4735718710] = {
-        {"Mob farm: in front of the boss", 1271.97, 1197.97, 12748.28},
-        {"Stallord", 711, 1173, 12457}
-    },
-    [4736649014] = {
-        {"Mob farm: in a cave", -2295.05, 386.89, -1851.63},
-        {"X'rphan the White Wyrm", -1585, 404, -1702}
-    },
-    [4736759720] = {
-        {"Uakmaroth, the Demon Lord", -1622, 1931, -426}
-    },
-    [4736984932] = {
-        {"Storm Atronach", -5849, -368, 9330}
-    },
-    [4737916764] = {
-        {"Skeleton Swamp", 326, 74, -1396},
-        {"Bonnz the Skeleton Lord", 2998, -557, -1878}
-    },
-    [4740039076] = {
-        {"Guardian of the Gate", -2665, 879, 9127},
-        {"Karth'uk The Crystal Kraken", -2612, 32, 6763}
-    },
-    [4747247314] = {
-        {"Hotoke The Enlightened", -3985, -9927, -7179}
-    },
-    [5135551944] = {
-        {"Buffed Knight", -1619, 4, -5725},
-        {"Grimlock the Fallen King", -9471, -471, 1962}
-    },
-    [5212666689] = {
-        {"Laurellis Convict", 14968, 770, -705},
-        {"Slime Lord Pengonis", -1826, 1111, -9793}
-    },
-    [5136611550] = {
-        {"Tormented Spectrum", -94, 1404, 3187},
-        {"The Tormented Soul", -79, 2267, -114}
-    },
-    [4733293091] = {
-        {"Leader Grimm", 8128, 2685, 939},
-        {"Super Luo", 2355, 1716, 2364},
-        {"Elder Celatid", 1859, 1714, -2208},
-        {"Young Celestia", -1407, -1462, 1203}
-    },
-    [11987483716] = {
-        {"Raios, Sortiliena and Golgorosso", 458, 30, -1211}
-    },
-    [11987539001] = {
-        {"Leader Goblin", -1751, 181, 2608},
-        {"Goblins cave", -578.07, 178.99, 3519.20},
-        {"Two-Headed Giant", 2742.92, 225.58, 7207.78}
-    },
-    [12632324801] = {
-        {"Captain Sweet the Forever Child", 2940, -815, -1949}
-    },
-    [94066307314492] = {
-        {"Mob Save Farm", -272.06, 7.42, 74.08},
-        {"Thug Boss", -1493, 6, 8},
-        {"Loan Shark Boss", -553.70, 1.49, -2088.94},
-        {"The Custodian", -989.97, -1472.43, 6025.40},
-        {"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13},
-        {"The Arbitrator", -498.26, -1503.60, 5515.60}
-    },
-    [130463264320898] = {
-        {"Новый Босс", -3501.16, 153.08, 3534.65},
-        {"kvrst", -4313.40, 131.45, -888.28},
-        {"sunstone", -4331.49, 144.00, 349.18},
-        {"minik", -3224.66, 156.07, -1323.25},
-        {"Пингвины", -2397.24, 156.93, 2185.15},
-        {"Големы", 773.03, 112.48, 1246.18},
-        {"Вендиго", 3546.91, -889.56, 7155.80},
-        {"minik 2 location", 2150.95, -1181.13, 4616.98},
-        {"главный босс", 3796.98, -942.65, 6422.02}
-    }
+    [10299594856] = {{"Gingervale Attendant", -312, 21, 1984},{"Gingervale Warden", -93, 22, 2015},{"Aurelius Starless", -422, 132, 2420},{"Kringlewrath The Iron Saint", -265, 21, 2679},{"Аврора ебаная", -2, 72, -1010}},
+    [4734865416] = {{"Shadesworn the Corrupted", 414, -1174, -461},{"Illfang The Kobold Lord", -1003, 1928, -727}},
+    [4735703075] = {{"Mob farm: in pit", -352.25, -15.14, 1049.83},{"Lord Slug", 988, 2500, 591}},
+    [4735718710] = {{"Mob farm: in front of the boss", 1271.97, 1197.97, 12748.28},{"Stallord", 711, 1173, 12457}},
+    [4736649014] = {{"Mob farm: in a cave", -2295.05, 386.89, -1851.63},{"X'rphan the White Wyrm", -1585, 404, -1702}},
+    [4736759720] = {{"Uakmaroth, the Demon Lord", -1622, 1931, -426}},
+    [4736984932] = {{"Storm Atronach", -5849, -368, 9330}},
+    [4737916764] = {{"Skeleton Swamp", 326, 74, -1396},{"Bonnz the Skeleton Lord", 2998, -557, -1878}},
+    [4740039076] = {{"Guardian of the Gate", -2665, 879, 9127},{"Karth'uk The Crystal Kraken", -2612, 32, 6763}},
+    [4747247314] = {{"Hotoke The Enlightened", -3985, -9927, -7179}},
+    [5135551944] = {{"Buffed Knight", -1619, 4, -5725},{"Grimlock the Fallen King", -9471, -471, 1962}},
+    [5212666689] = {{"Laurellis Convict", 14968, 770, -705},{"Slime Lord Pengonis", -1826, 1111, -9793}},
+    [5136611550] = {{"Tormented Spectrum", -94, 1404, 3187},{"The Tormented Soul", -79, 2267, -114}},
+    [4733293091] = {{"Leader Grimm", 8128, 2685, 939},{"Super Luo", 2355, 1716, 2364},{"Elder Celatid", 1859, 1714, -2208},{"Young Celestia", -1407, -1462, 1203}},
+    [11987483716] = {{"Raios, Sortiliena and Golgorosso", 458, 30, -1211}},
+    [11987539001] = {{"Leader Goblin", -1751, 181, 2608},{"Goblins cave", -578.07, 178.99, 3519.20},{"Two-Headed Giant", 2742.92, 225.58, 7207.78}},
+    [12632324801] = {{"Captain Sweet the Forever Child", 2940, -815, -1949}},
+    [94066307314492] = {{"Mob Save Farm", -272.06, 7.42, 74.08},{"Thug Boss", -1493, 6, 8},{"Loan Shark Boss", -553.70, 1.49, -2088.94},{"The Custodian", -989.97, -1472.43, 6025.40},{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13},{"The Arbitrator", -498.26, -1503.60, 5515.60}},
+    [130463264320898] = {{"Новый Босс", -3501.16, 153.08, 3534.65},{"kvrst", -4313.40, 131.45, -888.28},{"sunstone", -4331.49, 144.00, 349.18},{"minik", -3224.66, 156.07, -1323.25},{"Пингвины", -2397.24, 156.93, 2185.15},{"Големы", 773.03, 112.48, 1246.18},{"Вендиго", 3546.91, -889.56, 7155.80},{"minik 2 location", 2150.95, -1181.13, 4616.98},{"главный босс", 3796.98, -942.65, 6422.02}}
 }
 
 local BOSS_FARMS = {
-    [10299594856] = {
-        {"Фарм: Центр (Пасха)", Vector3.new(24.45, 267.77, 400.73)}
-    },
-    [4734865416] = {
-        {"MobFarm", Vector3.new(-1042.60, -270, -553.53)},
-        {"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},
-        {"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}
-    },
-    [4735703075] = {
-        {"MobFarm", Vector3.new(-367.31, 0.75, 1007.91)},
-        {"Lord Slug", Vector3.new(747.68, 2485.53, 52)}
-    },
-    [4735718710] = {
-        {"Stallord", Vector3.new(571.00, 1188.82, 12513.01)}
-    },
-    [4736649014] = {
-        {"MobFarm", Vector3.new(498.27, 701.39, 608.80)},
-        {"X'rphan the White Wyrm", Vector3.new(-1695.54, 402.80, -1718.85)}
-    },
-    [4736759720] = {
-        {"Uakmaroth, the Demon Lord", Vector3.new(-1532.07, 1914.88, -384.36)}
-    },
-    [4736984932] = {
-        {"Storm Atronach", Vector3.new(-5849, -368, 9330)}
-    },
-    [4737916764] = {
-        {"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)},
-        {"MobFarm", Vector3.new(271.30, 34, -1441.69)}
-    },
-    [4740039076] = {
-        {"MobFarm", Vector3.new(-2666.91, 893.12, 9499.35)},
-        {"Guardian of the Gate", Vector3.new(-2666.33, 899.55, 9119.14)},
-        {"Karth'uk The Crystal Kraken", Vector3.new(-2549.95, 53.51, 6823.25)}
-    },
-    [4747247314] = {
-        {"Hotoke The Enlightened", Vector3.new(-3973.63, -9910.32, -7164.26)}
-    },
-    [5135551944] = {
-        {"Buffed Knight", Vector3.new(-1605.13, 38.42, -5727.90)},
-        {"Grimlock the Fallen King", Vector3.new(-9471.73, -443.34, 1915.18)}
-    },
-    [5212666689] = {
-        {"Laurellis Convict", Vector3.new(14969.86, 770.86, -708.19)},
-        {"Slime Lord Pengonis", Vector3.new(-1803.66, 1108.39, -9831.81)}
-    },
-    [5136611550] = {
-        {"Tormented Spectrum", Vector3.new(-94.10, 1404.62, 3186.31)},
-        {"The Tormented Soul", Vector3.new(-82.75, 2319.43, -97.59)}
-    },
-    [4733293091] = {
-        {"Leader Grimm", Vector3.new(8091.00, 2675.98, 678.44)},
-        {"Super Luo", Vector3.new(2451.71, 1746.34, 2114.21)},
-        {"Elder Celatid", Vector3.new(1833.24, 1762.81, -2241.65)},
-        {"Young Celestia", Vector3.new(-1555.34, -1322.91, 1577.24)}
-    },
-    [11987483716] = {
-        {"Raios", Vector3.new(4846.71, -3051.62, -1168.02)},
-        {"Sortiliena", Vector3.new(4846.71, -2025.62, -1168.02)},
-        {"Golgorosso", Vector3.new(4846.71, -1005.58, -1168.02)}
-    },
-    [11987539001] = {
-        {"Leader Goblin", Vector3.new(-1751, 181, 2608)},
-        {"Two-Headed Giant", Vector3.new(2835.94, 251.57, 6077.73)}
-    },
-    [12632324801] = {
-        {"Captain Sweet the Forever Child", Vector3.new(2993.59, -833.45, -1959.57)}
-    },
+    [10299594856] = {{"Фарм: Центр (Пасха)", Vector3.new(24.45, 267.77, 400.73)}},
+    [4734865416] = {{"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},{"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}},
+    [4735703075] = {{"MobFarm", Vector3.new(-367.31, 0.75, 1007.91)},{"Lord Slug", Vector3.new(747.68, 2485.53, 52)}},
+    [4735718710] = {{"Stallord", Vector3.new(571.00, 1188.82, 12513.01)}},
+    [4736649014] = {{"MobFarm", Vector3.new(498.27, 701.39, 608.80)},{"X'rphan the White Wyrm", Vector3.new(-1695.54, 402.80, -1718.85)}},
+    [4736759720] = {{"Uakmaroth, the Demon Lord", Vector3.new(-1532.07, 1914.88, -384.36)}},
+    [4736984932] = {{"Storm Atronach", Vector3.new(-5849, -368, 9330)}},
+    [4737916764] = {{"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)},{"MobFarm", Vector3.new(271.30, 34, -1441.69)}},
+    [4740039076] = {{"MobFarm", Vector3.new(-2666.91, 893.12, 9499.35)},{"Guardian of the Gate", Vector3.new(-2666.33, 899.55, 9119.14)},{"Karth'uk The Crystal Kraken", Vector3.new(-2549.95, 53.51, 6823.25)}},
+    [4747247314] = {{"Hotoke The Enlightened", Vector3.new(-3973.63, -9910.32, -7164.26)}},
+    [5135551944] = {{"Buffed Knight", Vector3.new(-1605.13, 38.42, -5727.90)},{"Grimlock the Fallen King", Vector3.new(-9471.73, -443.34, 1915.18)}},
+    [5212666689] = {{"Laurellis Convict", Vector3.new(14969.86, 770.86, -708.19)},{"Slime Lord Pengonis", Vector3.new(-1803.66, 1108.39, -9831.81)}},
+    [5136611550] = {{"Tormented Spectrum", Vector3.new(-94.10, 1404.62, 3186.31)},{"The Tormented Soul", Vector3.new(-82.75, 2319.43, -97.59)}},
+    [4733293091] = {{"Leader Grimm", Vector3.new(8091.00, 2675.98, 678.44)},{"Super Luo", Vector3.new(2451.71, 1746.34, 2114.21)},{"Elder Celatid", Vector3.new(1833.24, 1762.81, -2241.65)},{"Young Celestia", Vector3.new(-1555.34, -1322.91, 1577.24)}},
+    [11987483716] = {{"Raios", Vector3.new(4846.71, -3051.62, -1168.02)},{"Sortiliena", Vector3.new(4846.71, -2025.62, -1168.02)},{"Golgorosso", Vector3.new(4846.71, -1005.58, -1168.02)}},
+    [11987539001] = {{"Leader Goblin", Vector3.new(-1751, 181, 2608)},{"Two-Headed Giant", Vector3.new(2835.94, 251.57, 6077.73)}},
+    [12632324801] = {{"Captain Sweet the Forever Child", Vector3.new(2993.59, -833.45, -1959.57)}},
     [94066307314492] = {
+        {"Thug Boss (Server Hop)", Vector3.new(-1490.44, -9, -183.62)},
         {"MobFarm 18.1", Vector3.new(-502.70, 30.68, -95.50)},
         {"MobFarm Loan Shark Henchman", Vector3.new(-459.56, 25.80, -2173.31)},
         {"MobFarm VIP Scout", Vector3.new(-452.86, 31.93, 1394.72)},
@@ -452,150 +292,52 @@ local BOSS_FARMS = {
         {"The Custodian", Vector3.new(-975.23, -1477.30, 5912.75)},
         {"The Arbitrator", Vector3.new(-578.84, -1477.90, 5316.49)}
     },
-    [117852524597461] = {
-        {"Frontman", Vector3.new(-38.32, 80.40, -285.61)},
-    },
-    [130463264320898] = {
-        {"Oslund the Hollow Flame", Vector3.new(-3501.16, 153.08, 3534.65)},
-        {"Frostveil Echo", Vector3.new(2275.98, -1175.30, 4579.98)},
-        {"Ice Spirit", Vector3.new(3825.06, -942.65, 6400.30)},
-        {"Владимир Красное Солнышко", Vector3.new(-3183.14, 155.03, -1271.63)},
-        {"Мобфарм медведей", Vector3.new(2765.72, -473.67, 7026.55)},
-        {"Мобфарм крылатых шлюшек", Vector3.new(2935.85, -473.72, 7003.91)},
-        {"Мобофарм у вендиго", Vector3.new(3559.58, -889.56, 7149.98)}
-    }
+    [117852524597461] = {{"Frontman", Vector3.new(-38.32, 80.40, -285.61)}},
+    [130463264320898] = {{"Oslund the Hollow Flame", Vector3.new(-3501.16, 153.08, 3534.65)},{"Frostveil Echo", Vector3.new(2275.98, -1175.30, 4579.98)},{"Ice Spirit", Vector3.new(3825.06, -942.65, 6400.30)},{"Владимир Красное Солнышко", Vector3.new(-3183.14, 155.03, -1271.63)},{"Мобфарм медведей", Vector3.new(2765.72, -473.67, 7026.55)},{"Мобфарм крылатых шлюшек", Vector3.new(2935.85, -473.72, 7003.91)},{"Мобофарм у вендиго", Vector3.new(3559.58, -889.56, 7149.98)}}
 }
 
 local EXTRA_LOCATIONS = {
-    [10299594856] = {
-        {"Камни",  -270.87, 255.73, 325.78},
-        {"Центр", 23.92, 237.75, 400.89}
-    },
-    [4734865416] = {
-        {"Город", 415.57, 107.68, -276.72},
-        {"Шахта", -436.26, 128.35, 154.04},
-        {"Комната босса", -540.97, 1917.21, -727.32},
-        {"Комната Минибосса", 178.45, -1174.08, -487.87}
-    },
-    [4735703075] = {
-        {"Яма", -341.45, 99.01, 997.13},
-        {"Шахта", -6.24, 27.97, 945.08},
-        {"Магазин", -969.56, 69.00, -895.28},
-        {"Вход в башню", 282.07, -927.82, 838.67},
-        {"Комната босса", 545.77, 2485.72, 591.24},
-    },
-    [4735718710] = {
-        {"Шахта", 1339.27, 1826.08, -623.95},
-        {"Вход в башню", 1118.11, 1133.63, 12498.01},
-        {"Комната босса", 347.68, 1188.30, 12457.61}
-    },
-    [4736649014] = {
-        {"Шахта", 768.75, 204.93, 687.25},
-        {"Вход в башню", -2367.82, 407.96, -1542.97},
-        {"Комната босса", -2219.23, 400.14, -1873.53}
-    },
-    [4736759720] = {
-        {"Шахта", -961.40, 193.43, -1390.09},
-        {"Вход в башню", -1343.48, 1132.88, 138.37},
-        {"Комната босса", -1279.13, 1913.99, -426.48}
-    },
-    [4736984932] = {
-        {"Empty", 0.0, 0.0, 0.0}
-    },
-    [4737916764] = {
-        {"Вход в башню", 2687.15, -654.41, 470.80},
-        {"Комната босса", 2783.20, -554.00, -1670.30}
-    },
-    [4740039076] = {
-        {"Магазин", 1198.64, 951.67, -174.30},
-        {"Вход в первую локацию", -2691.01, 1184.50, 13916.61},
-        {"Вход в башню", 1236.04, 129.95, 11256.65},
-        {"Комната босса", -2620.99, 32.80, 7070.26}
-    },
-    [4747247314] = {
-        {"Шахта", -114.55, 20.66, 966.82},
-        {"Вход в башню", -4000.10, -9989.45, -5859.08},
-        {"Комната босса", -3987.15, -9930.00, -6714.68}
-    },
-    [5135551944] = {
-        {"Крыша минибосса", -1674.17, 152.01, -5899.82},
-        {"Вход в башню", -10204.24, -479.34, -491.57},
-        {"Комната босса", -9471.52, -474.34, 1500.44}
-    },
-    [5212666689] = {
-        {"Магазин в залупенске", -1618.68, 1359.33, 8325.41},
-        {"Вход в башню", 2065.14, 260.02, -8207.31},
-        {"Комната босса", -1193.62, 1092.96, -9792.50}
-    },
-    [5136611550] = {
-        {"Empty", 0.0, 0.0, 0.0}
-    },
-    [4733293091] = {
-        {"Яйцо босса", -1557.81, -1322.58, 1580.20}
-    },
-    [11987483716] = {
-        {"Empty", 0.0, 0.0, 0.0}
-    },
-    [11987539001] = {
-        {"Деревня", -991.45, 239.96, -956.28},
-        {"Гигас", -1434.15, 170.36, -2159.10}
-    },
-    [12632324801] = {
-        {"Empty", 0.0, 0.0, 0.0}
-    },
-    [94066307314492] = {
-        {"NPC Koshak", -715.74, 14.95, 49.26},
-        {"Тхунг", -1445.02, 253.41, -133.76}
-    },
-    [130463264320898] = {
-        {"Комната главного босса", 3940.89, -964.40, 6302.97},
-        {"Ледяной замок", 1028.20, -1218.36, 4146.35},
-        {"Маяк", -1629.58, 1016.57, 1514.95},
-        {"Церковь", -5474.52, 192.08, -1537.69},
-        {"Дом вендиго", -2998.23, -565.16, 9125.64},
-        {"Ключ", 2559.68, 133.57, 592.29},
-        {"Вход в пещеру с пингвинчиками", -2975.91, 353.49, 2394.02},
-        {"Ты не порти мой рассказ", -2904.03, 419.96, 1640.88}
-    },
+    [10299594856] = {{"Камни",  -270.87, 255.73, 325.78},{"Центр", 23.92, 237.75, 400.89}},
+    [4734865416] = {{"Город", 415.57, 107.68, -276.72},{"Шахта", -436.26, 128.35, 154.04},{"Комната босса", -540.97, 1917.21, -727.32},{"Комната Минибосса", 178.45, -1174.08, -487.87}},
+    [4735703075] = {{"Яма", -341.45, 99.01, 997.13},{"Шахта", -6.24, 27.97, 945.08},{"Магазин", -969.56, 69.00, -895.28},{"Вход в башню", 282.07, -927.82, 838.67},{"Комната босса", 545.77, 2485.72, 591.24}},
+    [4735718710] = {{"Шахта", 1339.27, 1826.08, -623.95},{"Вход в башню", 1118.11, 1133.63, 12498.01},{"Комната босса", 347.68, 1188.30, 12457.61}},
+    [4736649014] = {{"Шахта", 768.75, 204.93, 687.25},{"Вход в башню", -2367.82, 407.96, -1542.97},{"Комната босса", -2219.23, 400.14, -1873.53}},
+    [4736759720] = {{"Шахта", -961.40, 193.43, -1390.09},{"Вход в башню", -1343.48, 1132.88, 138.37},{"Комната босса", -1279.13, 1913.99, -426.48}},
+    [4737916764] = {{"Вход в башню", 2687.15, -654.41, 470.80},{"Комната босса", 2783.20, -554.00, -1670.30}},
+    [4740039076] = {{"Магазин", 1198.64, 951.67, -174.30},{"Вход в первую локацию", -2691.01, 1184.50, 13916.61},{"Вход в башню", 1236.04, 129.95, 11256.65},{"Комната босса", -2620.99, 32.80, 7070.26}},
+    [4747247314] = {{"Шахта", -114.55, 20.66, 966.82},{"Вход в башню", -4000.10, -9989.45, -5859.08},{"Комната босса", -3987.15, -9930.00, -6714.68}},
+    [5135551944] = {{"Крыша минибосса", -1674.17, 152.01, -5899.82},{"Вход в башню", -10204.24, -479.34, -491.57},{"Комната босса", -9471.52, -474.34, 1500.44}},
+    [5212666689] = {{"Магазин в залупенске", -1618.68, 1359.33, 8325.41},{"Вход в башню", 2065.14, 260.02, -8207.31},{"Комната босса", -1193.62, 1092.96, -9792.50}},
+    [4733293091] = {{"Яйцо босса", -1557.81, -1322.58, 1580.20}},
+    [11987539001] = {{"Деревня", -991.45, 239.96, -956.28},{"Гигас", -1434.15, 170.36, -2159.10}},
+    [94066307314492] = {{"NPC Koshak", -715.74, 14.95, 49.26},{"Тхунг", -1445.02, 253.41, -133.76}},
+    [130463264320898] = {{"Комната главного босса", 3940.89, -964.40, 6302.97},{"Ледяной замок", 1028.20, -1218.36, 4146.35},{"Маяк", -1629.58, 1016.57, 1514.95},{"Церковь", -5474.52, 192.08, -1537.69},{"Дом вендиго", -2998.23, -565.16, 9125.64},{"Ключ", 2559.68, 133.57, 592.29},{"Вход в пещеру с пингвинчиками", -2975.91, 353.49, 2394.02},{"Ты не порти мой рассказ", -2904.03, 419.96, 1640.88}}
 }
 
 -- ==============================================================================
--- === КОНФИГУРАЦИЯ ПУТЕЙ ===
+-- === PATHS CONFIG ===
 -- ==============================================================================
 local FLOOR_2_PATHS = {["Boss2"] = "Boss2", ["Miniboss"] = "Miniboss"}
 local PATH_BASE_URL_2 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/2%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_3_PATHS = {["Башня"] = "Башня", ["Магазин"] = "Магазин"}
 local PATH_BASE_URL_3 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/3%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_4_PATHS = {["Лабиринт"] = "Labirint", ["Шахта"] = "Shaxta"}
 local PATH_BASE_URL_4 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/4%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_5_PATHS = {["Лабиринт"] = "Лабиринт"}
 local PATH_BASE_URL_5 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/5%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_8_PATHS = {["Boss"] = "Boss"}
 local PATH_BASE_URL_8 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/8%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_14_PATHS = {["BlueCristal"] = "BlueCristal", ["Boss1LeaderGrimm"] = "Boss1LeaderGrimm", ["RedCristal"] = "RedCristal"}
 local PATH_BASE_URL_14 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/14%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
 local FLOOR_16_PATHS = {["LeaderGoblin"] = "LeaderGoblin", ["Two-HeadedGiant"] = "Two-HeadedGiant"}
 local PATH_BASE_URL_16 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/16%20%D1%8D%D1%82%D0%B0%D0%B6/"
-
-local FLOOR_19_PATHS = {
-    ["Frostveil Echo"] = "FrostveilEcho", ["Ice Spirit"] = "IceSpirit", ["Владимир К.С."] = "Vladimir", 
-    ["Дом вендиго"] = "WendigoHouse", ["Лабиринт вендиго"] = "WendigoMaze", ["Ледяной замок"] = "IceCastle", 
-    ["Маяк"] = "Lighthouse", ["Церковь"] = "Church"
-}
+local FLOOR_19_PATHS = {["Frostveil Echo"] = "FrostveilEcho", ["Ice Spirit"] = "IceSpirit", ["Владимир К.С."] = "Vladimir", ["Дом вендиго"] = "WendigoHouse", ["Лабиринт вендиго"] = "WendigoMaze", ["Ледяной замок"] = "IceCastle", ["Маяк"] = "Lighthouse", ["Церковь"] = "Church"}
 local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local AUTO_WALK_CONFIG = {
-    WalkSpeed = 30, NormalSpeed = 16, MaxDistance = 1500, StopDistance = 6.5
-}
+local AUTO_WALK_CONFIG = { WalkSpeed = 30, NormalSpeed = 16, MaxDistance = 1500, StopDistance = 6.5 }
 
 -- ==============================================================================
--- === FUNCTIONS (HELPERS) ===
+-- === FUNCTIONS ===
 -- ==============================================================================
 local function teleport(pos)
     local char = player.Character
@@ -617,28 +359,6 @@ local function spawnPlatform(pos)
     return platform
 end
 
-local function initGUI()
-    if screenGui then return end
-    
-    screenGui = Instance.new("ScreenGui")
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-    
-    indicator = Instance.new("Frame")
-    indicator.Size = UDim2.new(0, 40, 0, 40)
-    indicator.Position = UDim2.new(0, 49, 0, 249)
-    indicator.BackgroundColor3 = Color3.new(1, 0, 0)
-    indicator.BorderSizePixel = 0
-    indicator.BackgroundTransparency = 0
-    indicator.Parent = screenGui
-end
-
-local function updateIndicator(isNear)
-    if indicator then
-        indicator.BackgroundColor3 = isNear and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
-    end
-end
-
 local function freezePlayer()
     local char = player.Character
     if not char then return end
@@ -646,14 +366,10 @@ local function freezePlayer()
     if not hrp then return end
     
     local freezePos = hrp.CFrame
-    if individualFreezeConnection then
-        individualFreezeConnection:Disconnect()
-    end
+    if individualFreezeConnection then individualFreezeConnection:Disconnect() end
     
     individualFreezeConnection = RunService.RenderStepped:Connect(function()
-        if hrp and hrp.Parent then
-            hrp.CFrame = freezePos
-        end
+        if hrp and hrp.Parent then hrp.CFrame = freezePos end
     end)
 end
 
@@ -664,13 +380,29 @@ local function unfreezePlayer()
     end
 end
 
+local function initGUI()
+    if screenGui then return end
+    screenGui = Instance.new("ScreenGui")
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 40, 0, 40)
+    indicator.Position = UDim2.new(0, 49, 0, 249)
+    indicator.BackgroundColor3 = Color3.new(1, 0, 0)
+    indicator.BorderSizePixel = 0
+    indicator.Parent = screenGui
+end
+
+local function updateIndicator(isNear)
+    if indicator then indicator.BackgroundColor3 = isNear and Color3.new(0, 1, 0) or Color3.new(1, 0, 0) end
+end
+
 local function findMobsFolder()
     local folder = Workspace:FindFirstChild("Mobs")
     if not folder then
         for _, child in ipairs(Workspace:GetDescendants()) do
-            if child.Name == "Mobs" and child:IsA("Folder") then
-                return child
-            end
+            if child.Name == "Mobs" and child:IsA("Folder") then return child end
         end
     end
     return folder
@@ -680,43 +412,47 @@ local function getPlayerLevel(plr)
     local stats = plr:FindFirstChild("PlayerStats")
     if stats then
         local levelObj = stats:FindFirstChild("Level")
-        if levelObj and (levelObj:IsA("IntValue") or levelObj:IsA("NumberValue")) then
-            return levelObj.Value
-        elseif levelObj and levelObj:IsA("StringValue") and tonumber(levelObj.Value) then
-            return tonumber(levelObj.Value)
-        end
+        if levelObj and (levelObj:IsA("IntValue") or levelObj:IsA("NumberValue")) then return levelObj.Value
+        elseif levelObj and levelObj:IsA("StringValue") and tonumber(levelObj.Value) then return tonumber(levelObj.Value) end
     end
-    
     local leaderstats = plr:FindFirstChild("leaderstats")
     if leaderstats then
         local lvl = leaderstats:FindFirstChild("Level") or leaderstats:FindFirstChild("lvl") or leaderstats:FindFirstChild("level")
-        if lvl and (lvl:IsA("IntValue") or lvl:IsA("NumberValue")) then
-            return lvl.Value
-        elseif lvl and lvl:IsA("StringValue") and tonumber(lvl.Value) then
-            return tonumber(lvl.Value)
-        end
+        if lvl and (lvl:IsA("IntValue") or lvl:IsA("NumberValue")) then return lvl.Value
+        elseif lvl and lvl:IsA("StringValue") and tonumber(lvl.Value) then return tonumber(lvl.Value) end
     end
-    
     local attr = plr:GetAttribute("Level")
-    if type(attr) == "number" then
-        return attr
-    elseif type(attr) == "string" and tonumber(attr) then
-        return tonumber(attr)
-    end
-    
+    if type(attr) == "number" then return attr
+    elseif type(attr) == "string" and tonumber(attr) then return tonumber(attr) end
     return "?"
 end
 
 -- ==============================================================================
--- === LOGIC FARM CONTROL (STOP ALL) ===
+-- === SERVER HOP ===
 -- ==============================================================================
-local function stopAllFarms()
-    currentFarmMode = nil
-    autoClickerActive = false
-    unfreezePlayer()
-    if indicator then
-        updateIndicator(false)
-    end
+local function ServerHop()
+    local placeId = game.PlaceId
+    spawn(function()
+        while true do
+            pcall(function()
+                local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+                local response = game:HttpGet(url)
+                local data = HttpService:JSONDecode(response)
+                
+                if data and data.data then
+                    for _, server in ipairs(data.data) do
+                        if type(server) == "table" and server.playing and server.maxPlayers and server.id then
+                            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                                TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                                task.wait(3)
+                            end
+                        end
+                    end
+                end
+            end)
+            task.wait(5)
+        end
+    end)
 end
 
 -- ==============================================================================
@@ -764,11 +500,8 @@ local function createPlayerListGui()
     
     local function updateList()
         for _, child in ipairs(scroll:GetChildren()) do
-            if child:IsA("TextLabel") then
-                child:Destroy()
-            end
+            if child:IsA("TextLabel") then child:Destroy() end
         end
-        
         local y = 0
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= player then
@@ -784,9 +517,7 @@ local function createPlayerListGui()
                 lbl.Font = Enum.Font.GothamBold
                 lbl.TextSize = 16
                 lbl.TextXAlignment = Enum.TextXAlignment.Left
-                lbl.TextTruncate = Enum.TextTruncate.AtEnd
                 lbl.Parent = scroll
-                
                 y = y + 28
             end
         end
@@ -794,13 +525,10 @@ local function createPlayerListGui()
     end
     
     updateList()
-    
     playerListUpdateLoop = spawn(function()
         while playerListGui and playerListGui.Parent do
             task.wait(5)
-            if playerListGui then
-                updateList()
-            end
+            if playerListGui then updateList() end
         end
     end)
     
@@ -809,9 +537,7 @@ local function createPlayerListGui()
 end
 
 local function destroyPlayerListGui()
-    if playerListUpdateLoop then
-        playerListUpdateLoop = nil
-    end
+    if playerListUpdateLoop then playerListUpdateLoop = nil end
     if playerListGui then
         playerListGui:Destroy()
         playerListGui = nil
@@ -830,20 +556,14 @@ local function startSafe1()
                 local char = player.Character
                 if char then
                     local humanoid = char:FindFirstChild("Humanoid")
-                    if humanoid and humanoid.Health > 0 then
-                        humanoid.Health = 0
-                        char:BreakJoints() -- Надежное уничтожение персонажа
-                    end
+                    if humanoid and humanoid.Health > 0 then humanoid.Health = 0 end
                 end
             end
-            task.wait(3)
+            task.wait(5)
         end
     end)
 end
-
-local function stopSafe1()
-    safe1Active = false
-end
+local function stopSafe1() safe1Active = false end
 
 local function toggleFreeze()
     isFrozen = not isFrozen
@@ -854,11 +574,8 @@ local function toggleFreeze()
             if hrp then
                 local freezePosition = hrp.CFrame
                 if freezeConnection then freezeConnection:Disconnect() end
-                
                 freezeConnection = RunService.RenderStepped:Connect(function()
-                    if hrp and hrp.Parent then
-                        hrp.CFrame = freezePosition
-                    end
+                    if hrp and hrp.Parent then hrp.CFrame = freezePosition end
                 end)
             else
                 isFrozen = false
@@ -876,9 +593,7 @@ end
 
 local function cleanupResurrection()
     for _, conn in ipairs(resurrectionConnections) do
-        if conn and conn.Disconnect then
-            conn:Disconnect()
-        end
+        if conn and conn.Disconnect then conn:Disconnect() end
     end
     resurrectionConnections = {}
     resurrectionActive = false
@@ -888,7 +603,6 @@ local function setupResurrection()
     if resurrectionActive then return end
     cleanupResurrection()
     resurrectionActive = true
-    
     local runService = game:GetService("RunService")
     
     local function onCharacterAdded(character)
@@ -897,23 +611,17 @@ local function setupResurrection()
         local lastPos = rootPart.Position
         
         local posConn = runService.Heartbeat:Connect(function()
-            if rootPart and rootPart.Parent then
-                lastPos = rootPart.Position
-            end
+            if rootPart and rootPart.Parent then lastPos = rootPart.Position end
         end)
         table.insert(resurrectionConnections, posConn)
         
         local diedConn = humanoid.Died:Connect(function()
-            if posConn.Connected then
-                posConn:Disconnect()
-            end
+            if posConn.Connected then posConn:Disconnect() end
             task.delay(5, function()
                 local currentChar = player.Character
                 if not currentChar then return end
                 local currentRoot = currentChar:FindFirstChild("HumanoidRootPart")
-                if currentRoot then
-                    currentRoot.CFrame = CFrame.new(lastPos)
-                end
+                if currentRoot then currentRoot.CFrame = CFrame.new(lastPos) end
             end)
         end)
         table.insert(resurrectionConnections, diedConn)
@@ -929,121 +637,209 @@ local function setupResurrection()
     
     local charAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
     table.insert(resurrectionConnections, charAddedConn)
-    
-    if player.Character then
-        onCharacterAdded(player.Character)
-    end
+    if player.Character then onCharacterAdded(player.Character) end
 end
 
 -- ==============================================================================
--- === LOGIC AUTO-WALK ===
+-- === АВТОФАРМ БЛИЖАЙШИХ МОБОВ ===
 -- ==============================================================================
+local autoWalkLoopRunning = false
+
 local function startAutoWalk()
-    if autoWalkActive then return end
     autoWalkActive = true
+    if autoWalkLoopRunning then return end
+    autoWalkLoopRunning = true
     
-    spawn(function()
+    task.spawn(function()
         while autoWalkActive do
             local char = player.Character
-            local humanoid = char and char:FindFirstChild("Humanoid")
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if not char or not humanoid or not hrp or humanoid.Health <= 0 then
-                task.wait(1)
-                continue
-            end
-            
-            local folder = findMobsFolder()
-            if not folder then
-                task.wait(1)
-                continue
-            end
-            
-            local playerPos = hrp.Position
-            local nearestMob = nil
-            local nearestPart = nil
-            local nearestDist = AUTO_WALK_CONFIG.MaxDistance
-            
-            for _, mob in ipairs(folder:GetChildren()) do
-                if mob:IsA("Model") then
-                    local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Torso") or mob:FindFirstChild("UpperTorso") or mob.PrimaryPart
-                    if targetPart then
-                        -- Проверяем, жив ли моб, если у него есть какой-либо Humanoid
-                        local hum = mob:FindFirstChildOfClass("Humanoid")
-                        if hum and hum.Health <= 0 then
-                            continue
+            if char then
+                local humanoid = char:FindFirstChild("Humanoid")
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                
+                if humanoid and humanoid.Health > 0 and hrp then
+                    local mobsFolder = findMobsFolder()
+                    if mobsFolder then
+                        local nearestMob = nil
+                        local nearestDist = AUTO_WALK_CONFIG.MaxDistance
+                        
+                        -- Ищем живых мобов поблизости
+                        for _, mob in ipairs(mobsFolder:GetChildren()) do
+                            local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
+                            local mobHum = mob:FindFirstChild("Humanoid")
+                            if targetPart and (not mobHum or mobHum.Health > 0) then
+                                local dist = (hrp.Position - targetPart.Position).Magnitude
+                                if dist < nearestDist then
+                                    nearestDist = dist
+                                    nearestMob = mob
+                                end
+                            end
                         end
                         
-                        local dist = (playerPos - targetPart.Position).Magnitude
-                        if dist < nearestDist then
-                            nearestDist = dist
-                            nearestMob = mob
-                            nearestPart = targetPart
+                        if nearestMob then
+                            local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
+                            if targetPart then
+                                if nearestDist > AUTO_WALK_CONFIG.StopDistance then
+                                    -- Бежим к мобу
+                                    humanoid:MoveTo(targetPart.Position)
+                                else
+                                    -- Стоим на месте
+                                    humanoid:MoveTo(hrp.Position)
+                                    
+                                    -- Поворачиваемся лицом к мобу
+                                    hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(targetPart.Position.X, hrp.Position.Y, targetPart.Position.Z))
+                                    
+                                    -- Надежный клик через VirtualInputManager
+                                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                                    task.wait(0.01)
+                                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                                end
+                            end
                         end
                     end
                 end
             end
-            
-            if nearestMob and nearestPart then
-                if nearestDist > AUTO_WALK_CONFIG.StopDistance then
-                    humanoid:MoveTo(nearestPart.Position)
-                else
-                    humanoid:MoveTo(hrp.Position)
-                end
-            end
-            
-            task.wait(0.2)
+            task.wait(0.1) -- Частота обновления поиска моба
         end
+        autoWalkLoopRunning = false
     end)
 end
 
 local function stopAutoWalk()
     autoWalkActive = false
+    -- Принудительно останавливаем персонажа при выключении
+    local char = player.Character
+    if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+        char.Humanoid:MoveTo(char.HumanoidRootPart.Position)
+    end
 end
 
 -- ==============================================================================
 -- === LOGIC BOSS FARM ===
 -- ==============================================================================
-local function startAutoClicker()
-    if autoClickerActive then return end
-    autoClickerActive = true
-    spawn(function()
-        while autoClickerActive do
-            local char = player.Character
-            local hum = char and char:FindFirstChild("Humanoid")
-            if not char or not hum or hum.Health <= 0 then
-                stopAllFarms()
-                break
-            end
-            
-            pcall(function()
-                -- Кликаем в нижний правый угол экрана
-                local cam = workspace.CurrentCamera
-                local cornerX = cam and cam.ViewportSize.X or 2000
-                local cornerY = cam and cam.ViewportSize.Y or 2000
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton1(Vector2.new(cornerX - 5, cornerY - 5))
-            end)
-            local delay = 1.0 + (math.random() * 0.5)
-            task.wait(delay)
-        end
-    end)
-end
-
 local function startGenericFarm(bossName, farmPos)
     currentFarmMode = bossName
     initGUI()
     updateIndicator(false)
-    startAutoClicker()
     
+    local isThugHop = (bossName == "Thug Boss (Server Hop)")
     local isFrontman = (bossName == "Frontman")
     local isCurrentlyVladimir = (bossName == "Владимир Красное Солнышко")
     local isCurrentlyFrostveil = (bossName == "Frostveil Echo")
     local isCurrentlyFloor8Mob = (bossName == "MobFarm" and game.PlaceId == 4737916764)
     local isEasterFarm = (bossName == "Фарм: Центр (Пасха)" and game.PlaceId == 10299594856)
-    local isCurrentlyFloor2Mob = (bossName == "MobFarm" and game.PlaceId == 4734865416)
     local platform = nil
     
+    -- === СЕРВЕР ХОП (Thug Boss) ===
+    if isThugHop then
+        spawn(function()
+            -- 1) Ждем 3 секунды
+            task.wait(3)
+            if currentFarmMode ~= bossName then return end
+            
+            -- 2) Спавн платформы на Y = -9
+            local platformPos = Vector3.new(-1490.44, -9, -183.62)
+            platform = spawnPlatform(platformPos)
+            
+            -- 3) Ждем 1 секунду
+            task.wait(1)
+            if currentFarmMode ~= bossName then return end
+            
+            -- 4) ТП игрока на 2 студа выше платформы (Y = -7)
+            local playerPos = platformPos + Vector3.new(0, 2, 0)
+            teleport(playerPos)
+            
+            -- 5) Ждем 3 секунды
+            task.wait(3)
+            if currentFarmMode ~= bossName then return end
+            
+            -- 6) Фриз игрока
+            freezePlayer()
+            
+            -- 7) Нажимаем Q
+            VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+            task.wait(0.1)
+            VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+            
+            local hasSeenBoss = false
+            local nextFPress = 0 -- Чтобы первый раз нажалось сразу
+            
+            -- 8) Кликер
+            local clickLoopActive = true
+            spawn(function()
+                while clickLoopActive and currentFarmMode == bossName do
+                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                    task.wait(0.05)
+                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                    task.wait(0.55)
+                end
+            end)
+            
+            -- Основной цикл поиска мобов
+            while currentFarmMode == bossName do
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then break end
+                
+                -- Нажатие F
+                if os.time() >= nextFPress then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+                    nextFPress = os.time() + math.random(33, 34)
+                end
+                
+                local mobsFolder = findMobsFolder()
+                local bossFoundThisTick = false
+                
+                if mobsFolder then
+                    for _, mob in ipairs(mobsFolder:GetChildren()) do
+                        if mob:IsA("Model") then
+                            local torso = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
+                            local mobHum = mob:FindFirstChild("Humanoid")
+                            if torso and torso:IsA("BasePart") and (not mobHum or mobHum.Health > 0) then
+                                
+                                local delta = torso.Position - platformPos
+                                local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
+                                local verticalDelta = torso.Position.Y - platformPos.Y
+                                
+                                -- Цилиндр: радиус 10, высота от 0 до 50
+                                local inCylinder = (horizontalDist <= 10 and verticalDelta >= 0 and verticalDelta <= 50)
+                                
+                                if inCylinder or mob:GetAttribute("IsThugTarget") then
+                                    mob:SetAttribute("IsThugTarget", true)
+                                    bossFoundThisTick = true
+                                    hasSeenBoss = true
+                                    
+                                    torso.Anchored = true
+                                    torso.CanCollide = false
+                                    -- Ставим на 6 студов перед собой и спиной к нам
+                                    torso.CFrame = hrp.CFrame * CFrame.new(0, 0, -6)
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                updateIndicator(bossFoundThisTick)
+                
+                -- Если босс умер - прыжок сервера
+                if not bossFoundThisTick and hasSeenBoss then
+                    currentFarmMode = nil
+                    clickLoopActive = false
+                    unfreezePlayer()
+                    if platform then platform:Destroy() end
+                    ServerHop()
+                    return
+                end
+                
+                task.wait(0.1)
+            end
+            clickLoopActive = false
+        end)
+        return
+    end
+    
+    -- === ЛОГИКА ОСТАЛЬНЫХ БОССОВ ===
     if isFrontman then
         local platformPos = Vector3.new(-38.32, 80.40, -285.61)
         platform = spawnPlatform(platformPos)
@@ -1072,12 +868,6 @@ local function startGenericFarm(bossName, farmPos)
         farmPos = playerPos
         platform = spawnPlatform(platformPos)
         teleport(playerPos)
-    elseif isCurrentlyFloor2Mob then
-        local platformPos = Vector3.new(-1042.60, -275, -553.53)
-        local playerPos = platformPos + Vector3.new(0, 5, 0)
-        farmPos = playerPos
-        platform = spawnPlatform(platformPos)
-        teleport(playerPos)
     else
         teleport(farmPos)
         task.wait(0.3)
@@ -1097,15 +887,8 @@ local function startGenericFarm(bossName, farmPos)
         local isCurrentlyFrontman = (bossName == "Frontman")
         
         while currentFarmMode == bossName do
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChild("Humanoid")
-            
-            -- Выключение фарма в случае смерти
-            if not hrp or not hum or hum.Health <= 0 then
-                stopAllFarms()
-                break
-            end
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then break end
             
             local mobsFolder = findMobsFolder()
             local foundAny = false
@@ -1114,37 +897,25 @@ local function startGenericFarm(bossName, farmPos)
                 for _, mob in ipairs(mobsFolder:GetChildren()) do
                     if mob:IsA("Model") then
                         local torso = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("UpperTorso") or mob:FindFirstChild("Torso")
-                        if torso and torso:IsA("BasePart") then
+                        local mobHum = mob:FindFirstChild("Humanoid")
+                        if torso and torso:IsA("BasePart") and (not mobHum or mobHum.Health > 0) then
                             local shouldProcess = false
                             
-                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob then
+                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
                                 local delta = torso.Position - farmPos
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
                                 
                                 if isCurrentlyFrostveil then
-                                    if horizontalDist <= 10 and verticalDelta >= -50 and verticalDelta <= 0 then
-                                        shouldProcess = true
-                                    end
+                                    if horizontalDist <= 10 and verticalDelta >= -50 and verticalDelta <= 0 then shouldProcess = true end
                                 elseif isEasterFarm then
-                                    if horizontalDist <= 4 and verticalDelta <= 0 then
-                                        shouldProcess = true
-                                    end
-                                elseif isCurrentlyFloor2Mob then
-                                    -- Мобы от 0 до -40 стадов НИЖЕ игрока
-                                    if horizontalDist <= 15 and verticalDelta >= -70 and verticalDelta <= 0 then
-                                        shouldProcess = true
-                                    end
+                                    if horizontalDist <= 4 and verticalDelta <= 0 then shouldProcess = true end
                                 else
                                     if horizontalDist <= 15 then
                                         if isCurrentlyVladimir or isCurrentlyFloor8Mob then
-                                            if verticalDelta >= 0 and verticalDelta <= 50 then
-                                                shouldProcess = true
-                                            end
+                                            if verticalDelta >= 0 and verticalDelta <= 50 then shouldProcess = true end
                                         elseif isCurrentlyFrontman then
-                                            if verticalDelta >= -50 and verticalDelta <= 0 then
-                                                shouldProcess = true
-                                            end
+                                            if verticalDelta >= -50 and verticalDelta <= 0 then shouldProcess = true end
                                         end
                                     end
                                 end
@@ -1152,15 +923,10 @@ local function startGenericFarm(bossName, farmPos)
                                 local delta = torso.Position - farmPos
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
-                                
-                                if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then
-                                    shouldProcess = true
-                                end
+                                if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then shouldProcess = true end
                             else
                                 local searchRadius = isFloor13 and 50 or 30
-                                if (torso.Position - farmPos).Magnitude <= searchRadius then
-                                    shouldProcess = true
-                                end
+                                if (torso.Position - farmPos).Magnitude <= searchRadius then shouldProcess = true end
                             end
                             
                             if shouldProcess then
@@ -1170,7 +936,7 @@ local function startGenericFarm(bossName, farmPos)
                                 local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
                                 torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
                                 
-                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob) then
+                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm) then
                                     break
                                 end
                             end
@@ -1181,7 +947,7 @@ local function startGenericFarm(bossName, farmPos)
             
             updateIndicator(foundAny)
             
-            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isCurrentlyFloor2Mob then
+            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
                 task.wait(3)
             else
                 task.wait(0.1)
@@ -1189,11 +955,15 @@ local function startGenericFarm(bossName, farmPos)
         end
         
         unfreezePlayer()
-        if platform then
-            platform:Destroy()
-        end
+        if platform then platform:Destroy() end
         updateIndicator(false)
     end)
+end
+
+local function stopAllFarms()
+    currentFarmMode = nil
+    unfreezePlayer()
+    if indicator then updateIndicator(false) end
 end
 
 -- ==============================================================================
@@ -1201,18 +971,11 @@ end
 -- ==============================================================================
 local function startMaterialFarm()
     if materialFarmActive then return end
-    
     local anySelected = false
     for _, state in pairs(selectedMaterials) do
-        if state then
-            anySelected = true
-            break
-        end
+        if state then anySelected = true break end
     end
-    
-    if not anySelected then
-        return
-    end
+    if not anySelected then return end
     
     materialFarmActive = true
     spawn(function()
@@ -1220,7 +983,6 @@ local function startMaterialFarm()
             pcall(function()
                 local RepStor = game:GetService("ReplicatedStorage")
                 local MaterialsFolder = workspace:FindFirstChild("Materials")
-                
                 if MaterialsFolder and RepStor:FindFirstChild("ClaimMaterial") then
                     for _, material in ipairs(MaterialsFolder:GetChildren()) do
                         if material:IsA("Model") and material:FindFirstChild("Owner") and material:FindFirstChild("Id") then
@@ -1239,10 +1001,7 @@ local function startMaterialFarm()
         end
     end)
 end
-
-local function stopMaterialFarm()
-    materialFarmActive = false
-end
+local function stopMaterialFarm() materialFarmActive = false end
 
 local function startFishFarm()
     if fishFarmActive then return end
@@ -1251,20 +1010,15 @@ local function startFishFarm()
         while fishFarmActive do
             pcall(function()
                 local RepStor = game:GetService("ReplicatedStorage")
-                if RepStor:FindFirstChild("CatchFish") then
-                    RepStor.CatchFish:FireServer(10)
-                end
+                if RepStor:FindFirstChild("CatchFish") then RepStor.CatchFish:FireServer(10) end
             end)
             task.wait(60)
         end
     end)
 end
+local function stopFishFarm() fishFarmActive = false end
 
-local function stopFishFarm()
-    fishFarmActive = false
-end
-
--- Загрузка конфига
+-- Загрузка и старт сохраненных настроек
 LoadConfig()
 if safe1Active then startSafe1() end
 if resurrectionActive then setupResurrection() end
@@ -1273,8 +1027,21 @@ if materialFarmActive then startMaterialFarm() end
 if fishFarmActive then startFishFarm() end
 if playerListActive then createPlayerListGui() end
 
+-- Авто-запуск сохраненного режима фарма
+if currentFarmMode then
+    local farms = BOSS_FARMS[game.PlaceId]
+    if farms then
+        for _, farmData in ipairs(farms) do
+            if farmData[1] == currentFarmMode then
+                startGenericFarm(currentFarmMode, farmData[2])
+                break
+            end
+        end
+    end
+end
+
 -- ==============================================================================
--- === UI SWITCH LOGIC ===
+-- === UI SWITCH LOGIC & MAIN GUI ===
 -- ==============================================================================
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     local switchFrame = Instance.new("Frame")
@@ -1350,15 +1117,10 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     end
 end
 
--- ==============================================================================
--- === MAIN UI GENERATION ===
--- ==============================================================================
 local screenGuiMain = nil
 
 local function rebuildGUI()
-    if screenGuiMain then
-        screenGuiMain:Destroy()
-    end
+    if screenGuiMain then screenGuiMain:Destroy() end
     
     screenGuiMain = Instance.new("ScreenGui")
     screenGuiMain.Name = "PidromaniaHub"
@@ -1523,9 +1285,7 @@ local function rebuildGUI()
     
     local function clearContent()
         for _, child in ipairs(contentContainer:GetChildren()) do
-            if child:IsA("GuiObject") then
-                child:Destroy()
-            end
+            if child:IsA("GuiObject") then child:Destroy() end
         end
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     end
@@ -1559,9 +1319,7 @@ local function rebuildGUI()
             corner.Parent = btn
             
             btn.MouseButton1Click:Connect(function()
-                pcall(function()
-                    TeleportService:Teleport(placeId, player)
-                end)
+                pcall(function() TeleportService:Teleport(placeId, player) end)
             end)
             btn.Parent = contentContainer
         end
@@ -1572,7 +1330,6 @@ local function rebuildGUI()
         clearContent()
         local currentPlaceId = game.PlaceId
         local currentFloor = nil
-        
         for _, floorData in ipairs(FLOORS) do
             if floorData[3] == currentPlaceId then
                 currentFloor = floorData
@@ -1634,9 +1391,7 @@ local function rebuildGUI()
             btn.MouseButton1Click:Connect(function()
                 if player.Character then
                     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.CFrame = CFrame.new(x, y, z)
-                    end
+                    if hrp then hrp.CFrame = CFrame.new(x, y, z) end
                 end
             end)
             btn.Parent = contentContainer
@@ -1648,7 +1403,6 @@ local function rebuildGUI()
         clearContent()
         local currentPlaceId = game.PlaceId
         local currentFloor = nil
-        
         for _, floorData in ipairs(FLOORS) do
             if floorData[3] == currentPlaceId then
                 currentFloor = floorData
@@ -1713,9 +1467,7 @@ local function rebuildGUI()
                 btn.MouseButton1Click:Connect(function()
                     if player.Character then
                         local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                        if hrp then
-                            hrp.CFrame = CFrame.new(x, y, z)
-                        end
+                        if hrp then hrp.CFrame = CFrame.new(x, y, z) end
                     end
                 end)
                 btn.Parent = contentContainer
@@ -1759,12 +1511,13 @@ local function rebuildGUI()
             local isActive = (currentFarmMode == bossName)
             
             local switchFrame, setState = createToggleSwitch(contentContainer, T("farmPrefix") .. bossName, isActive, function(enabled)
+                stopAllFarms()
                 if enabled then
-                    stopAllFarms()
                     startGenericFarm(bossName, farmPos)
                 else
-                    stopAllFarms()
+                    currentFarmMode = nil
                 end
+                SaveConfig() -- Сохраняем состояние фарма
             end)
             switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
             yOffset = yOffset + 35 * 1.5
@@ -1800,9 +1553,7 @@ local function rebuildGUI()
         
         if materialsFolder then
             for _, mat in ipairs(materialsFolder:GetChildren()) do
-                if not table.find(foundMaterials, mat.Name) then
-                    table.insert(foundMaterials, mat.Name)
-                end
+                if not table.find(foundMaterials, mat.Name) then table.insert(foundMaterials, mat.Name) end
             end
         end
         table.sort(foundMaterials)
@@ -1820,10 +1571,7 @@ local function rebuildGUI()
             yOffset = yOffset + 25 * 1.5
         else
             for _, matName in ipairs(foundMaterials) do
-                if selectedMaterials[matName] == nil then
-                    selectedMaterials[matName] = false
-                end
-                
+                if selectedMaterials[matName] == nil then selectedMaterials[matName] = false end
                 local switchFrame, _ = createToggleSwitch(
                     contentContainer,
                     matName,
@@ -1868,16 +1616,11 @@ local function rebuildGUI()
             fishFarmActive,
             function(enabled)
                 fishFarmActive = enabled
-                if enabled then
-                    startFishFarm()
-                else
-                    stopFishFarm()
-                end
+                if enabled then startFishFarm() else stopFishFarm() end
                 SaveConfig()
             end
         )
         fishToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset + 10 * 1.5 + 45 * 1.5)
-        
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5 + 45 * 1.5 + 45 * 1.5)
     end
     
@@ -1930,31 +1673,14 @@ local function rebuildGUI()
             local pathsForFloor = nil
             local pathBaseUrl = nil
             
-            if currentFloorData[1] == 2 then
-                pathsForFloor = FLOOR_2_PATHS
-                pathBaseUrl = PATH_BASE_URL_2
-            elseif currentFloorData[1] == 3 then
-                pathsForFloor = FLOOR_3_PATHS
-                pathBaseUrl = PATH_BASE_URL_3
-            elseif currentFloorData[1] == 4 then
-                pathsForFloor = FLOOR_4_PATHS
-                pathBaseUrl = PATH_BASE_URL_4
-            elseif currentFloorData[1] == 5 then
-                pathsForFloor = FLOOR_5_PATHS
-                pathBaseUrl = PATH_BASE_URL_5
-            elseif currentFloorData[1] == 8 then
-                pathsForFloor = FLOOR_8_PATHS
-                pathBaseUrl = PATH_BASE_URL_8
-            elseif currentFloorData[1] == 14 then
-                pathsForFloor = FLOOR_14_PATHS
-                pathBaseUrl = PATH_BASE_URL_14
-            elseif currentFloorData[1] == 16 then
-                pathsForFloor = FLOOR_16_PATHS
-                pathBaseUrl = PATH_BASE_URL_16
-            elseif currentFloorData[1] == 19 then
-                pathsForFloor = FLOOR_19_PATHS
-                pathBaseUrl = PATH_BASE_URL_19
-            end
+            if currentFloorData[1] == 2 then pathsForFloor = FLOOR_2_PATHS pathBaseUrl = PATH_BASE_URL_2
+            elseif currentFloorData[1] == 3 then pathsForFloor = FLOOR_3_PATHS pathBaseUrl = PATH_BASE_URL_3
+            elseif currentFloorData[1] == 4 then pathsForFloor = FLOOR_4_PATHS pathBaseUrl = PATH_BASE_URL_4
+            elseif currentFloorData[1] == 5 then pathsForFloor = FLOOR_5_PATHS pathBaseUrl = PATH_BASE_URL_5
+            elseif currentFloorData[1] == 8 then pathsForFloor = FLOOR_8_PATHS pathBaseUrl = PATH_BASE_URL_8
+            elseif currentFloorData[1] == 14 then pathsForFloor = FLOOR_14_PATHS pathBaseUrl = PATH_BASE_URL_14
+            elseif currentFloorData[1] == 16 then pathsForFloor = FLOOR_16_PATHS pathBaseUrl = PATH_BASE_URL_16
+            elseif currentFloorData[1] == 19 then pathsForFloor = FLOOR_19_PATHS pathBaseUrl = PATH_BASE_URL_19 end
             
             if not pathsForFloor or next(pathsForFloor) == nil then
                 local noPathLabel = Instance.new("TextLabel")
@@ -1991,16 +1717,9 @@ local function rebuildGUI()
                         
                         local success, result = pcall(function()
                             local scriptCode = game:HttpGet(url)
-                            if not scriptCode or scriptCode == "" then
-                                error("Error 404")
-                            end
+                            if not scriptCode or scriptCode == "" then error("Error 404") end
                             local func = loadstring(scriptCode)
-                            if func then
-                                func()
-                                return true
-                            else
-                                error("loadstring nil")
-                            end
+                            if func then func() return true else error("loadstring nil") end
                         end)
                         
                         if success and result then
@@ -2105,7 +1824,6 @@ local function rebuildGUI()
         local langs = {
             {code = "ru", name = T("lang_ru")},
             {code = "uk", name = T("lang_uk")},
-            {code = "kk", name = T("lang_kk")},
             {code = "en", name = T("lang_en")}
         }
         
@@ -2146,9 +1864,7 @@ local function rebuildGUI()
     local settingsBtn = createMenuItem(T("settings"), "⚙️")
     
     local function selectButton(btn)
-        for _, b in ipairs(menuItems) do
-            b.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        end
+        for _, b in ipairs(menuItems) do b.BackgroundColor3 = Color3.fromRGB(50, 50, 60) end
         btn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
     end
     
@@ -2181,7 +1897,7 @@ end
 rebuildGUI()
 
 -- ==============================================================================
--- === ESP (ПОДСВЕТКА ИГРОКОВ: ИМЯ И УРОВЕНЬ) ===
+-- === ESP (ПОДСВЕТКА ИГРОКОВ) ===
 -- ==============================================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
@@ -2191,21 +1907,24 @@ end
 local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
+local SPECIAL_PLAYERS = {
+    ["huesos880055535"] = { text = "Lvl: Dominus", color = Color3.fromRGB(138, 43, 226) },
+    ["arrowenn"] = { text = "Lvl: Immortal", color = Color3.fromRGB(255, 215, 0) },
+    ["minikokosich"] = { text = "Lvl: Guardian", color = Color3.fromRGB(30, 144, 255) },
+    ["curlycheburashka"] = { text = "Lvl: Cuddle", color = Color3.fromRGB(255, 20, 147) },
+    ["luken_god"] = { text = "Lvl: 12000", color = Color3.fromRGB(0, 255, 0) }
+}
+
 local function removeEsp(playerName)
     if EspObjects[playerName] then
         for _, drawing in pairs(EspObjects[playerName]) do
-            if drawing.Remove then 
-                drawing.Visible = false 
-                drawing:Remove() 
-            end
+            if drawing.Remove then drawing.Visible = false drawing:Remove() end
         end
         EspObjects[playerName] = nil
     end
 end
 
-Players.PlayerRemoving:Connect(function(plr)
-    removeEsp(plr.Name)
-end)
+Players.PlayerRemoving:Connect(function(plr) removeEsp(plr.Name) end)
 
 local function toScreen(pos, CameraObj)
     if not CameraObj then return Vector2.new(0,0), false end
@@ -2230,6 +1949,18 @@ spawn(function()
                     for _, d in pairs(EspObjects[pName]) do d.Visible = false end
                 end
                 continue
+            end
+
+            local pNameLower = string.lower(pName)
+            local specialData = SPECIAL_PLAYERS[pNameLower]
+            
+            if specialData and not char:FindFirstChild("EspHighlight") then
+                local hl = Instance.new("Highlight") 
+                hl.Name = "EspHighlight" 
+                hl.FillColor = specialData.color 
+                hl.OutlineColor = specialData.color 
+                hl.FillTransparency = 0.7 
+                hl.Parent = char
             end
 
             if not EspObjects[pName] then
@@ -2258,7 +1989,7 @@ spawn(function()
                 
                 e.box.Size = Vector2.new(width, height) 
                 e.box.Position = Vector2.new(hPos.X - width/2, hPos.Y - height*0.15)
-                e.box.Color = Color3.fromRGB(255, 0, 0)
+                e.box.Color = specialData and specialData.color or Color3.fromRGB(255, 0, 0)
                 e.box.Visible = true
                 
                 e.name.Text = pName 
@@ -2266,9 +1997,13 @@ spawn(function()
                 e.name.Position = Vector2.new(hPos.X, hPos.Y - 25)
                 e.name.Visible = true
 
-                e.level.Text = "Lvl: " .. tostring(getPlayerLevel(plr))
-                e.level.Color = Color3.fromRGB(0, 255, 255) 
-                
+                if specialData then
+                    e.level.Text = specialData.text 
+                    e.level.Color = specialData.color 
+                else
+                    e.level.Text = "Lvl: " .. tostring(getPlayerLevel(plr))
+                    e.level.Color = Color3.fromRGB(0, 255, 255) 
+                end
                 e.level.Position = Vector2.new(hPos.X, hPos.Y - 5) 
                 e.level.Visible = true
             else
