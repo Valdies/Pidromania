@@ -242,7 +242,7 @@ local FLOORS = {
 
 local BOSSES = {
     [10299594856] = {{"Gingervale Attendant", -312, 21, 1984},{"Gingervale Warden", -93, 22, 2015},{"Aurelius Starless", -422, 132, 2420},{"Kringlewrath The Iron Saint", -265, 21, 2679},{"Аврора ебаная", -2, 72, -1010}},
-    [4734865416] = {{"Shadesworn the Corrupted", 414, -1174, -461},{"Illfang The Kobold Lord", -1003, 1928, -727}},
+    [4734865416] = {{"Shadesworn the Corrupted", 414, -1174, -461},{"Illfang The Kobold Lord", -1003, 1928, -727},{"Зайцы", 635.78, 665.00, -477.40}},
     [4735703075] = {{"Mob farm: in pit", -352.25, -15.14, 1049.83},{"Lord Slug", 988, 2500, 591}},
     [4735718710] = {{"Mob farm: in front of the boss", 1271.97, 1197.97, 12748.28},{"Stallord", 711, 1173, 12457}},
     [4736649014] = {{"Mob farm: in a cave", -2295.05, 386.89, -1851.63},{"X'rphan the White Wyrm", -1585, 404, -1702}},
@@ -591,48 +591,47 @@ local function toggleFreeze()
     end
 end
 
+local savedDeathPosition = nil
+
 local function cleanupResurrection()
     for _, conn in ipairs(resurrectionConnections) do
         if conn and conn.Disconnect then conn:Disconnect() end
     end
     resurrectionConnections = {}
     resurrectionActive = false
+    savedDeathPosition = nil -- Сбрасываем позицию при выключении
 end
 
 local function setupResurrection()
     if resurrectionActive then return end
     cleanupResurrection()
     resurrectionActive = true
-    local runService = game:GetService("RunService")
     
     local function onCharacterAdded(character)
-        local humanoid = character:WaitForChild("Humanoid")
-        local rootPart = character:WaitForChild("HumanoidRootPart")
-        local lastPos = rootPart.Position
+        local humanoid = character:WaitForChild("Humanoid", 10)
+        local rootPart = character:WaitForChild("HumanoidRootPart", 10)
         
-        local posConn = runService.Heartbeat:Connect(function()
-            if rootPart and rootPart.Parent then lastPos = rootPart.Position end
-        end)
-        table.insert(resurrectionConnections, posConn)
-        
-        local diedConn = humanoid.Died:Connect(function()
-            if posConn.Connected then posConn:Disconnect() end
-            task.delay(5, function()
-                local currentChar = player.Character
-                if not currentChar then return end
-                local currentRoot = currentChar:FindFirstChild("HumanoidRootPart")
-                if currentRoot then currentRoot.CFrame = CFrame.new(lastPos) end
+        if not humanoid or not rootPart then return end
+
+        -- Если мы умерли с включенной функцией и позиция сохранилась:
+        if savedDeathPosition then
+            -- Ждем полсекунды после спавна, чтобы физика Roblox не сбросила CFrame
+            task.delay(0.5, function()
+                local currentRoot = character:FindFirstChild("HumanoidRootPart")
+                if currentRoot then
+                    currentRoot.CFrame = savedDeathPosition
+                end
+                savedDeathPosition = nil -- Очищаем после телепорта
             end)
-        end)
-        table.insert(resurrectionConnections, diedConn)
-        
-        local ancestryConn = character.AncestryChanged:Connect(function(_, parent)
-            if not parent then
-                if posConn.Connected then posConn:Disconnect() end
-                if diedConn.Connected then diedConn:Disconnect() end
+        end
+
+        -- При смерти сохраняем позицию
+        local diedConn = humanoid.Died:Connect(function()
+            if rootPart then
+                savedDeathPosition = rootPart.CFrame
             end
         end)
-        table.insert(resurrectionConnections, ancestryConn)
+        table.insert(resurrectionConnections, diedConn)
     end
     
     local charAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
@@ -653,53 +652,48 @@ local function startAutoWalk()
     task.spawn(function()
         while autoWalkActive do
             local char = player.Character
-            if char then
-                local humanoid = char:FindFirstChild("Humanoid")
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                
-                if humanoid and humanoid.Health > 0 and hrp then
-                    local mobsFolder = findMobsFolder()
-                    if mobsFolder then
-                        local nearestMob = nil
-                        local nearestDist = AUTO_WALK_CONFIG.MaxDistance
-                        
-                        -- Ищем живых мобов поблизости
-                        for _, mob in ipairs(mobsFolder:GetChildren()) do
-                            local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
-                            local mobHum = mob:FindFirstChild("Humanoid")
-                            if targetPart and (not mobHum or mobHum.Health > 0) then
-                                local dist = (hrp.Position - targetPart.Position).Magnitude
-                                if dist < nearestDist then
-                                    nearestDist = dist
-                                    nearestMob = mob
-                                end
+            local humanoid = char and char:FindFirstChild("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            
+            -- Проверка: персонаж жив и существует
+            if humanoid and humanoid.Health > 0 and hrp then
+                local mobsFolder = findMobsFolder()
+                if mobsFolder then
+                    local nearestMob = nil
+                    local nearestDist = AUTO_WALK_CONFIG.MaxDistance
+                    
+                    for _, mob in ipairs(mobsFolder:GetChildren()) do
+                        local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
+                        local mobHum = mob:FindFirstChild("Humanoid")
+                        if targetPart and (not mobHum or mobHum.Health > 0) then
+                            local dist = (hrp.Position - targetPart.Position).Magnitude
+                            if dist < nearestDist then
+                                nearestDist = dist
+                                nearestMob = mob
                             end
                         end
-                        
-                        if nearestMob then
-                            local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
-                            if targetPart then
-                                if nearestDist > AUTO_WALK_CONFIG.StopDistance then
-                                    -- Бежим к мобу
-                                    humanoid:MoveTo(targetPart.Position)
-                                else
-                                    -- Стоим на месте
-                                    humanoid:MoveTo(hrp.Position)
-                                    
-                                    -- Поворачиваемся лицом к мобу
-                                    hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(targetPart.Position.X, hrp.Position.Y, targetPart.Position.Z))
-                                    
-                                    -- Надежный клик через VirtualInputManager
-                                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                                    task.wait(0.01)
-                                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                                end
+                    end
+                    
+                    if nearestMob then
+                        local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
+                        if targetPart then
+                            if nearestDist > AUTO_WALK_CONFIG.StopDistance then
+                                humanoid:MoveTo(targetPart.Position)
+                            else
+                                humanoid:MoveTo(hrp.Position)
+                                hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(targetPart.Position.X, hrp.Position.Y, targetPart.Position.Z))
+                                
+                                -- Клик с нужным интервалом 0.9 - 1.1 сек
+                                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                                task.wait(0.05)
+                                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                                task.wait(math.random(900, 1100) / 1000) 
                             end
                         end
                     end
                 end
             end
-            task.wait(0.1) -- Частота обновления поиска моба
+            task.wait(0.1) -- Ожидание между проверками, если моб не найден или персонаж мертв
         end
         autoWalkLoopRunning = false
     end)
@@ -713,6 +707,22 @@ local function stopAutoWalk()
         char.Humanoid:MoveTo(char.HumanoidRootPart.Position)
     end
 end
+
+-- ==============================================================================
+-- === ГЛОБАЛЬНЫЙ ОТСЛЕЖИВАТЕЛЬ РЕСПАВНА ДЛЯ АВТОФАРМА ===
+-- ==============================================================================
+player.CharacterAdded:Connect(function(character)
+    if autoWalkActive then
+        task.delay(2, function()
+            -- Проверяем, всё ли ещё включен автофарм и жив ли персонаж
+            if autoWalkActive and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+                VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+            end
+        end)
+    end
+end)
 
 -- ==============================================================================
 -- === LOGIC BOSS FARM ===
