@@ -687,7 +687,7 @@ local function startAutoWalk()
                                 VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                                 task.wait(0.05)
                                 VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                                task.wait(math.random(900, 1100) / 1000) 
+                                task.wait(math.random(850, 900) / 1000) 
                             end
                         end
                     end
