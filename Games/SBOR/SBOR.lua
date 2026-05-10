@@ -1,7 +1,14 @@
--- ==============================================================================
--- === INITIALIZATION ===
--- ==============================================================================
+print("[MAIN] Запуск GameAFK.lua начат...")
+
+getgenv().SBOPIDROMANIA = true
+print("[MAIN] Флаг SBOPIDROMANIA установлен в true")
+
+task.wait(6)
+print("[MAIN] Пауза 6 секунд прошла, подгружаю сервисы...")
+
 local Players = game:GetService("Players")
+print("[MAIN] Скрипт полностью инициализирован!")
+
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
@@ -11,9 +18,6 @@ local HttpService = game:GetService("HttpService")
 local VIM = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
--- ==============================================================================
--- === TRANSLATIONS ===
--- ==============================================================================
 local currentLang = "ru" 
 local translations = {
     ru = {
@@ -42,8 +46,11 @@ local translations = {
         freezeToggle = "Фриз игрока на месте",
         respawnToggle = "Воскрешение на месте смерти",
         playerListToggle = "Список игроков на сервере",
-        safe1Toggle = "Safe 1 (Смерть при 2+ игроках)",
+        safe1Toggle = "Экстренная Эвакуация (Смерть, Блок, Hop)",
+        blockAllToggle = "Массовая Блокировка Игроков",
         autoMobWalk = "Автофарм близжайших мобов",
+        autoF = "Нажиматор F",
+        autoHeal = "Хилка (Здоровье < 70%)",
         languageLabel = "Язык интерфейса:",
         lang_ru = "Русский",
         lang_uk = "Українська",
@@ -85,8 +92,11 @@ local translations = {
         freezeToggle = "Фріз гравця на місці",
         respawnToggle = "Відродження на місці смерті",
         playerListToggle = "Список гравців на сервері",
-        safe1Toggle = "Safe 1 (Смерть при 2+ гравцях)",
+        safe1Toggle = "Екстрена Евакуація (Смерть, Блок, Hop)",
+        blockAllToggle = "Масове Блокування Гравців",
         autoMobWalk = "Автофарм найближчих мобів",
+        autoF = "Авто-натискач F",
+        autoHeal = "Авто-лікування (Здоров'я < 70%)",
         languageLabel = "Мова інтерфейсу:",
         lang_ru = "Російська",
         lang_uk = "Українська",
@@ -128,8 +138,11 @@ local translations = {
         freezeToggle = "Freeze player in place",
         respawnToggle = "Respawn at death location",
         playerListToggle = "Player list on server",
-        safe1Toggle = "Safe 1 (Kill on 2+ players)",
+        safe1Toggle = "Emergency Evasion (Death, Block, Hop)",
+        blockAllToggle = "Mass Player Auto-Block",
         autoMobWalk = "Auto-farm nearest mobs",
+        autoF = "Auto Press F",
+        autoHeal = "Auto Heal (Health < 70%)",
         languageLabel = "Interface language:",
         lang_ru = "Russian",
         lang_uk = "Ukrainian",
@@ -152,15 +165,14 @@ local function T(key)
     return translations[currentLang] and translations[currentLang][key] or translations.ru[key] or ("???" .. key .. "???")
 end
 
--- ==============================================================================
--- === STATE VARIABLES ===
--- ==============================================================================
+local isEvading = false 
 local isFrozen = false
 local freezeConnection = nil
 local resurrectionActive = false
 local resurrectionConnections = {}
 local currentFarmMode = nil
 local individualFreezeConnection = nil
+local screenGuiMain = nil
 local screenGui = nil
 local indicator = nil
 local playerListGui = nil
@@ -171,10 +183,11 @@ local selectedMaterials = {}
 local autoWalkActive = false
 local safe1Active = false
 local playerListActive = false
+local autoFActive = false
+local autoFCooldown = 8
+local autoHealActive = false
+local blockAllRunning = false
 
--- ==============================================================================
--- === SAVE / LOAD CONFIG ===
--- ==============================================================================
 local FOLDER_NAME = "PidromaniaHub"
 local FILE_NAME = FOLDER_NAME .. "/SBOR_Config.json"
 
@@ -190,7 +203,11 @@ local function SaveConfig()
             fishFarm = fishFarmActive,
             materialFarm = materialFarmActive,
             ores = selectedMaterials,
-            farmMode = currentFarmMode -- Сохраняем текущий режим фарма
+            farmMode = currentFarmMode,
+            autoF = autoFActive,
+            autoF_cd = autoFCooldown,
+            autoHeal = autoHealActive,
+            blockAll = blockAllRunning
         }
         pcall(function() writefile(FILE_NAME, HttpService:JSONEncode(data)) end)
     end
@@ -209,13 +226,14 @@ local function LoadConfig()
             if type(data.materialFarm) == "boolean" then materialFarmActive = data.materialFarm end
             if type(data.ores) == "table" then selectedMaterials = data.ores end
             if type(data.farmMode) == "string" then currentFarmMode = data.farmMode end
+            if type(data.autoF) == "boolean" then autoFActive = data.autoF end
+            if type(data.autoF_cd) == "number" then autoFCooldown = data.autoF_cd end
+            if type(data.autoHeal) == "boolean" then autoHealActive = data.autoHeal end
+            if type(data.blockAll) == "boolean" then blockAllRunning = data.blockAll end
         end)
     end
 end
 
--- ==============================================================================
--- === GAME DATABASES ===
--- ==============================================================================
 local FLOORS = {
     {-1, "Пасхальный ивент", 10299594856},
     {1,  "Town Of Beginnings", 4733293382},
@@ -267,7 +285,7 @@ local BOSS_FARMS = {
     [4734865416] = {{"Illfang The Kobold Lord", Vector3.new(-972.62, 1933.95, -727.67)},{"Shadesworn the Corrupted", Vector3.new(421.36, -1174.06, -467.49)}},
     [4735703075] = {{"MobFarm", Vector3.new(-367.31, 0.75, 1007.91)},{"Lord Slug", Vector3.new(747.68, 2485.53, 52)}},
     [4735718710] = {{"Stallord", Vector3.new(571.00, 1188.82, 12513.01)}},
-    [4736649014] = {{"MobFarm", Vector3.new(498.27, 701.39, 608.80)},{"X'rphan the White Wyrm", Vector3.new(-1695.54, 402.80, -1718.85)}},
+    [4736649014] = {{"MobFarm", Vector3.new(498.27, 701.39, 608.80)},{"X'rphan the White Wyrm", Vector3.new(-1844.69, 404.36, -1547.97)}},
     [4736759720] = {{"Uakmaroth, the Demon Lord", Vector3.new(-1532.07, 1914.88, -384.36)}},
     [4736984932] = {{"Storm Atronach", Vector3.new(-5849, -368, 9330)}},
     [4737916764] = {{"Bonnz the Skeleton Lord", Vector3.new(2737.84, -548.03, -1699.97)},{"MobFarm", Vector3.new(271.30, 34, -1441.69)}},
@@ -314,9 +332,6 @@ local EXTRA_LOCATIONS = {
     [130463264320898] = {{"Комната главного босса", 3940.89, -964.40, 6302.97},{"Ледяной замок", 1028.20, -1218.36, 4146.35},{"Маяк", -1629.58, 1016.57, 1514.95},{"Церковь", -5474.52, 192.08, -1537.69},{"Дом вендиго", -2998.23, -565.16, 9125.64},{"Ключ", 2559.68, 133.57, 592.29},{"Вход в пещеру с пингвинчиками", -2975.91, 353.49, 2394.02},{"Ты не порти мой рассказ", -2904.03, 419.96, 1640.88}}
 }
 
--- ==============================================================================
--- === PATHS CONFIG ===
--- ==============================================================================
 local FLOOR_2_PATHS = {["Boss2"] = "Boss2", ["Miniboss"] = "Miniboss"}
 local PATH_BASE_URL_2 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/2%20%D1%8D%D1%82%D0%B0%D0%B6/"
 local FLOOR_3_PATHS = {["Башня"] = "Башня", ["Магазин"] = "Магазин"}
@@ -334,11 +349,193 @@ local PATH_BASE_URL_16 = "https://raw.githubusercontent.com/Valdies/Pidromania/m
 local FLOOR_19_PATHS = {["Frostveil Echo"] = "FrostveilEcho", ["Ice Spirit"] = "IceSpirit", ["Владимир К.С."] = "Vladimir", ["Дом вендиго"] = "WendigoHouse", ["Лабиринт вендиго"] = "WendigoMaze", ["Ледяной замок"] = "IceCastle", ["Маяк"] = "Lighthouse", ["Церковь"] = "Church"}
 local PATH_BASE_URL_19 = "https://raw.githubusercontent.com/Valdies/Pidromania/main/Games/SBOR/%D0%9F%D1%83%D1%82%D0%B8/19%20%D1%8D%D1%82%D0%B0%D0%B6/"
 
-local AUTO_WALK_CONFIG = { WalkSpeed = 30, NormalSpeed = 16, MaxDistance = 1500, StopDistance = 6.5 }
+local AUTO_WALK_CONFIG = { WalkSpeed = 30, NormalSpeed = 16, MaxDistance = 1500, AttackDistance = 13, WalkStopDistance = 3 }
 
--- ==============================================================================
--- === FUNCTIONS ===
--- ==============================================================================
+-- ====== ЛОК ЭКРАНА ======
+local lockScreenGui = nil
+
+local function setUILocked(isLocked, msg)
+    if not lockScreenGui then
+        lockScreenGui = Instance.new("ScreenGui")
+        lockScreenGui.Name = "PidromaniaLockScreen"
+        lockScreenGui.ResetOnSpawn = false
+        lockScreenGui.DisplayOrder = 99999
+        
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+        bg.BackgroundTransparency = 0.4
+        bg.Active = true 
+        bg.Parent = lockScreenGui
+        
+        local txt = Instance.new("TextLabel")
+        txt.Name = "Msg"
+        txt.Size = UDim2.new(1, 0, 0, 100)
+        txt.Position = UDim2.new(0, 0, 0.85, -50)
+        txt.BackgroundTransparency = 1
+        txt.TextColor3 = Color3.fromRGB(255, 80, 80)
+        txt.Font = Enum.Font.GothamBold
+        txt.TextSize = 22
+        txt.Parent = bg
+    end
+    
+    if isLocked then
+        lockScreenGui.Frame.Msg.Text = msg or "ВЫПОЛНЯЕТСЯ ОПЕРАЦИЯ..."
+        lockScreenGui.Parent = player:WaitForChild("PlayerGui")
+        
+        if screenGuiMain then screenGuiMain.Enabled = false end
+        if playerListGui then playerListGui.Enabled = false end
+    else
+        lockScreenGui.Parent = nil
+        if screenGuiMain then screenGuiMain.Enabled = true end
+        if playerListGui then playerListGui.Enabled = true end
+    end
+end
+-- ========================
+
+-- ====== ДВОЙНОЙ СКРЫТЫЙ ANTI-AFK ======
+local VirtualUser = game:GetService("VirtualUser")
+player.Idled:Connect(function()
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+    pcall(function()
+        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+end)
+-- ======================================
+
+local function ServerHop()
+    local placeId = game.PlaceId
+    spawn(function()
+        while true do
+            pcall(function()
+                TeleportService:Teleport(placeId, player)
+            end)
+            task.wait(5)
+        end
+    end)
+end
+
+local blockedUsersCache = {}
+local blockAllLoopRunning = false
+
+local function startBlockAll()
+    blockAllRunning = true
+    if blockAllLoopRunning then return end
+    blockAllLoopRunning = true
+    
+    task.spawn(function()
+        while blockAllRunning do
+            local playersToBlock = {}
+            for _, target in ipairs(Players:GetPlayers()) do
+                if target ~= player and not blockedUsersCache[target.UserId] then
+                    table.insert(playersToBlock, target)
+                end
+            end
+            
+            if #playersToBlock > 0 then
+                setUILocked(true, "МАССОВАЯ БЛОКИРОВКА... ПОЖАЛУЙСТА ПОДОЖДИТЕ")
+                
+                for _, target in ipairs(playersToBlock) do
+                    if not blockAllRunning then break end
+                    
+                    local viewportSize = workspace.CurrentCamera.ViewportSize
+                    local centerX = viewportSize.X / 2
+                    local centerY = viewportSize.Y / 2
+                    
+                    pcall(function()
+                        game:GetService("StarterGui"):SetCore("PromptBlockPlayer", target)
+                    end)
+                    task.wait(0.7)
+                    if not blockAllRunning then break end
+
+                    local confirmButtonX = centerX + (viewportSize.X * 0.05)
+                    local confirmButtonY = centerY + (viewportSize.Y * 0.04)
+                    
+                    VIM:SendMouseButtonEvent(confirmButtonX, confirmButtonY, 0, true, game, 0)
+                    task.wait(0.05)
+                    VIM:SendMouseButtonEvent(confirmButtonX, confirmButtonY, 0, false, game, 0)
+                    
+                    blockedUsersCache[target.UserId] = true
+                    task.wait(2.2 + math.random())
+                end
+                
+                setUILocked(false)
+            end
+            task.wait(2)
+        end
+        setUILocked(false)
+        blockAllLoopRunning = false
+    end)
+end
+
+local function stopBlockAll()
+    blockAllRunning = false
+end
+
+local function triggerEvasion()
+    if isEvading then return end
+    isEvading = true
+    
+    setUILocked(true, "ЭКСТРЕННАЯ ЭВАКУАЦИЯ: БЛОКИРОВКА И ПРЫЖОК...")
+    
+    local char = player.Character
+    if char then
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then char:BreakJoints() end
+    end
+    
+    task.spawn(function()
+        local playerList = Players:GetPlayers()
+        for _, target in ipairs(playerList) do
+            if target ~= player then
+                local viewportSize = workspace.CurrentCamera.ViewportSize
+                local centerX = viewportSize.X / 2
+                local centerY = viewportSize.Y / 2
+                
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("PromptBlockPlayer", target)
+                end)
+                task.wait(0.7)
+                
+                local confirmButtonX = centerX + (viewportSize.X * 0.05)
+                local confirmButtonY = centerY + (viewportSize.Y * 0.04)
+                
+                VIM:SendMouseButtonEvent(confirmButtonX, confirmButtonY, 0, true, game, 0)
+                task.wait(0.05)
+                VIM:SendMouseButtonEvent(confirmButtonX, confirmButtonY, 0, false, game, 0)
+                
+                task.wait(1.5)
+            end
+        end
+        ServerHop()
+    end)
+end
+
+local safe1LoopRunning = false
+local function startSafe1()
+    safe1Active = true
+    if safe1LoopRunning then return end
+    safe1LoopRunning = true
+    
+    task.spawn(function()
+        while safe1Active do
+            if #Players:GetPlayers() >= 2 then
+                triggerEvasion()
+                break
+            end
+            task.wait(1)
+        end
+        safe1LoopRunning = false
+    end)
+end
+
+local function stopSafe1() safe1Active = false end
+
 local function teleport(pos)
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
@@ -427,37 +624,6 @@ local function getPlayerLevel(plr)
     return "?"
 end
 
--- ==============================================================================
--- === SERVER HOP ===
--- ==============================================================================
-local function ServerHop()
-    local placeId = game.PlaceId
-    spawn(function()
-        while true do
-            pcall(function()
-                local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
-                local response = game:HttpGet(url)
-                local data = HttpService:JSONDecode(response)
-                
-                if data and data.data then
-                    for _, server in ipairs(data.data) do
-                        if type(server) == "table" and server.playing and server.maxPlayers and server.id then
-                            if server.playing < server.maxPlayers and server.id ~= game.JobId then
-                                TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
-                                task.wait(3)
-                            end
-                        end
-                    end
-                end
-            end)
-            task.wait(5)
-        end
-    end)
-end
-
--- ==============================================================================
--- === PLAYER LIST GUI ===
--- ==============================================================================
 local function createPlayerListGui()
     if playerListGui then return end
     
@@ -544,27 +710,6 @@ local function destroyPlayerListGui()
     end
 end
 
--- ==============================================================================
--- === TOGGLE UTILS ===
--- ==============================================================================
-local function startSafe1()
-    if safe1Active then return end
-    safe1Active = true
-    spawn(function()
-        while safe1Active do
-            if #Players:GetPlayers() >= 2 then
-                local char = player.Character
-                if char then
-                    local humanoid = char:FindFirstChild("Humanoid")
-                    if humanoid and humanoid.Health > 0 then humanoid.Health = 0 end
-                end
-            end
-            task.wait(5)
-        end
-    end)
-end
-local function stopSafe1() safe1Active = false end
-
 local function toggleFreeze()
     isFrozen = not isFrozen
     if isFrozen then
@@ -598,12 +743,10 @@ local function cleanupResurrection()
         if conn and conn.Disconnect then conn:Disconnect() end
     end
     resurrectionConnections = {}
-    resurrectionActive = false
-    savedDeathPosition = nil -- Сбрасываем позицию при выключении
+    savedDeathPosition = nil
 end
 
 local function setupResurrection()
-    if resurrectionActive then return end
     cleanupResurrection()
     resurrectionActive = true
     
@@ -613,19 +756,16 @@ local function setupResurrection()
         
         if not humanoid or not rootPart then return end
 
-        -- Если мы умерли с включенной функцией и позиция сохранилась:
         if savedDeathPosition then
-            -- Ждем полсекунды после спавна, чтобы физика Roblox не сбросила CFrame
             task.delay(0.5, function()
                 local currentRoot = character:FindFirstChild("HumanoidRootPart")
                 if currentRoot then
                     currentRoot.CFrame = savedDeathPosition
                 end
-                savedDeathPosition = nil -- Очищаем после телепорта
+                savedDeathPosition = nil
             end)
         end
 
-        -- При смерти сохраняем позицию
         local diedConn = humanoid.Died:Connect(function()
             if rootPart then
                 savedDeathPosition = rootPart.CFrame
@@ -639,11 +779,81 @@ local function setupResurrection()
     if player.Character then onCharacterAdded(player.Character) end
 end
 
--- ==============================================================================
--- === АВТОФАРМ БЛИЖАЙШИХ МОБОВ ===
--- ==============================================================================
-local autoWalkLoopRunning = false
+local autoFLoopRunning = false
+local function startAutoF()
+    autoFActive = true
+    if autoFLoopRunning then return end
+    autoFLoopRunning = true
+    
+    task.spawn(function()
+        while autoFActive do
+            if isEvading then task.wait(1) continue end
+            
+            if autoWalkActive then
+                VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+                task.wait(0.1)
+                VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+            end
+            
+            local baseCd = tonumber(autoFCooldown) or 8
+            local randomAdd = math.random(0, 50) / 100
+            task.wait(baseCd + randomAdd)
+        end
+        autoFLoopRunning = false
+    end)
+end
 
+local function stopAutoF()
+    autoFActive = false
+end
+
+local autoHealLoopRunning = false
+local function startAutoHeal()
+    autoHealActive = true
+    if autoHealLoopRunning then return end
+    autoHealLoopRunning = true
+    
+    task.spawn(function()
+        while autoHealActive do
+            if isEvading then task.wait(1) continue end
+            
+            local char = player.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 and hum.MaxHealth > 0 then
+                if (hum.Health / hum.MaxHealth) < 0.7 then
+                    VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+                    task.wait(0.5)
+                    
+                    VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                    task.wait(0.2)
+                    
+                    VIM:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                    task.wait(0.5)
+                    
+                    VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+                    task.wait(0.1)
+                    VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+                    
+                    task.wait(35)
+                end
+            end
+            task.wait(0.5)
+        end
+        autoHealLoopRunning = false
+    end)
+end
+
+local function stopAutoHeal()
+    autoHealActive = false
+end
+
+local autoWalkLoopRunning = false
 local function startAutoWalk()
     autoWalkActive = true
     if autoWalkLoopRunning then return end
@@ -651,25 +861,32 @@ local function startAutoWalk()
     
     task.spawn(function()
         while autoWalkActive do
+            if isEvading then task.wait(1) continue end
+            
             local char = player.Character
             local humanoid = char and char:FindFirstChild("Humanoid")
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
-            -- Проверка: персонаж жив и существует
             if humanoid and humanoid.Health > 0 and hrp then
                 local mobsFolder = findMobsFolder()
                 if mobsFolder then
                     local nearestMob = nil
-                    local nearestDist = AUTO_WALK_CONFIG.MaxDistance
+                    local nearestHorizontalDist = AUTO_WALK_CONFIG.MaxDistance
                     
                     for _, mob in ipairs(mobsFolder:GetChildren()) do
                         local targetPart = mob:FindFirstChild("HumanoidRootPart") or mob.PrimaryPart
                         local mobHum = mob:FindFirstChild("Humanoid")
+                        
                         if targetPart and (not mobHum or mobHum.Health > 0) then
-                            local dist = (hrp.Position - targetPart.Position).Magnitude
-                            if dist < nearestDist then
-                                nearestDist = dist
-                                nearestMob = mob
+                            local delta = targetPart.Position - hrp.Position
+                            local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
+                            local verticalDist = delta.Y 
+                            
+                            if verticalDist <= 25 and verticalDist >= -15 then
+                                if horizontalDist < nearestHorizontalDist then
+                                    nearestHorizontalDist = horizontalDist
+                                    nearestMob = mob
+                                end
                             end
                         end
                     end
@@ -677,23 +894,28 @@ local function startAutoWalk()
                     if nearestMob then
                         local targetPart = nearestMob:FindFirstChild("HumanoidRootPart") or nearestMob.PrimaryPart
                         if targetPart then
-                            if nearestDist > AUTO_WALK_CONFIG.StopDistance then
+                            if nearestHorizontalDist > AUTO_WALK_CONFIG.AttackDistance then
                                 humanoid:MoveTo(targetPart.Position)
                             else
-                                humanoid:MoveTo(hrp.Position)
                                 hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(targetPart.Position.X, hrp.Position.Y, targetPart.Position.Z))
                                 
-                                -- Клик с нужным интервалом 0.9 - 1.1 сек
                                 VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                                 task.wait(0.05)
                                 VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                                
+                                if nearestHorizontalDist > AUTO_WALK_CONFIG.WalkStopDistance then
+                                    humanoid:MoveTo(targetPart.Position)
+                                else
+                                    humanoid:MoveTo(hrp.Position)
+                                end
+                                
                                 task.wait(math.random(850, 900) / 1000) 
                             end
                         end
                     end
                 end
             end
-            task.wait(0.1) -- Ожидание между проверками, если моб не найден или персонаж мертв
+            task.wait(0.1) 
         end
         autoWalkLoopRunning = false
     end)
@@ -701,21 +923,16 @@ end
 
 local function stopAutoWalk()
     autoWalkActive = false
-    -- Принудительно останавливаем персонажа при выключении
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
         char.Humanoid:MoveTo(char.HumanoidRootPart.Position)
     end
 end
 
--- ==============================================================================
--- === ГЛОБАЛЬНЫЙ ОТСЛЕЖИВАТЕЛЬ РЕСПАВНА ДЛЯ АВТОФАРМА ===
--- ==============================================================================
 player.CharacterAdded:Connect(function(character)
-    if autoWalkActive then
+    if autoWalkActive and not isEvading then
         task.delay(2, function()
-            -- Проверяем, всё ли ещё включен автофарм и жив ли персонаж
-            if autoWalkActive and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
+            if autoWalkActive and not isEvading and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 then
                 VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
                 task.wait(0.1)
                 VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
@@ -724,9 +941,6 @@ player.CharacterAdded:Connect(function(character)
     end
 end)
 
--- ==============================================================================
--- === LOGIC BOSS FARM ===
--- ==============================================================================
 local function startGenericFarm(bossName, farmPos)
     currentFarmMode = bossName
     initGUI()
@@ -738,46 +952,41 @@ local function startGenericFarm(bossName, farmPos)
     local isCurrentlyFrostveil = (bossName == "Frostveil Echo")
     local isCurrentlyFloor8Mob = (bossName == "MobFarm" and game.PlaceId == 4737916764)
     local isEasterFarm = (bossName == "Фарм: Центр (Пасха)" and game.PlaceId == 10299594856)
-    local platform = nil
+    local isFloor10 = (game.PlaceId == 4747247314) -- Флаг для 10 этажа
     
-    -- === СЕРВЕР ХОП (Thug Boss) ===
+    local platform = nil
+    local activePlatformPos = nil -- Сохраняем позицию платформы для 10 этажа
+    
     if isThugHop then
         spawn(function()
-            -- 1) Ждем 3 секунды
             task.wait(3)
-            if currentFarmMode ~= bossName then return end
+            if currentFarmMode ~= bossName or isEvading then return end
             
-            -- 2) Спавн платформы на Y = -9
             local platformPos = Vector3.new(-1490.44, -9, -183.62)
             platform = spawnPlatform(platformPos)
             
-            -- 3) Ждем 1 секунду
             task.wait(1)
-            if currentFarmMode ~= bossName then return end
+            if currentFarmMode ~= bossName or isEvading then return end
             
-            -- 4) ТП игрока на 2 студа выше платформы (Y = -7)
             local playerPos = platformPos + Vector3.new(0, 2, 0)
             teleport(playerPos)
             
-            -- 5) Ждем 3 секунды
             task.wait(3)
-            if currentFarmMode ~= bossName then return end
+            if currentFarmMode ~= bossName or isEvading then return end
             
-            -- 6) Фриз игрока
             freezePlayer()
             
-            -- 7) Нажимаем Q
             VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
             task.wait(0.1)
             VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
             
             local hasSeenBoss = false
-            local nextFPress = 0 -- Чтобы первый раз нажалось сразу
+            local nextFPress = 0 
             
-            -- 8) Кликер
             local clickLoopActive = true
             spawn(function()
                 while clickLoopActive and currentFarmMode == bossName do
+                    if isEvading then task.wait(1) continue end
                     VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                     task.wait(0.05)
                     VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
@@ -785,12 +994,11 @@ local function startGenericFarm(bossName, farmPos)
                 end
             end)
             
-            -- Основной цикл поиска мобов
             while currentFarmMode == bossName do
+                if isEvading then task.wait(1) continue end
                 local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then break end
                 
-                -- Нажатие F
                 if os.time() >= nextFPress then
                     VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
                     task.wait(0.1)
@@ -812,7 +1020,6 @@ local function startGenericFarm(bossName, farmPos)
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = torso.Position.Y - platformPos.Y
                                 
-                                -- Цилиндр: радиус 10, высота от 0 до 50
                                 local inCylinder = (horizontalDist <= 10 and verticalDelta >= 0 and verticalDelta <= 50)
                                 
                                 if inCylinder or mob:GetAttribute("IsThugTarget") then
@@ -822,7 +1029,6 @@ local function startGenericFarm(bossName, farmPos)
                                     
                                     torso.Anchored = true
                                     torso.CanCollide = false
-                                    -- Ставим на 6 студов перед собой и спиной к нам
                                     torso.CFrame = hrp.CFrame * CFrame.new(0, 0, -6)
                                 end
                             end
@@ -832,7 +1038,6 @@ local function startGenericFarm(bossName, farmPos)
                 
                 updateIndicator(bossFoundThisTick)
                 
-                -- Если босс умер - прыжок сервера
                 if not bossFoundThisTick and hasSeenBoss then
                     currentFarmMode = nil
                     clickLoopActive = false
@@ -849,11 +1054,16 @@ local function startGenericFarm(bossName, farmPos)
         return
     end
     
-    -- === ЛОГИКА ОСТАЛЬНЫХ БОССОВ ===
     if isFrontman then
         local platformPos = Vector3.new(-38.32, 80.40, -285.61)
         platform = spawnPlatform(platformPos)
         teleport(platformPos + Vector3.new(0, 5, 0))
+    elseif isFloor10 then -- === ЛОГИКА ТЕЛЕПОРТА 10 ЭТАЖА ===
+        activePlatformPos = Vector3.new(-3987.27, -9905.00, -7024.24)
+        local playerPos = activePlatformPos + Vector3.new(0, 5, 0)
+        farmPos = playerPos
+        platform = spawnPlatform(activePlatformPos)
+        teleport(playerPos)
     elseif isCurrentlyVladimir then
         local platformPos = Vector3.new(-3183.14, 150.03, -1271.63)
         local playerPos = Vector3.new(-3183.14, 152.03, -1271.63)
@@ -884,8 +1094,14 @@ local function startGenericFarm(bossName, farmPos)
     end
     
     spawn(function()
-        task.wait(1)
-        freezePlayer()
+        -- === ОЖИДАНИЕ И ФРИЗ ===
+        if isFloor10 then
+            task.wait(2) -- Для 10 этажа ждем ровно 2 секунды
+        else
+            task.wait(1)
+        end
+        
+        if not isEvading then freezePlayer() end
         
         local placeId = game.PlaceId
         local isFloor14 = (placeId == 4733293091)
@@ -897,6 +1113,8 @@ local function startGenericFarm(bossName, farmPos)
         local isCurrentlyFrontman = (bossName == "Frontman")
         
         while currentFarmMode == bossName do
+            if isEvading then task.wait(1) continue end
+            
             local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then break end
             
@@ -911,12 +1129,19 @@ local function startGenericFarm(bossName, farmPos)
                         if torso and torso:IsA("BasePart") and (not mobHum or mobHum.Health > 0) then
                             local shouldProcess = false
                             
-                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
-                                local delta = torso.Position - farmPos
+                            -- === ЛОГИКА ХИТБОКСА (Поиска) ===
+                            if (isCurrentlyFrontman and isArena18_2) or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isFloor10 then
+                                -- Считаем дистанцию (для 10 этажа от центра платформы, для других от игрока)
+                                local delta = torso.Position - (isFloor10 and activePlatformPos or farmPos)
                                 local horizontalDist = Vector2.new(delta.X, delta.Z).Magnitude
                                 local verticalDelta = delta.Y
                                 
-                                if isCurrentlyFrostveil then
+                                if isFloor10 then
+                                    -- Цилиндр 10 этажа: Радиус 15, Высота от 0 до -50 (вниз)
+                                    if horizontalDist <= 15 and verticalDelta >= -50 and verticalDelta <= 0 then 
+                                        shouldProcess = true 
+                                    end
+                                elseif isCurrentlyFrostveil then
                                     if horizontalDist <= 10 and verticalDelta >= -50 and verticalDelta <= 0 then shouldProcess = true end
                                 elseif isEasterFarm then
                                     if horizontalDist <= 4 and verticalDelta <= 0 then shouldProcess = true end
@@ -939,14 +1164,35 @@ local function startGenericFarm(bossName, farmPos)
                                 if (torso.Position - farmPos).Magnitude <= searchRadius then shouldProcess = true end
                             end
                             
+                            -- === ЛОГИКА ТЕЛЕПОРТАЦИИ И ПОВОРОТА МОБА ===
                             if shouldProcess then
                                 foundAny = true
                                 torso.Anchored = true
                                 torso.CanCollide = false
-                                local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
-                                torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
                                 
-                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm) then
+                                if isFloor10 then
+                                    -- Отодвигаем на 8 студов от игрока
+                                    local targetPos = hrp.Position + hrp.CFrame.LookVector * 8
+                                    
+                                    -- Математика CFrame чтобы моб лежал и смотрел ногами на тебя
+                                    local vY = hrp.CFrame.LookVector -- UpVector указывает от игрока (голова от тебя, ноги к тебе)
+                                    local vZ = Vector3.new(0, -1, 0) -- Вектор Z вниз (значит лицо будет смотреть вверх в небо)
+                                    local vX = vY:Cross(vZ)
+                                    
+                                    if vX.Magnitude < 0.001 then
+                                        vX = hrp.CFrame.RightVector
+                                    else
+                                        vX = vX.Unit
+                                    end
+                                    
+                                    torso.CFrame = CFrame.fromMatrix(targetPos, vX, vY, vZ)
+                                else
+                                    -- Стандартная логика
+                                    local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
+                                    torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
+                                end
+                                
+                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isFloor10) then
                                     break
                                 end
                             end
@@ -957,7 +1203,7 @@ local function startGenericFarm(bossName, farmPos)
             
             updateIndicator(foundAny)
             
-            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm then
+            if isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or isEasterFarm or isFloor10 then
                 task.wait(3)
             else
                 task.wait(0.1)
@@ -976,83 +1222,109 @@ local function stopAllFarms()
     if indicator then updateIndicator(false) end
 end
 
--- ==============================================================================
--- === LOGIC MATERIAL & FISH FARM ===
--- ==============================================================================
+local materialLoopRunning = false
 local function startMaterialFarm()
-    if materialFarmActive then return end
+    materialFarmActive = true
+    if materialLoopRunning then return end
+    
     local anySelected = false
     for _, state in pairs(selectedMaterials) do
         if state then anySelected = true break end
     end
     if not anySelected then return end
     
-    materialFarmActive = true
+    materialLoopRunning = true
     spawn(function()
         while materialFarmActive do
-            pcall(function()
-                local RepStor = game:GetService("ReplicatedStorage")
-                local MaterialsFolder = workspace:FindFirstChild("Materials")
-                if MaterialsFolder and RepStor:FindFirstChild("ClaimMaterial") then
-                    for _, material in ipairs(MaterialsFolder:GetChildren()) do
-                        if material:IsA("Model") and material:FindFirstChild("Owner") and material:FindFirstChild("Id") then
-                            local matName = material.Name
-                            if selectedMaterials[matName] then
-                                if material.Owner.Value == "" then
-                                    RepStor.ClaimMaterial:InvokeServer(material.Id.Value)
-                                    task.wait(0.5)
+            if not isEvading then
+                pcall(function()
+                    local RepStor = game:GetService("ReplicatedStorage")
+                    local MaterialsFolder = workspace:FindFirstChild("Materials")
+                    if MaterialsFolder and RepStor:FindFirstChild("ClaimMaterial") then
+                        for _, material in ipairs(MaterialsFolder:GetChildren()) do
+                            if material:IsA("Model") and material:FindFirstChild("Owner") and material:FindFirstChild("Id") then
+                                local matName = material.Name
+                                if selectedMaterials[matName] then
+                                    if material.Owner.Value == "" then
+                                        RepStor.ClaimMaterial:InvokeServer(material.Id.Value)
+                                        task.wait(0.5)
+                                    end
                                 end
                             end
                         end
                     end
-                end
-            end)
+                end)
+            end
             task.wait(7)
         end
+        materialLoopRunning = false
     end)
 end
 local function stopMaterialFarm() materialFarmActive = false end
 
+local fishLoopRunning = false
 local function startFishFarm()
-    if fishFarmActive then return end
     fishFarmActive = true
+    if fishLoopRunning then return end
+    
+    fishLoopRunning = true
     spawn(function()
         while fishFarmActive do
-            pcall(function()
-                local RepStor = game:GetService("ReplicatedStorage")
-                if RepStor:FindFirstChild("CatchFish") then RepStor.CatchFish:FireServer(10) end
-            end)
+            if not isEvading then
+                pcall(function()
+                    local RepStor = game:GetService("ReplicatedStorage")
+                    if RepStor:FindFirstChild("CatchFish") then RepStor.CatchFish:FireServer(10) end
+                end)
+            end
             task.wait(60)
         end
+        fishLoopRunning = false
     end)
 end
 local function stopFishFarm() fishFarmActive = false end
 
--- Загрузка и старт сохраненных настроек
 LoadConfig()
-if safe1Active then startSafe1() end
-if resurrectionActive then setupResurrection() end
-if autoWalkActive then startAutoWalk() end
-if materialFarmActive then startMaterialFarm() end
-if fishFarmActive then startFishFarm() end
-if playerListActive then createPlayerListGui() end
 
--- Авто-запуск сохраненного режима фарма
-if currentFarmMode then
-    local farms = BOSS_FARMS[game.PlaceId]
-    if farms then
-        for _, farmData in ipairs(farms) do
-            if farmData[1] == currentFarmMode then
-                startGenericFarm(currentFarmMode, farmData[2])
-                break
+if safe1Active and #Players:GetPlayers() >= 2 then
+    triggerEvasion() 
+else
+    if safe1Active then startSafe1() end
+    if resurrectionActive then setupResurrection() end
+    if autoWalkActive then startAutoWalk() end
+    if materialFarmActive then startMaterialFarm() end
+    if fishFarmActive then startFishFarm() end
+    if playerListActive then createPlayerListGui() end
+    if autoFActive then startAutoF() end
+    if autoHealActive then startAutoHeal() end
+    if blockAllRunning then startBlockAll() end
+
+    if currentFarmMode then
+        local farms = BOSS_FARMS[game.PlaceId]
+        if farms then
+            for _, farmData in ipairs(farms) do
+                if farmData[1] == currentFarmMode then
+                    startGenericFarm(currentFarmMode, farmData[2])
+                    
+                    task.delay(4, function()
+                        if not isEvading then
+                            VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+                            task.wait(0.1)
+                            VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+                            
+                            if not autoWalkActive then
+                                autoWalkActive = true
+                                startAutoWalk()
+                                SaveConfig()
+                            end
+                        end
+                    end)
+                    break
+                end
             end
         end
     end
 end
 
--- ==============================================================================
--- === UI SWITCH LOGIC & MAIN GUI ===
--- ==============================================================================
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     local switchFrame = Instance.new("Frame")
     switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
@@ -1127,10 +1399,15 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     end
 end
 
-local screenGuiMain = nil
-
 local function rebuildGUI()
     if screenGuiMain then screenGuiMain:Destroy() end
+    
+    local pGui = player:FindFirstChild("PlayerGui")
+    if pGui then
+        for _, v in ipairs(pGui:GetChildren()) do
+            if v.Name == "PidromaniaHub" then v:Destroy() end
+        end
+    end
     
     screenGuiMain = Instance.new("ScreenGui")
     screenGuiMain.Name = "PidromaniaHub"
@@ -1470,19 +1747,19 @@ local function rebuildGUI()
                 btn.TextSize = 14 * 1.5
                 btn.AutoButtonColor = true
                 
-                local corner = Instance.new("UICorner")
-                corner.CornerRadius = UDim.new(0, 6 * 1.5)
-                corner.Parent = btn
-                
-                btn.MouseButton1Click:Connect(function()
-                    if player.Character then
-                        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-                        if hrp then hrp.CFrame = CFrame.new(x, y, z) end
-                    end
-                end)
-                btn.Parent = contentContainer
-                yOffset = yOffset + 35 * 1.5
-            end
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 6 * 1.5)
+            corner.Parent = btn
+            
+            btn.MouseButton1Click:Connect(function()
+                if player.Character then
+                    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then hrp.CFrame = CFrame.new(x, y, z) end
+                end
+            end)
+            btn.Parent = contentContainer
+            yOffset = yOffset + 35 * 1.5
+        end
         end
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
     end
@@ -1527,7 +1804,7 @@ local function rebuildGUI()
                 else
                     currentFarmMode = nil
                 end
-                SaveConfig() -- Сохраняем состояние фарма
+                SaveConfig()
             end)
             switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
             yOffset = yOffset + 35 * 1.5
@@ -1782,7 +2059,7 @@ local function rebuildGUI()
         safe1Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
         
-        local autoWalkSwitch, setAutoWalkState = createToggleSwitch(
+        local autoWalkSwitch, _ = createToggleSwitch(
             contentContainer,
             T("autoMobWalk"),
             autoWalkActive,
@@ -1795,13 +2072,13 @@ local function rebuildGUI()
         autoWalkSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
         
-        local freezeSwitch, setFreezeState = createToggleSwitch(contentContainer, T("freezeToggle"), isFrozen, function(enabled)
+        local freezeSwitch, _ = createToggleSwitch(contentContainer, T("freezeToggle"), isFrozen, function(enabled)
             toggleFreeze()
         end)
         freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
         
-        local resSwitch, setResState = createToggleSwitch(contentContainer, T("respawnToggle"), resurrectionActive, function(enabled)
+        local resSwitch, _ = createToggleSwitch(contentContainer, T("respawnToggle"), resurrectionActive, function(enabled)
             resurrectionActive = enabled
             if enabled then setupResurrection() else cleanupResurrection() end
             SaveConfig()
@@ -1817,7 +2094,62 @@ local function rebuildGUI()
         playerListSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
         yOffset = yOffset + 35 * 1.5
         
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+        local blockAllSwitch, _ = createToggleSwitch(
+            contentContainer,
+            T("blockAllToggle"),
+            blockAllRunning,
+            function(enabled)
+                blockAllRunning = enabled
+                if enabled then startBlockAll() else stopBlockAll() end
+                SaveConfig()
+            end
+        )
+        blockAllSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset = yOffset + 35 * 1.5
+
+        local autoFSwitch, _ = createToggleSwitch(contentContainer, T("autoF"), autoFActive, function(enabled)
+            autoFActive = enabled
+            if enabled then startAutoF() else stopAutoF() end
+            SaveConfig()
+        end)
+        autoFSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        
+        local cdBox = Instance.new("TextBox")
+        cdBox.Size = UDim2.new(0, 35 * 1.5, 0, 20 * 1.5)
+        cdBox.Position = UDim2.new(1, -95 * 1.5, 0.5, -10 * 1.5)
+        cdBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+        cdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        cdBox.Text = tostring(autoFCooldown)
+        cdBox.Font = Enum.Font.GothamSemibold
+        cdBox.TextSize = 12 * 1.5
+        cdBox.ClearTextOnFocus = false
+        cdBox.Parent = autoFSwitch
+        
+        local boxCorner = Instance.new("UICorner")
+        boxCorner.CornerRadius = UDim.new(0, 4 * 1.5)
+        boxCorner.Parent = cdBox
+        
+        cdBox.FocusLost:Connect(function()
+            local num = tonumber(cdBox.Text)
+            if num and num >= 0 then
+                autoFCooldown = num
+            else
+                cdBox.Text = tostring(autoFCooldown)
+            end
+            SaveConfig()
+        end)
+        
+        yOffset = yOffset + 35 * 1.5
+        
+        local healSwitch, _ = createToggleSwitch(contentContainer, T("autoHeal"), autoHealActive, function(enabled)
+            autoHealActive = enabled
+            if enabled then startAutoHeal() else stopAutoHeal() end
+            SaveConfig()
+        end)
+        healSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset = yOffset + 35 * 1.5
+        
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5)
     end
     
     local function showSettings()
@@ -1906,9 +2238,6 @@ end
 
 rebuildGUI()
 
--- ==============================================================================
--- === ESP (ПОДСВЕТКА ИГРОКОВ) ===
--- ==============================================================================
 local Camera = Workspace.CurrentCamera
 if not Camera then
     Camera = Workspace:GetPropertyChangedSignal("CurrentCamera"):Wait()
@@ -1918,11 +2247,7 @@ local LocalPlayer = Players.LocalPlayer
 local EspObjects = {}
 
 local SPECIAL_PLAYERS = {
-    ["huesos880055535"] = { text = "Lvl: Dominus", color = Color3.fromRGB(138, 43, 226) },
-    ["arrowenn"] = { text = "Lvl: Immortal", color = Color3.fromRGB(255, 215, 0) },
-    ["minikokosich"] = { text = "Lvl: Guardian", color = Color3.fromRGB(30, 144, 255) },
-    ["curlycheburashka"] = { text = "Lvl: Cuddle", color = Color3.fromRGB(255, 20, 147) },
-    ["luken_god"] = { text = "Lvl: 12000", color = Color3.fromRGB(0, 255, 0) }
+    ["huesos880055535"] = { text = "Lvl: Dominus", color = Color3.fromRGB(138, 43, 226) }
 }
 
 local function removeEsp(playerName)
