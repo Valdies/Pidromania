@@ -1,4 +1,4 @@
-print("[MAIN] Запуск TheApocalypse Hub (Магнит 150 + DeadTrees)...")
+print("[MAIN] Запуск Pidromania Hub (Магнит + Зомби + Сундуки + АВТО-СЕЙВ + УМНЫЙ ДОМ)...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -40,8 +40,9 @@ UserInputService.MouseIconEnabled = false
 local GAME_OBJECTS = {
     Trees = {"Tree1", "Tree2", "Tree3", "Tree4", "Tree5", "Palm1", "Palm2", "Palm3", "DeadTree1", "DeadTree2", "DeadTree3"},
     Ores = {"IronOre", "CopperOre", "Coal", "Stone", "Sandstone"},
-    Loot = {"CommonLoot", "UncommonLoot", "RareLoot"},
-    Plants = {"BlueberryBush", "StrawberryBush", "PotatoPlant"}
+    Loot = {"CommonLoot", "UncommonLoot", "RareLoot", "AirDrop"},
+    Plants = {"BlueberryBush", "StrawberryBush", "PotatoPlant"},
+    Zombies = {"Zombie", "Mutant Zombie", "Headless", "Radioactive", "Charged", "Infected"}
 }
 
 local keyMap = {
@@ -52,42 +53,34 @@ local function parseKey(str) return keyMap[str] or str end
 
 -- ====== НАСТРОЙКИ СИСТЕМЫ ======
 local currentLang = "ru"
-local FOLDER_NAME = "ApocalypseHub"
+local FOLDER_NAME = "PidromaniaHub"
 local FILE_NAME = FOLDER_NAME .. "/Config.json"
 
 local Settings = {
-    TreeKey = "One", OreKey = "Four",
-    MasterFarm = false
+    TreeKey = "One", OreKey = "Four", WeaponKey = "Three",
+    MasterFarm = false, AutoSaveLife = false,
+    BaseTracker = {} -- Хранилище Умного Дома
 }
 
 local SelectedTargets = {
     Trees = false, IronOre = false, CopperOre = false, Coal = false, Stone = false, Sandstone = false,
-    CommonLoot = false, UncommonLoot = false, RareLoot = false, Plants = false
+    CommonLoot = false, UncommonLoot = false, RareLoot = false, AirDrop = false, Plants = false,
+    Zombies = false
 }
 
 local ActiveWaypoints = {}
 local targetWaypoint = nil 
+local tempFarmCFrame = nil 
 
 local translations = {
     ru = {
-        hubTitle = "Apocalypse Hub",
-        helpTab = "Помощь", farmTab = "Фарм", settingsTab = "Настройки", langTab = "Язык",
-        helpText = "ИНСТРУКЦИЯ:\n\n1. E -> G = Открыть/Закрыть меню.\n2. E -> C = Создать Вейпоинт (точку).\n3. T = Телепорт к точке (в прицеле).\n4. Мастер-Фарм вкл/выкл на 'H'.\n5. АУРА: Деревья и руды сами прилетают к тебе (радиус 150, до 10 шт. за раз).\n6. К сундукам и растениям персонаж телепортируется сам.",
-        trees = "Деревья (Все типы)", plants = "Растения (Ягоды и др.)",
-        keyTrees = "Кнопка (Деревья):", keyOres = "Кнопка (Руды/Камни):",
-        masterFarm = "МАСТЕР-ФАРМ (ВКЛ/ВЫКЛ 'H')",
-        catTrees = "Деревья, Листья", catOres = "Руды и Камни", catPlantsChests = "Растения и Сундуки",
-        clearWaypoints = "Очистить все Вейпоинты"
-    },
-    en = {
-        hubTitle = "Apocalypse Hub",
-        helpTab = "Help", farmTab = "Farm", settingsTab = "Settings", langTab = "Language",
-        helpText = "INSTRUCTIONS:\n\n1. E -> G = Open menu.\n2. E -> C = Create Waypoint.\n3. T = Teleport to Waypoint.\n4. Master Farm toggle via 'H'.\n5. AURA: Trees & Ores fly to you (150 studs, max 10).\n6. Auto-teleport to Chests & Plants.",
-        trees = "Trees (All types)", plants = "Plants (Berries etc.)",
-        keyTrees = "Key (Trees):", keyOres = "Key (Ores/Stones):",
-        masterFarm = "MASTER FARM (Toggle 'H')",
-        catTrees = "Trees, Leaves", catOres = "Ores and Stones", catPlantsChests = "Plants & Chests",
-        clearWaypoints = "Clear all Waypoints"
+        hubTitle = "Pidromania Hub: Apocalypse",
+        helpTab = "Помощь", farmTab = "Фарм", tpTab = "Телепорты", protectTab = "Защита", settingsTab = "Настройки", langTab = "Язык",
+        helpText = "ИНСТРУКЦИЯ:\n\n1. E -> G = Открыть/Закрыть меню.\n2. E -> C = Создать Вейпоинт.\n3. Вкладка 'Телепорты' = ТП к точкам и к друзьям.\n4. T = Быстрый ТП к ближайшей точке.\n5. СТАРТ / СТОП на кнопку 'H'.\n6. АУРА: Деревья и руды прилетают сами.\n7. ЗОМБИ: Ищет в радиусе 100.\n8. ЗАЩИТА: Авто-Сейв при лоу ХП. Умный дом сам запоминает твою базу.",
+        trees = "Деревья (Все типы)", plants = "Растения (Ягоды и др.)", zombies = "Зомби (Walk Авто-Атака)",
+        keyTrees = "Кнопка (Деревья):", keyOres = "Кнопка (Руды/Камни):", keyWeapon = "Кнопка (Оружие):",
+        masterFarm = "Старт / Стоп", autoSaveLife = "Авто-Сейв (< 30% ХП)",
+        catTrees = "Деревья, Листья", catOres = "Руды и Камни", catPlantsChests = "Растения и Сундуки", catZombies = "Враги (Enemies)", catProtection = "Автоматическая защита"
     }
 }
 setmetatable(translations, {__index = function(t, k) return t.ru end})
@@ -117,10 +110,13 @@ local waypointFolder = Instance.new("Folder")
 waypointFolder.Name = "ApocWaypoints"
 waypointFolder.Parent = Workspace
 
-local function CreateWaypoint(name, color)
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local pos = char.HumanoidRootPart.Position + Vector3.new(0, 12, 0) 
+local function CreateWaypoint(name, color, customPos)
+    local pos = customPos
+    if not pos then
+        local char = player.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        pos = char.HumanoidRootPart.Position + Vector3.new(0, 12, 0) 
+    end
     
     local wpPart = Instance.new("Part")
     wpPart.Size = Vector3.new(3, 3, 3)
@@ -162,13 +158,6 @@ local function CreateWaypoint(name, color)
     table.insert(ActiveWaypoints, { part = wpPart, highlight = highlight, label = label, position = pos })
 end
 
-local function ClearWaypoints()
-    for _, wp in ipairs(ActiveWaypoints) do
-        if wp.part then wp.part:Destroy() end
-    end
-    table.clear(ActiveWaypoints)
-end
-
 RunService.RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local bestDot = -1
@@ -196,30 +185,37 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ====== АНТИ-ЛАГ СИСТЕМА (КЭШИРОВАНИЕ) ======
-local cachedTargets = { tree = {}, ore = {}, plant = {}, loot = {} }
+local cachedTargets = { tree = {}, ore = {}, plant = {}, loot = {}, zombie = {} }
 
 local function refreshCache()
     for k, v in pairs(cachedTargets) do table.clear(v) end
-    local folder = Workspace:FindFirstChild("Spawned")
-    if not folder then return end
     
     local activeNames = {}
     if SelectedTargets.Trees then for _,v in ipairs(GAME_OBJECTS.Trees) do activeNames[v] = "tree" end end
     if SelectedTargets.Plants then for _,v in ipairs(GAME_OBJECTS.Plants) do activeNames[v] = "plant" end end
+    if SelectedTargets.Zombies then for _,v in ipairs(GAME_OBJECTS.Zombies) do activeNames[v] = "zombie" end end
+    
     for _, ore in ipairs(GAME_OBJECTS.Ores) do if SelectedTargets[ore] then activeNames[ore] = "ore" end end
     for _, loot in ipairs(GAME_OBJECTS.Loot) do if SelectedTargets[loot] then activeNames[loot] = "loot" end end
 
     if next(activeNames) == nil then return end
 
-    local descendants = folder:GetDescendants()
-    for i = 1, #descendants do
-        if i % 800 == 0 then task.wait() end 
-        local obj = descendants[i]
-        local cat = activeNames[obj.Name]
-        if cat and (obj:IsA("Model") or obj:IsA("BasePart")) then
-            table.insert(cachedTargets[cat], obj)
+    local function scanFolder(folder)
+        if not folder then return end
+        local descendants = folder:GetDescendants()
+        for i = 1, #descendants do
+            if i % 800 == 0 then task.wait() end 
+            local obj = descendants[i]
+            local cat = activeNames[obj.Name]
+            if cat and (obj:IsA("Model") or obj:IsA("BasePart")) then
+                table.insert(cachedTargets[cat], obj)
+            end
         end
     end
+
+    scanFolder(Workspace:FindFirstChild("Spawned"))
+    scanFolder(Workspace:FindFirstChild("Temporal"))
+    scanFolder(Workspace:FindFirstChild("Enemies"))
 end
 
 task.spawn(function()
@@ -239,12 +235,141 @@ local function getValidPosition(obj)
     return nil
 end
 
+local updateMasterToggleVisual = nil
+local toggleMasterFarm
+
+-- ====== СИСТЕМА УМНЫЙ ДОМ (BASE TRACKER) ======
+local GRID_SIZE = 50 -- Размер квадрата
+
+local function getGridKey(pos)
+    return string.format("%d,%d,%d", math.floor(pos.X / GRID_SIZE), math.floor(pos.Y / GRID_SIZE), math.floor(pos.Z / GRID_SIZE))
+end
+
+local function getBestBaseLocation()
+    local bestKey = nil
+    local maxCount = 0
+    for key, data in pairs(Settings.BaseTracker) do
+        if data.count > maxCount then
+            maxCount = data.count
+            bestKey = key
+        end
+    end
+    -- Если игрок провел в этом квадрате больше 25 секунд (5 тиков по 5 сек)
+    if bestKey and maxCount >= 5 then 
+        local d = Settings.BaseTracker[bestKey]
+        return Vector3.new(d.x, d.y + 3, d.z)
+    end
+    return nil
+end
+
+-- Поток отслеживания (Heatmap)
+task.spawn(function()
+    while true do
+        task.wait(5)
+        -- Трекаем позицию только если автофарм ВЫКЛЮЧЕН (игрок дома)
+        if not Settings.MasterFarm then
+            local char = player.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChild("Humanoid")
+                -- Убедимся что игрок жив и стоит на земле (не летит)
+                if hrp and hum and hum.Health > 0 and hum.FloorMaterial ~= Enum.Material.Air then
+                    local pos = hrp.Position
+                    local key = getGridKey(pos)
+                    
+                    if not Settings.BaseTracker[key] then
+                        Settings.BaseTracker[key] = {count = 0, x = pos.X, y = pos.Y, z = pos.Z}
+                    end
+                    Settings.BaseTracker[key].count = Settings.BaseTracker[key].count + 1
+                    
+                    -- Сохраняем прогресс изучения дома каждые 30 секунд
+                    if Settings.BaseTracker[key].count % 6 == 0 then SaveConfig() end
+                end
+            end
+        end
+    end
+end)
+
+-- ====== АВТО-СЕЙВ (ЗАЩИТА ПРИ ЛОУ ХП) ======
+local autoSaveCooldown = false
+task.spawn(function()
+    while true do
+        task.wait(0.2) 
+        if Settings.AutoSaveLife and not autoSaveCooldown then
+            local char = player.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                
+                if hum and hrp and hum.Health > 0 and hum.MaxHealth > 0 then
+                    if (hum.Health / hum.MaxHealth) <= 0.30 then
+                        autoSaveCooldown = true
+                        
+                        -- 1. Срочно отключаем фарм
+                        if Settings.MasterFarm and toggleMasterFarm then
+                            toggleMasterFarm(false)
+                            if updateMasterToggleVisual then updateMasterToggleVisual(false) end
+                        end
+                        
+                        -- 2. Ищем Вейпоинт (игнорируя сундуки TEMP)
+                        local bestWp = nil
+                        local bestDist = math.huge
+                        for _, wp in ipairs(ActiveWaypoints) do
+                            if wp.label.Text ~= "TEMP" then 
+                                local dist = (wp.position - hrp.Position).Magnitude
+                                if dist < bestDist then
+                                    bestDist = dist
+                                    bestWp = wp
+                                end
+                            end
+                        end
+                        
+                        -- 3. Телепортируемся
+                        if bestWp then
+                            hrp.CFrame = CFrame.new(bestWp.position + Vector3.new(0, 5, 0))
+                        else
+                            -- Ищем Умный Дом
+                            local autoBase = getBestBaseLocation()
+                            if autoBase then
+                                hrp.CFrame = CFrame.new(autoBase)
+                            else
+                                -- Если нет точек и база не изучена, кидаем в небо
+                                hrp.CFrame = hrp.CFrame + Vector3.new(0, 1000, 0)
+                            end
+                        end
+                        
+                        task.delay(5, function() autoSaveCooldown = false end)
+                    end
+                end
+            end
+        end
+    end
+end)
+
 -- ====== ЛОГИКА ФАРМА И СУПЕР-КЛИКЕРА ======
 local farmLoopActive = false
 local isAttacking = false
 local activeKeyStr = nil
+local currentFocusTarget = nil 
 
--- КЛИКЕР 15 CPS
+RunService.Heartbeat:Connect(function()
+    if Settings.MasterFarm and currentFocusTarget and currentFocusTarget.Parent then
+        local zHum = currentFocusTarget:FindFirstChildOfClass("Humanoid")
+        if zHum and zHum.Health > 0 then
+            local tPos = getValidPosition(currentFocusTarget)
+            local char = player.Character
+            if tPos and char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(tPos.X, hrp.Position.Y, tPos.Z))
+            end
+        else
+            currentFocusTarget = nil
+        end
+    else
+        currentFocusTarget = nil
+    end
+end)
+
 task.spawn(function()
     while true do
         if Settings.MasterFarm and isAttacking then
@@ -278,13 +403,60 @@ local function executeFarmStep()
     local character = player.Character
     if not character then return end
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not rootPart or not humanoid then return end
 
     local charPos = rootPart.Position
     local frontCF = rootPart.CFrame * CFrame.new(0, 0, -4)
-    local foundList = {}
+    
+    if SelectedTargets.Zombies then
+        local nearestZombie = nil
+        local minZDist = 100 
+        
+        for _, zModel in ipairs(cachedTargets.zombie) do
+            local zHum = zModel:FindFirstChildOfClass("Humanoid")
+            if zHum and zHum.Health > 0 then
+                local zPos = getValidPosition(zModel)
+                if zPos then
+                    local dist = (zPos - charPos).Magnitude
+                    if dist <= minZDist then
+                        minZDist = dist
+                        nearestZombie = zModel
+                    end
+                end
+            end
+        end
 
-    -- 1. МАГНИТ (Деревья и Руды - Радиус 150)
+        if nearestZombie then
+            currentFocusTarget = nearestZombie 
+            local targetPos = getValidPosition(nearestZombie)
+            
+            local weaponStr = Settings.WeaponKey or "Three"
+            local hasTool = character:FindFirstChildOfClass("Tool")
+            if not hasTool and Enum.KeyCode[weaponStr] then
+                VIM:SendKeyEvent(true, Enum.KeyCode[weaponStr], false, game)
+                task.wait(0.05)
+                VIM:SendKeyEvent(false, Enum.KeyCode[weaponStr], false, game)
+            end
+
+            if minZDist > 6 then 
+                humanoid:MoveTo(targetPos)
+            else
+                humanoid:MoveTo(charPos) 
+            end
+
+            activeKeyStr = nil 
+            isAttacking = true
+            return 
+        end
+    end
+    currentFocusTarget = nil
+
+    if isAttacking and activeKeyStr == nil then 
+        isAttacking = false 
+    end
+
+    local foundList = {}
     for _, obj in ipairs(cachedTargets.tree) do
         local pos = getValidPosition(obj)
         if pos then
@@ -328,14 +500,12 @@ local function executeFarmStep()
         return 
     end
 
-    -- 2. ТЕЛЕПОРТ (Сундуки и Растения)
     isAttacking = false
     activeKeyStr = nil
     
-    local nearestObj = nil
-    local nearestDist = math.huge
-    
-    local function checkTeleportTargets(list)
+    local function getNearestFromList(list)
+        local nearestObj = nil
+        local nearestDist = math.huge
         for _, obj in ipairs(list) do
             local pos = getValidPosition(obj)
             if pos then
@@ -346,13 +516,60 @@ local function executeFarmStep()
                 end
             end
         end
+        return nearestObj
     end
-    
-    checkTeleportTargets(cachedTargets.plant)
-    checkTeleportTargets(cachedTargets.loot)
-    
-    if nearestObj then
-        local tPos = getValidPosition(nearestObj)
+
+    local nearestLoot = getNearestFromList(cachedTargets.loot)
+    local nearestPlant = getNearestFromList(cachedTargets.plant)
+
+    if nearestLoot then
+        local tPos = getValidPosition(nearestLoot)
+        if tPos and tempFarmCFrame then
+            rootPart.CFrame = CFrame.new(tPos + Vector3.new(0, 4, 0)) 
+            task.wait(0.3)
+            if not Settings.MasterFarm then return end 
+            
+            local cam = workspace.CurrentCamera
+            cam.CFrame = CFrame.new(cam.CFrame.Position) * CFrame.Angles(math.rad(-89), 0, 0)
+            task.wait(0.2)
+            if not Settings.MasterFarm then return end 
+            
+            VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+            task.wait(0.05)
+            VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+            
+            task.wait(1.5)
+            if not Settings.MasterFarm then return end 
+            
+            VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+            task.wait(0.05)
+            VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+            
+            task.wait(0.2)
+            if not Settings.MasterFarm or not tempFarmCFrame then return end 
+            
+            rootPart.CFrame = tempFarmCFrame
+            task.wait(0.3)
+            if not Settings.MasterFarm then return end 
+            
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.05)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            
+            task.wait(0.3)
+            if not Settings.MasterFarm then return end 
+            
+            VIM:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(0.05)
+            VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            
+            task.wait(0.5)
+        end
+        return
+    end
+
+    if nearestPlant then
+        local tPos = getValidPosition(nearestPlant)
         rootPart.CFrame = CFrame.new(tPos + Vector3.new(0, 3, 0))
         VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game)
         task.wait(0.05)
@@ -360,15 +577,40 @@ local function executeFarmStep()
     end
 end
 
-local function toggleMasterFarm(state)
+toggleMasterFarm = function(state)
     Settings.MasterFarm = state
     
     if not state then
         isAttacking = false
+        currentFocusTarget = nil
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             player.Character.HumanoidRootPart.Anchored = false
+            if player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid:MoveTo(player.Character.HumanoidRootPart.Position)
+            end
+        end
+        
+        tempFarmCFrame = nil
+        for i = #ActiveWaypoints, 1, -1 do
+            if ActiveWaypoints[i].label.Text == "TEMP" then
+                if ActiveWaypoints[i].part then ActiveWaypoints[i].part:Destroy() end
+                table.remove(ActiveWaypoints, i)
+            end
         end
     else
+        local isFarmingLoot = false
+        for _, loot in ipairs(GAME_OBJECTS.Loot) do
+            if SelectedTargets[loot] then
+                isFarmingLoot = true
+                break
+            end
+        end
+        
+        if isFarmingLoot and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            tempFarmCFrame = player.Character.HumanoidRootPart.CFrame
+            CreateWaypoint("TEMP", Color3.fromRGB(200, 200, 200), tempFarmCFrame.Position + Vector3.new(0, 12, 0))
+        end
+        
         refreshCache() 
     end
 
@@ -381,18 +623,19 @@ local function toggleMasterFarm(state)
             end
             farmLoopActive = false
             isAttacking = false
+            currentFocusTarget = nil
         end)
     end
     SaveConfig()
 end
-
-local updateMasterToggleVisual = nil
 
 -- ====== ПОСТРОЕНИЕ UI ======
 local screenGuiMain = nil
 local miniGui = nil
 local mainFrame = nil
 local waypointFrame = nil
+local confirmOverlay = nil
+local pendingDeleteAction = nil
 
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     local switchFrame = Instance.new("Frame")
@@ -496,7 +739,7 @@ local function rebuildGUI()
     if screenGuiMain then screenGuiMain:Destroy() end
     
     screenGuiMain = Instance.new("ScreenGui")
-    screenGuiMain.Name = "ApocalypseHubMain"
+    screenGuiMain.Name = "PidromaniaHubMain"
     screenGuiMain.ResetOnSpawn = false
     screenGuiMain.DisplayOrder = 100 
     screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -523,7 +766,7 @@ local function rebuildGUI()
     title.Text = T("hubTitle")
     title.Font = Enum.Font.GothamBold
     title.TextSize = 22
-    title.Size = UDim2.new(0, 300, 1, 0)
+    title.Size = UDim2.new(0, 400, 1, 0)
     title.Position = UDim2.new(0, 15, 0, 0)
     title.BackgroundTransparency = 1
     title.TextColor3 = Color3.fromRGB(220, 220, 255)
@@ -550,6 +793,69 @@ local function rebuildGUI()
     contentContainer.BackgroundTransparency = 1
     contentContainer.ScrollBarThickness = 4
     contentContainer.Parent = rightPanel
+
+    confirmOverlay = Instance.new("Frame")
+    confirmOverlay.Size = UDim2.new(1, 0, 1, 0)
+    confirmOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    confirmOverlay.BackgroundTransparency = 0.5
+    confirmOverlay.Visible = false
+    confirmOverlay.Active = true
+    confirmOverlay.ZIndex = 50
+    confirmOverlay.Parent = mainFrame
+    Instance.new("UICorner", confirmOverlay).CornerRadius = UDim.new(0, 15)
+
+    local confirmBox = Instance.new("Frame")
+    confirmBox.Size = UDim2.new(0, 300, 0, 150)
+    confirmBox.Position = UDim2.new(0.5, -150, 0.5, -75)
+    confirmBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    confirmBox.ZIndex = 51
+    confirmBox.Parent = confirmOverlay
+    Instance.new("UICorner", confirmBox).CornerRadius = UDim.new(0, 10)
+
+    local confirmLabel = Instance.new("TextLabel")
+    confirmLabel.Text = "Точно удалить?"
+    confirmLabel.Size = UDim2.new(1, 0, 0, 50)
+    confirmLabel.Position = UDim2.new(0, 0, 0, 15)
+    confirmLabel.BackgroundTransparency = 1
+    confirmLabel.TextColor3 = Color3.new(1, 1, 1)
+    confirmLabel.Font = Enum.Font.GothamBold
+    confirmLabel.TextSize = 20
+    confirmLabel.ZIndex = 51
+    confirmLabel.Parent = confirmBox
+
+    local btnConfirmYes = Instance.new("TextButton")
+    btnConfirmYes.Text = "Да, удалить"
+    btnConfirmYes.Size = UDim2.new(0.4, 0, 0, 40)
+    btnConfirmYes.Position = UDim2.new(0.06, 0, 0, 90)
+    btnConfirmYes.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    btnConfirmYes.TextColor3 = Color3.new(1, 1, 1)
+    btnConfirmYes.Font = Enum.Font.GothamBold
+    btnConfirmYes.TextSize = 14
+    btnConfirmYes.ZIndex = 51
+    btnConfirmYes.Parent = confirmBox
+    Instance.new("UICorner", btnConfirmYes).CornerRadius = UDim.new(0, 6)
+
+    local btnConfirmNo = Instance.new("TextButton")
+    btnConfirmNo.Text = "Нет, не удалять"
+    btnConfirmNo.Size = UDim2.new(0.4, 0, 0, 40)
+    btnConfirmNo.Position = UDim2.new(0.54, 0, 0, 90)
+    btnConfirmNo.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
+    btnConfirmNo.TextColor3 = Color3.new(1, 1, 1)
+    btnConfirmNo.Font = Enum.Font.GothamBold
+    btnConfirmNo.TextSize = 14
+    btnConfirmNo.ZIndex = 51
+    btnConfirmNo.Parent = confirmBox
+    Instance.new("UICorner", btnConfirmNo).CornerRadius = UDim.new(0, 6)
+
+    btnConfirmYes.MouseButton1Click:Connect(function()
+        if pendingDeleteAction then pendingDeleteAction() end
+        confirmOverlay.Visible = false
+        pendingDeleteAction = nil
+    end)
+    btnConfirmNo.MouseButton1Click:Connect(function()
+        confirmOverlay.Visible = false
+        pendingDeleteAction = nil
+    end)
 
     waypointFrame = Instance.new("Frame")
     waypointFrame.Size = UDim2.new(0, 350, 0, 220)
@@ -685,6 +991,12 @@ local function rebuildGUI()
         clearContent()
         local y = 10
         
+        y = createCategoryHeader(contentContainer, "--- " .. T("catZombies") .. " ---", y)
+        local swZombies = createToggleSwitch(contentContainer, T("zombies"), SelectedTargets.Zombies, function(s)
+            SelectedTargets.Zombies = s; SaveConfig()
+        end)
+        swZombies.Position = UDim2.new(0, 5, 0, y); y = y + 55
+
         y = createCategoryHeader(contentContainer, "--- " .. T("catTrees") .. " ---", y)
         local swTrees = createToggleSwitch(contentContainer, T("trees"), SelectedTargets.Trees, function(s)
             SelectedTargets.Trees = s; SaveConfig()
@@ -712,7 +1024,202 @@ local function rebuildGUI()
             sw.Position = UDim2.new(0, 5, 0, y); y = y + 55
         end
 
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y + 20)
+    end
+
+    local showTeleports 
+
+    showTeleports = function()
+        clearContent()
+        local y = 10
+        
+        y = createCategoryHeader(contentContainer, "--- Сохраненные точки ---", y)
+        
+        if #ActiveWaypoints == 0 then
+            local lbl = Instance.new("TextLabel")
+            lbl.Text = "Нет сохраненных точек"
+            lbl.Size = UDim2.new(1, -20, 0, 30)
+            lbl.Position = UDim2.new(0, 10, 0, y)
+            lbl.BackgroundTransparency = 1
+            lbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 14
+            lbl.Parent = contentContainer
+            y = y + 30
+        else
+            for i, wp in ipairs(ActiveWaypoints) do
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -20, 0, 45)
+                frame.Position = UDim2.new(0, 10, 0, y)
+                frame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                frame.Parent = contentContainer
+                Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+                
+                local nameLbl = Instance.new("TextLabel")
+                nameLbl.Text = wp.label.Text
+                nameLbl.Size = UDim2.new(0, 180, 1, 0)
+                nameLbl.Position = UDim2.new(0, 15, 0, 0)
+                nameLbl.BackgroundTransparency = 1
+                nameLbl.TextColor3 = Color3.new(1, 1, 1)
+                nameLbl.Font = Enum.Font.GothamBold
+                nameLbl.TextSize = 14
+                nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+                nameLbl.Parent = frame
+                
+                local btnDel = Instance.new("TextButton")
+                btnDel.Text = "Удалить"
+                btnDel.Size = UDim2.new(0, 80, 0, 30)
+                btnDel.Position = UDim2.new(1, -90, 0.5, -15)
+                btnDel.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+                btnDel.TextColor3 = Color3.new(1, 1, 1)
+                btnDel.Font = Enum.Font.GothamBold
+                btnDel.TextSize = 13
+                btnDel.Parent = frame
+                Instance.new("UICorner", btnDel).CornerRadius = UDim.new(0, 6)
+                
+                local btnTp = Instance.new("TextButton")
+                btnTp.Text = "Телепортироваться"
+                btnTp.Size = UDim2.new(0, 140, 0, 30)
+                btnTp.Position = UDim2.new(1, -240, 0.5, -15)
+                btnTp.BackgroundColor3 = Color3.fromRGB(50, 150, 70)
+                btnTp.TextColor3 = Color3.new(1, 1, 1)
+                btnTp.Font = Enum.Font.GothamBold
+                btnTp.TextSize = 13
+                btnTp.Parent = frame
+                Instance.new("UICorner", btnTp).CornerRadius = UDim.new(0, 6)
+
+                btnTp.MouseButton1Click:Connect(function()
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = CFrame.new(wp.position - Vector3.new(0, 9, 0))
+                    end
+                end)
+
+                btnDel.MouseButton1Click:Connect(function()
+                    pendingDeleteAction = function()
+                        if wp.part then wp.part:Destroy() end
+                        table.remove(ActiveWaypoints, i)
+                        showTeleports()
+                    end
+                    confirmOverlay.Visible = true
+                end)
+
+                y = y + 50
+            end
+        end
+
+        y = y + 10
+        y = createCategoryHeader(contentContainer, "--- Друзья на сервере ---", y)
+        
+        local friendsFound = false
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and player:IsFriendsWith(p.UserId) then
+                friendsFound = true
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -20, 0, 45)
+                frame.Position = UDim2.new(0, 10, 0, y)
+                frame.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                frame.Parent = contentContainer
+                Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+                
+                local nameLbl = Instance.new("TextLabel")
+                nameLbl.Text = p.DisplayName .. " (@" .. p.Name .. ")"
+                nameLbl.Size = UDim2.new(0, 200, 1, 0)
+                nameLbl.Position = UDim2.new(0, 15, 0, 0)
+                nameLbl.BackgroundTransparency = 1
+                nameLbl.TextColor3 = Color3.new(1, 1, 1)
+                nameLbl.Font = Enum.Font.GothamBold
+                nameLbl.TextSize = 14
+                nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+                nameLbl.Parent = frame
+                
+                local btnTp = Instance.new("TextButton")
+                btnTp.Text = "Телепортироваться"
+                btnTp.Size = UDim2.new(0, 140, 0, 30)
+                btnTp.Position = UDim2.new(1, -150, 0.5, -15)
+                btnTp.BackgroundColor3 = Color3.fromRGB(50, 150, 70)
+                btnTp.TextColor3 = Color3.new(1, 1, 1)
+                btnTp.Font = Enum.Font.GothamBold
+                btnTp.TextSize = 13
+                btnTp.Parent = frame
+                Instance.new("UICorner", btnTp).CornerRadius = UDim.new(0, 6)
+
+                btnTp.MouseButton1Click:Connect(function()
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        player.Character.HumanoidRootPart.CFrame = CFrame.new(p.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
+                    end
+                end)
+
+                y = y + 50
+            end
+        end
+
+        if not friendsFound then
+            local lbl = Instance.new("TextLabel")
+            lbl.Text = "Нет друзей на сервере"
+            lbl.Size = UDim2.new(1, -20, 0, 30)
+            lbl.Position = UDim2.new(0, 10, 0, y)
+            lbl.BackgroundTransparency = 1
+            lbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 14
+            lbl.Parent = contentContainer
+            y = y + 30
+        end
+
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y + 20)
+    end
+
+    local function showProtect()
+        clearContent()
+        local y = 10
+        y = createCategoryHeader(contentContainer, "--- " .. T("catProtection") .. " ---", y)
+        
+        local swAutoSave = createToggleSwitch(contentContainer, T("autoSaveLife"), Settings.AutoSaveLife, function(s)
+            Settings.AutoSaveLife = s
+            SaveConfig()
+        end)
+        swAutoSave.Position = UDim2.new(0, 5, 0, y)
+        y = y + 65
+        
+        y = createCategoryHeader(contentContainer, "--- База (Умный Дом) ---", y)
+        
+        local infoLbl = Instance.new("TextLabel")
+        local basePos = getBestBaseLocation()
+        if basePos then
+            infoLbl.Text = string.format("Найден дом на координатах: %d, %d, %d", basePos.X, basePos.Y, basePos.Z)
+            infoLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            infoLbl.Text = "Скрипт еще изучает карту... Постой на базе без фарма 30 сек."
+            infoLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+        infoLbl.Size = UDim2.new(1, -20, 0, 30)
+        infoLbl.Position = UDim2.new(0, 15, 0, y)
+        infoLbl.BackgroundTransparency = 1
+        infoLbl.Font = Enum.Font.GothamSemibold
+        infoLbl.TextSize = 14
+        infoLbl.TextXAlignment = Enum.TextXAlignment.Left
+        infoLbl.Parent = contentContainer
+        y = y + 40
+        
+        local btnResetBase = Instance.new("TextButton")
+        btnResetBase.Text = "Сбросить память Умного Дома"
+        btnResetBase.Size = UDim2.new(0, 280, 0, 35)
+        btnResetBase.Position = UDim2.new(0, 15, 0, y)
+        btnResetBase.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        btnResetBase.TextColor3 = Color3.new(1, 1, 1)
+        btnResetBase.Font = Enum.Font.GothamBold
+        btnResetBase.TextSize = 14
+        btnResetBase.Parent = contentContainer
+        Instance.new("UICorner", btnResetBase).CornerRadius = UDim.new(0, 6)
+        
+        btnResetBase.MouseButton1Click:Connect(function()
+            Settings.BaseTracker = {}
+            SaveConfig()
+            showProtect() -- Обновить вкладку
+        end)
+        y = y + 50
+
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y + 20)
     end
 
     local function showSettings()
@@ -754,21 +1261,9 @@ local function rebuildGUI()
 
         makeKeybind(T("keyTrees"), "TreeKey")
         makeKeybind(T("keyOres"), "OreKey")
+        makeKeybind(T("keyWeapon"), "WeaponKey")
         
-        local btnClear = Instance.new("TextButton")
-        btnClear.Text = "🗑️ " .. T("clearWaypoints")
-        btnClear.Size = UDim2.new(1, -20, 0, 45)
-        btnClear.Position = UDim2.new(0, 10, 0, y + 20)
-        btnClear.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-        btnClear.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btnClear.Font = Enum.Font.GothamBold
-        btnClear.TextSize = 16
-        btnClear.Parent = contentContainer
-        Instance.new("UICorner", btnClear).CornerRadius = UDim.new(0, 8)
-        
-        btnClear.MouseButton1Click:Connect(function() ClearWaypoints() end)
-        
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y + 80)
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, y + 20)
     end
 
     local function showLanguage()
@@ -797,10 +1292,12 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, y)
     end
 
-    local btnHelp = createMenuBtn(T("helpTab"), "❓", 0)
-    local btnFarm = createMenuBtn(T("farmTab"), "⛏️", 1)
-    local btnSettings = createMenuBtn(T("settingsTab"), "⚙️", 2)
-    local btnLang = createMenuBtn(T("langTab"), "🌍", 3)
+    local btnHelp     = createMenuBtn(T("helpTab"), "❓", 0)
+    local btnFarm     = createMenuBtn(T("farmTab"), "⛏️", 1)
+    local btnTp       = createMenuBtn(T("tpTab"), "🌌", 2)
+    local btnProtect  = createMenuBtn(T("protectTab"), "🛡️", 3)
+    local btnSettings = createMenuBtn(T("settingsTab"), "⚙️", 4)
+    local btnLang     = createMenuBtn(T("langTab"), "🌍", 5)
 
     local function selectBtn(targetBtn)
         for _, b in ipairs(menuItems) do b.BackgroundColor3 = Color3.fromRGB(50, 50, 60) end
@@ -809,6 +1306,8 @@ local function rebuildGUI()
 
     btnHelp.MouseButton1Click:Connect(function() selectBtn(btnHelp) showHelp() end)
     btnFarm.MouseButton1Click:Connect(function() selectBtn(btnFarm) showFarm() end)
+    btnTp.MouseButton1Click:Connect(function() selectBtn(btnTp) showTeleports() end)
+    btnProtect.MouseButton1Click:Connect(function() selectBtn(btnProtect) showProtect() end)
     btnSettings.MouseButton1Click:Connect(function() selectBtn(btnSettings) showSettings() end)
     btnLang.MouseButton1Click:Connect(function() selectBtn(btnLang) showLanguage() end)
 
@@ -826,7 +1325,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     local kc = input.KeyCode
 
-    if Settings.MasterFarm and (kc == Enum.KeyCode.T or kc == Enum.KeyCode.E or kc == Enum.KeyCode.Q or kc == Enum.KeyCode.G) then
+    if Settings.MasterFarm and (kc == Enum.KeyCode.T or kc == Enum.KeyCode.Q or kc == Enum.KeyCode.G) then
         if updateMasterToggleVisual then updateMasterToggleVisual(false) end
         toggleMasterFarm(false)
     end
