@@ -1,6 +1,3 @@
--- ====== MAIN ======
-print("[MAIN] Запуск Pidromania Hub (Магнит + Зомби + Сундуки + АВТО-СЕЙВ + МАСС-СОРТИРОВКА + ESP + ГРУППИРОВКА + ВШИТЫЙ АВТО-СБРОС + ВЕЧНЫЕ ТОЧКИ + ЛОКАЛИЗАЦИЯ)...")
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
@@ -371,6 +368,8 @@ end)
 
 -- ====== АВТО-СЕЙВ ======
 local autoSaveCooldown = false
+local autoSaveTpCount = 0 -- Счетчик телепортов для авто-сейва
+
 task.spawn(function()
     while true do
         task.wait(0.2) 
@@ -381,6 +380,11 @@ task.spawn(function()
                 local hrp = char:FindFirstChild("HumanoidRootPart")
                 
                 if hum and hrp and hum.Health > 0 and hum.MaxHealth > 0 then
+                    -- Сброс счетчика сейвов, если здоровье больше 40%
+                    if (hum.Health / hum.MaxHealth) > 0.40 then
+                        autoSaveTpCount = 0
+                    end
+
                     if (hum.Health / hum.MaxHealth) <= 0.30 then
                         autoSaveCooldown = true
                         if Settings.MasterFarm and toggleMasterFarm then
@@ -388,28 +392,50 @@ task.spawn(function()
                             if updateMasterToggleVisual then updateMasterToggleVisual(false) end
                         end
                         
-                        local bestWp = nil
-                        local bestDist = math.huge
-                        for _, wp in ipairs(ActiveWaypoints) do
-                            if wp.label.Text ~= "TEMP" then 
-                                local dist = (wp.position - hrp.Position).Magnitude
-                                if dist < bestDist then
-                                    bestDist = dist
-                                    bestWp = wp
+                        -- Проверка лимита на 2 спасительных телепорта
+                        if autoSaveTpCount < 2 then
+                            autoSaveTpCount = autoSaveTpCount + 1
+                            
+                            local targetPos = nil
+                            
+                            -- ПРИОРИТЕТ 1: Ищем точку ДОМ
+                            for _, wp in ipairs(ActiveWaypoints) do
+                                if wp.label.Text == "ДОМ" then 
+                                    targetPos = wp.position + Vector3.new(0, 5, 0)
+                                    break
                                 end
                             end
+                            
+                            -- ПРИОРИТЕТ 2: Если дома нет, ищем ближайшую точку
+                            if not targetPos then
+                                local bestWp = nil
+                                local bestDist = math.huge
+                                for _, wp in ipairs(ActiveWaypoints) do
+                                    if wp.label.Text ~= "TEMP" then 
+                                        local dist = (wp.position - hrp.Position).Magnitude
+                                        if dist < bestDist then
+                                            bestDist = dist
+                                            bestWp = wp
+                                        end
+                                    end
+                                end
+                                if bestWp then targetPos = bestWp.position + Vector3.new(0, 5, 0) end
+                            end
+                            
+                            if targetPos then
+                                hrp.CFrame = CFrame.new(targetPos)
+                            else
+                                local autoBase = getBestBaseLocation()
+                                if autoBase then
+                                    hrp.CFrame = CFrame.new(autoBase)
+                                else
+                                    hrp.CFrame = hrp.CFrame + Vector3.new(0, 1000, 0)
+                                end
+                            end
+                        else
+                            DBG("Авто-сейв: лимит телепортов исчерпан (2/2). Ждем воскрешения.")
                         end
                         
-                        if bestWp then
-                            hrp.CFrame = CFrame.new(bestWp.position + Vector3.new(0, 5, 0))
-                        else
-                            local autoBase = getBestBaseLocation()
-                            if autoBase then
-                                hrp.CFrame = CFrame.new(autoBase)
-                            else
-                                hrp.CFrame = hrp.CFrame + Vector3.new(0, 1000, 0)
-                            end
-                        end
                         task.delay(5, function() autoSaveCooldown = false end)
                     end
                 end
@@ -663,7 +689,10 @@ local function performSingleSort(targetItemName)
         task.wait(0.1)
         
         local centerX, centerY = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
-        for i = 1, itemsCount do
+        
+        -- Увеличиваем количество кликов в 1.5 раза
+        local clickCount = math.ceil(itemsCount * 1.5)
+        for i = 1, clickCount do
             if cancelSorting then break end
             VIM:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
             task.wait(0.02)
@@ -741,7 +770,7 @@ local function executeSortingLogic()
                 local row = math.floor(idx / gridWidth)
                 local col = idx % gridWidth
                 if row % 2 ~= 0 then col = (gridWidth - 1) - col end
-                root.CFrame = startCFrame * CFrame.new(col * 3, 1, row * 3)
+                root.CFrame = startCFrame * CFrame.new(col * 5, 2, row * 5)
                 task.wait(0.2)
                 if cancelSorting then break end
                 performSingleSort(itemName)
@@ -901,8 +930,14 @@ local function executeFarmStep()
             cam.CFrame = CFrame.new(cam.CFrame.Position) * CFrame.Angles(math.rad(-89), 0, 0)
             task.wait(0.2)
             if not Settings.MasterFarm then return end 
+            
+            -- Два нажатия F подряд
             VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game); task.wait(0.05); VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-            task.wait(1.5)
+            task.wait(0.15) 
+            VIM:SendKeyEvent(true, Enum.KeyCode.F, false, game); task.wait(0.05); VIM:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+            
+            -- Увеличенное время ожидания (с 1.5 до 2.0)
+            task.wait(2.0)
             if not Settings.MasterFarm then return end 
             VIM:SendKeyEvent(true, Enum.KeyCode.C, false, game); task.wait(0.05); VIM:SendKeyEvent(false, Enum.KeyCode.C, false, game)
             task.wait(0.2)
@@ -1245,8 +1280,8 @@ local function rebuildGUI(startTab)
     colorBtns[1].BorderSizePixel = 3; colorBtns[1].BorderColor3 = Color3.fromRGB(255, 255, 255)
     
     local btnWpCreate = Instance.new("TextButton")
-    btnWpCreate.Size = UDim2.new(0, 100, 0, 40)
-    btnWpCreate.Position = UDim2.new(0, 15, 0, 150)
+    btnWpCreate.Size = UDim2.new(0, 75, 0, 40)
+    btnWpCreate.Position = UDim2.new(0, 10, 0, 150)
     btnWpCreate.BackgroundColor3 = Color3.fromRGB(50, 150, 70)
     btnWpCreate.TextColor3 = Color3.new(1,1,1)
     btnWpCreate.Font = Enum.Font.GothamBold
@@ -1256,8 +1291,8 @@ local function rebuildGUI(startTab)
     Instance.new("UICorner", btnWpCreate).CornerRadius = UDim.new(0, 8)
 
     local btnWpPerm = Instance.new("TextButton")
-    btnWpPerm.Size = UDim2.new(0, 100, 0, 40)
-    btnWpPerm.Position = UDim2.new(0, 125, 0, 150)
+    btnWpPerm.Size = UDim2.new(0, 80, 0, 40)
+    btnWpPerm.Position = UDim2.new(0, 90, 0, 150)
     btnWpPerm.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
     btnWpPerm.TextColor3 = Color3.new(1,1,1)
     btnWpPerm.Font = Enum.Font.GothamBold
@@ -1266,9 +1301,20 @@ local function rebuildGUI(startTab)
     btnWpPerm.Parent = waypointFrame
     Instance.new("UICorner", btnWpPerm).CornerRadius = UDim.new(0, 8)
     
+    local btnWpHome = Instance.new("TextButton")
+    btnWpHome.Size = UDim2.new(0, 80, 0, 40)
+    btnWpHome.Position = UDim2.new(0, 175, 0, 150)
+    btnWpHome.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+    btnWpHome.TextColor3 = Color3.new(1,1,1)
+    btnWpHome.Font = Enum.Font.GothamBold
+    btnWpHome.TextSize = 13
+    btnWpHome.Text = "Дом 🏠"
+    btnWpHome.Parent = waypointFrame
+    Instance.new("UICorner", btnWpHome).CornerRadius = UDim.new(0, 8)
+
     local btnWpCancel = Instance.new("TextButton")
-    btnWpCancel.Size = UDim2.new(0, 100, 0, 40)
-    btnWpCancel.Position = UDim2.new(0, 235, 0, 150)
+    btnWpCancel.Size = UDim2.new(0, 75, 0, 40)
+    btnWpCancel.Position = UDim2.new(0, 260, 0, 150)
     btnWpCancel.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
     btnWpCancel.TextColor3 = Color3.new(1,1,1)
     btnWpCancel.Font = Enum.Font.GothamBold
@@ -1285,6 +1331,16 @@ local function rebuildGUI(startTab)
 
     btnWpPerm.MouseButton1Click:Connect(function()
         local name = wpInput.Text; if name == "" then name = "Точка" end
+        local char = player.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        local pos = char.HumanoidRootPart.Position + Vector3.new(0, 12, 0)
+        table.insert(Settings.SavedWaypoints, {name = name, color = {r = selectedColor.R, g = selectedColor.G, b = selectedColor.B}, pos = {x = pos.X, y = pos.Y, z = pos.Z}})
+        SaveConfig()
+        CreateWaypoint(name, selectedColor, pos, true)
+        if waypointFrame then waypointFrame.Visible = false end; wpInput.Text = ""
+    end)
+
+    btnWpHome.MouseButton1Click:Connect(function()
+        local name = "ДОМ"
         local char = player.Character; if not char or not char:FindFirstChild("HumanoidRootPart") then return end
         local pos = char.HumanoidRootPart.Position + Vector3.new(0, 12, 0)
         table.insert(Settings.SavedWaypoints, {name = name, color = {r = selectedColor.R, g = selectedColor.G, b = selectedColor.B}, pos = {x = pos.X, y = pos.Y, z = pos.Z}})
