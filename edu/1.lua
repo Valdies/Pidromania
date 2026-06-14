@@ -1,5 +1,5 @@
 -- Educational Hub "Pidromania Academy"
--- Добавлена детальная теория и система подсказок!
+-- MAX DETAILED THEORY VERSION
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -7,29 +7,29 @@ local player = Players.LocalPlayer
 
 -- ====== БАЗА ЗАДАНИЙ ======
 local TESTS = {
-    { q = "Какой командой вывести обычный текст в консоль (F9)?", a = "print", hint = "Начинается на 'p', переводится как 'печать'." },
-    { q = "Какой командой вывести желтое предупреждение?", a = "warn", hint = "Начинается на 'w', переводится как 'предупреждать'." },
-    { q = "Какая команда выводит красный текст и ОСТАНАВЛИВАЕТ скрипт?", a = "error", hint = "Переводится как 'ошибка'." },
-    { q = "Как в Luau пишутся комментарии к коду (какие два символа)?", a = "--", hint = "Два дефиса (минуса) подряд." },
-    { q = "Где хранятся все физические объекты карты (деревья, здания)?", a = "workspace", hint = "Слово состоит из work и space." },
-    { q = "Где лежат все игроки на сервере (game.***)?", a = "players", hint = "Переводится как 'игроки' на английском (во множественном числе)." },
-    { q = "Какое ключевое слово используется для создания переменной?", a = "local", hint = "Означает 'местный'. Начинается на 'l'." },
-    { q = "Как называется объект твоего игрока (game.Players.***)?", a = "localplayer", hint = "Склеенные слова Local и Player." },
-    { q = "Как называется часть персонажа, отвечающая за его здоровье и скорость?", a = "humanoid", hint = "Начинается на 'Human...' (человекоподобный)." },
-    { q = "Как называется главная 'коробка' (деталь) в персонаже, за которую его телепортируют?", a = "humanoidrootpart", hint = "Состоит из 3 слов: Humanoid + Root + Part." }
+    { q = "Какой командой вывести обычный текст в консоль (F9)?", a = "print", hint = "Посмотри в Главе 1." },
+    { q = "Какой командой вывести желтое предупреждение?", a = "warn", hint = "Посмотри в Главе 1." },
+    { q = "Какая команда выводит красный текст и ОСТАНАВЛИВАЕТ скрипт?", a = "error", hint = "Посмотри в Главе 1." },
+    { q = "Как в Luau пишутся комментарии к коду (какие два символа)?", a = "--", hint = "Посмотри в Главе 1." },
+    { q = "Где хранятся все физические объекты карты (деревья, здания)?", a = "workspace", hint = "Посмотри в Главе 3." },
+    { q = "Где лежат все игроки на сервере (game.***)?", a = "players", hint = "Посмотри в Главе 3." },
+    { q = "Какое ключевое слово используется для создания переменной?", a = "local", hint = "Посмотри в Главе 2." },
+    { q = "Как называется объект твоего игрока (game.Players.***)?", a = "localplayer", hint = "Посмотри в Главе 4." },
+    { q = "Как называется часть персонажа, отвечающая за его здоровье и скорость?", a = "humanoid", hint = "Посмотри в Главе 5." },
+    { q = "Как называется главная 'коробка' (деталь) в персонаже, за которую его телепортируют?", a = "humanoidrootpart", hint = "Посмотри в Главе 5." }
 }
 
 local PRACTICES = {
     { q = "Выведи в консоль фразу 'Привет мир'.", check = {"print", "Привет мир"}, hint = "Напиши: print('Привет мир')" },
-    { q = "Выведи в консоль свое имя через LocalPlayer.", check = {"print", "localplayer.name"}, hint = "game.Players.LocalPlayer.Name содержит твой ник. Засунь это в print()" },
-    { q = "Сделай переменную 'a' = 5, 'b' = 10, и выведи их сумму.", check = {"local", "5", "10", "print"}, hint = "local a = 5\nlocal b = 10\nprint(a + b)" },
-    { q = "Измени скорость (WalkSpeed) своему персонажу на 100.", check = {"localplayer.character.humanoid.walkspeed", "100"}, hint = "game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100" },
-    { q = "Удали у своего персонажа правую руку ('Right Arm' / 'RightHand').", check = {"localplayer.character", "destroy"}, hint = "Найди руку в Character и допиши :Destroy()\nНапример: ...Character['Right Arm']:Destroy()" },
-    { q = "Напиши цикл for от 1 до 5, который выводит цифры в консоль.", check = {"for", "1, 5", "do", "print"}, hint = "for i = 1, 5 do\n    print(i)\nend" },
-    { q = "Вылечи себя (сделай Health = MaxHealth у Humanoid).", check = {"humanoid.health", "humanoid.maxhealth"}, hint = "Приравняй .Health к .MaxHealth внутри Humanoid твоего персонажа." },
-    { q = "Измени время суток в игре на 14:00 (через game.Lighting.ClockTime).", check = {"game.lighting.clocktime", "14"}, hint = "game.Lighting.ClockTime = 14" },
-    { q = "Выведи в консоль красную ошибку 'Взлом жопы'.", check = {"error", "Взлом жопы"}, hint = "Используй команду error('Текст')" },
-    { q = "Телепортируй себя на высоту 500 блоков вверх.", check = {"localplayer.character.humanoidrootpart.cframe", "cframe.new"}, hint = "game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)" }
+    { q = "Выведи в консоль свое имя через LocalPlayer.", check = {"print", "localplayer.name"}, hint = "Сделай print, а внутри путь: game.Players.LocalPlayer.Name" },
+    { q = "Сделай переменную 'a' = 5, 'b' = 10, и выведи их сумму.", check = {"local", "5", "10", "print"}, hint = "Создай через local две переменные, а потом print(a + b)" },
+    { q = "Измени скорость (WalkSpeed) своему персонажу на 100.", check = {"localplayer.character.humanoid.walkspeed", "100"}, hint = "Путь: game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100" },
+    { q = "Удали у своего персонажа правую руку ('Right Arm').", check = {"localplayer.character", "destroy"}, hint = "Найди руку и примени к ней метод :Destroy()" },
+    { q = "Напиши цикл for от 1 до 5, который выводит цифры в консоль.", check = {"for", "1, 5", "do", "print"}, hint = "Посмотри Главу 8. Используй for i = 1, 5 do ..." },
+    { q = "Вылечи себя (сделай Health = MaxHealth у Humanoid).", check = {"humanoid.health", "humanoid.maxhealth"}, hint = "Нужно приравнять одно свойство Humanoid к другому." },
+    { q = "Измени время суток в игре на 14:00 (через game.Lighting.ClockTime).", check = {"game.lighting.clocktime", "14"}, hint = "Приравняй свойство ClockTime в Lighting к 14." },
+    { q = "Выведи в консоль красную ошибку 'Взлом жопы'.", check = {"error", "Взлом жопы"}, hint = "Используй функцию error() из Главы 1." },
+    { q = "Телепортируй себя на высоту 500 блоков вверх.", check = {"localplayer.character.humanoidrootpart.cframe", "cframe.new"}, hint = "Измени CFrame у HumanoidRootPart на CFrame.new(0, 500, 0)" }
 }
 
 local currentTest = 1
@@ -56,8 +56,8 @@ local function rebuildGUI()
     screenGuiMain.Parent = pGui
     
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 1000, 0, 650)
-    mainFrame.Position = UDim2.new(0.5, -500, 0.5, -325)
+    mainFrame.Size = UDim2.new(0, 1100, 0, 700)
+    mainFrame.Position = UDim2.new(0.5, -550, 0.5, -350)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
@@ -69,7 +69,7 @@ local function rebuildGUI()
     mainFrameCorner.Parent = mainFrame
     
     local minimizedFrame = Instance.new("Frame")
-    minimizedFrame.Size = UDim2.new(0, 150, 0, 45)
+    minimizedFrame.Size = UDim2.new(0, 200, 0, 45)
     minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
     minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     minimizedFrame.BorderSizePixel = 0
@@ -198,79 +198,134 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     end
     
-    -- ===== 1. ТЕОРИЯ =====
+    -- ===== 1. ТЕОРИЯ (МАКСИМАЛЬНО ПОДРОБНАЯ) =====
     local function showTheory()
         clearContent()
         local text = Instance.new("TextLabel")
-        text.Size = UDim2.new(1, -10, 0, 3000) -- Огромный размер под большой текст
+        text.Size = UDim2.new(1, -10, 0, 4800) -- Огромный размер под книгу
         text.Position = UDim2.new(0, 5, 0, 5)
         text.BackgroundTransparency = 1
         text.TextColor3 = Color3.fromRGB(220, 220, 220)
         text.Font = Enum.Font.Gotham
-        text.TextSize = 15
+        text.TextSize = 16
         text.TextWrapped = true
+        text.RichText = true -- Позволяет использовать HTML теги для цвета
         text.TextXAlignment = Enum.TextXAlignment.Left
         text.TextYAlignment = Enum.TextYAlignment.Top
         text.Text = [[
-Добро пожаловать в Академию Разработчиков!
-Здесь мы научимся писать скрипты. Твой лучший друг — Консоль Роблокса (кнопка F9).
+Добро пожаловать в <font color="#50FF50"><b>Академию Разработчиков Pidromania!</b></font>
+Если ты хочешь писать читы (скрипты) для Роблокса через экзекьюторы (Xeno, Solara и др.), тебе нужно понять язык <b>Luau</b> и то, как устроена игра изнутри.
 
-=== 1. ВЫВОД В КОНСОЛЬ (F9) ===
-Когда скрипт работает, он невидим. Чтобы понимать, что происходит, мы "общаемся" с консолью.
-В Luau есть 3 главных способа вывести текст:
+Твой самый главный инструмент — это <font color="#FF5050"><b>Консоль разработчика</b></font>. Чтобы ее открыть, нажми клавишу <b>F9</b> прямо в Роблоксе. В ней будут появляться все тексты, которые ты выводишь, и, самое главное, ошибки!
 
-1. print("Текст") — Обычная печать. Выводит текст белым цветом. Используется, чтобы сказать: "Скрипт дошел до сюда" или проверить переменную.
-2. warn("Внимание!") — Выводит текст ЖЕЛТЫМ цветом. Нужно, чтобы предупредить самого себя: "Эй, моб не найден!" или "Мало ХП!". Желтый цвет легче заметить.
-3. error("ОШИБКА!") — Выводит текст КРАСНЫМ цветом и ОСТАНАВЛИВАЕТ выполнение текущего скрипта. Используется при критических сбоях (например, телепорт сломался).
+<font color="#50FF50"><b>ГЛАВА 1: ВЫВОД В КОНСОЛЬ И КОММЕНТАРИИ</b></font>
+Чтобы скрипт "поговорил" с тобой, мы выводим слова в консоль.
+В Luau есть 3 функции вывода:
 
-=== 2. ПЕРЕМЕННЫЕ (Хранилища данных) ===
-Переменная — это коробка, в которую мы кладем информацию, чтобы не писать ее сто раз. Создается словом local.
-local myName = "Pidromania" -- Текст пишется в кавычках
-local hp = 100 -- Цифры без кавычек
-print(myName) -- Консоль выдаст: Pidromania
+<b>1. print</b> (от англ. "печать") — Выводит обычный белый текст. Помогает проверить, работает ли скрипт.
+Пример: <font color="#AADDFF">print("Я крутой хакер!")</font>
 
-=== 3. ИЕРАРХИЯ (КАК УСТРОЕН РОБЛОКС) ===
-Вся игра находится в объекте game. Внутри game лежат папки-сервисы:
-- game.Workspace (или просто workspace) — тут лежит вся "физика". Земля, дома, мечи, модельки игроков. Всё, что можно потрогать.
-- game.Players — тут лежат "данные" игроков. Их ники, уровень, деньги.
-- game.Lighting — тут настройки света, солнца, времени суток.
+<b>2. warn</b> (от англ. "предупреждать") — Выводит <font color="#FFFF50">ЖЕЛТЫЙ ТЕКСТ</font>. Читеры используют его, чтобы выделить важную информацию в консоли (например: "Игрок найден!").
+Пример: <font color="#AADDFF">warn("Внимание! Здоровье на нуле!")</font>
 
-=== 4. ЧТО ТАКОЕ LocalPlayer? ===
-Так как ты играешь со своим экзекьютором (Xeno), ты — Клиент. Для клиента самым важным объектом является LocalPlayer (Локальный Игрок).
-Как его найти:
-local player = game.Players.LocalPlayer
+<b>3. error</b> (от англ. "ошибка") — Выводит <font color="#FF5050">КРАСНЫЙ ТЕКСТ</font> и <b>ПОЛНОСТЬЮ ОСТАНАВЛИВАЕТ</b> скрипт. Используется, когда что-то сломалось и скрипту нельзя работать дальше.
+Пример: <font color="#AADDFF">error("Взлом жопы не удался!")</font>
 
-Что можно достать из player?
-- player.Name (Твой ник)
-- player.UserId (Твой ID номер)
-- player.Backpack (Твой рюкзак/инвентарь с вещами)
-- player.Character (Твоя физическая моделька в игре)
+<b>Комментарии:</b>
+Иногда нужно оставить записку для себя в коде, чтобы Роблокс её не читал. Комментарии пишутся двумя минусами (дефисами) подряд: <b>--</b>
+Пример: <font color="#AAAAAA">-- Это просто текст, игра его проигнорирует</font>
 
-=== 5. РАЗБИРАЕМ CHARACTER (Твоя моделька) ===
-Character спавнится в workspace. Внутри него есть две САМЫЕ важные вещи для читов:
+<font color="#50FF50"><b>ГЛАВА 2: ПЕРЕМЕННЫЕ И МАТЕМАТИКА</b></font>
+Переменная — это коробка, в которую мы кладем значение (число или текст), чтобы потом его использовать. В Luau переменные создаются ключевым словом <b>local</b> (локальный).
 
-1. Humanoid — "Душа и настройки" персонажа.
-Если написать game.Players.LocalPlayer.Character.Humanoid, мы сможем менять:
-- .WalkSpeed (скорость бега, обычно 16)
-- .JumpPower (сила прыжка, обычно 50)
-- .Health (текущее здоровье)
+Пример:
+<font color="#AADDFF">local a = 5
+local b = 10
+print(a + b)</font> -- В консоль выведет число 15!
 
-2. HumanoidRootPart — Невидимый кубик в центре живота. Он держит всего персонажа.
-ВСЕ автофармы и телепорты работают через изменение координат этого кубика (свойство CFrame).
-Пример телепорта:
-local hrp = game.Players.LocalPlayer.Character.HumanoidRootPart
-hrp.CFrame = CFrame.new(100, 50, -200)
+<font color="#50FF50"><b>ГЛАВА 3: КАК УСТРОЕН МИР (ИЕРАРХИЯ)</b></font>
+Вся игра Роблокс — это огромный объект под названием <b>game</b>. Внутри него лежат "папки" (сервисы). Самые важные для нас:
 
-=== 6. СВОЙСТВА И МЕТОДЫ ===
-- Свойства (Через точку ".") — это настройки объекта. (Цвет, прозрачность, позиция). Их можно менять знаком равно "=". Пример: Part.Transparency = 0.5
-- Методы (Через двоеточие ":") — это ДЕЙСТВИЕ, которое объект должен выполнить.
-Пример 1: Part:Destroy() -- Удалить объект навсегда.
-Пример 2: game.Players:GetPlayers() -- Собрать всех игроков в таблицу.
+1. <b>workspace</b> (или game.Workspace) — Здесь лежит ВСЯ физика. Земля, дома, деревья, модельки игроков. Всё, что можно увидеть и потрогать, находится в workspace.
+2. <b>game.Players</b> — Здесь лежат ДАННЫЕ игроков (их ники, аккаунты, деньги).
+3. <b>game.Lighting</b> — Здесь лежит свет, небо и время суток.
+Например, если ты напишешь: <font color="#AADDFF">game.Lighting.ClockTime = 14</font> — в игре мгновенно станет 14:00 (день)!
 
-Переходи во вкладку 'Тесты', чтобы закрепить теорию!
+<font color="#50FF50"><b>ГЛАВА 4: ИГРОК VS ПЕРСОНАЖ</b></font>
+Это самая частая ошибка новичков. Игрок и Персонаж — это ДВЕ РАЗНЫЕ ВЕЩИ.
+
+<b>LocalPlayer</b> — это ты (Твой аккаунт, твои данные). Он лежит в game.Players.
+Как его получить: <font color="#AADDFF">local player = game.Players.LocalPlayer</font>
+У него есть свойства:
+- player.Name (Твой никнейм)
+- player.UserId (Твой ID)
+
+<b>Character</b> — это твоя физическая моделька из кубиков, которая бегает по workspace.
+Как её получить: <font color="#AADDFF">local char = game.Players.LocalPlayer.Character</font>
+Если Character умрет, LocalPlayer останется жить и просто заспавнит новый Character!
+
+<font color="#50FF50"><b>ГЛАВА 5: АНАТОМИЯ ПЕРСОНАЖА (CHARACTER)</b></font>
+Твоя моделька (Character) состоит из деталей. Две самые важные детали для написания читов:
+
+<b>1. Humanoid</b> (Хьюманоид / Человекоподобный)
+Это "душа" персонажа. В нем хранятся настройки жизни и движения.
+Если обратиться к: <font color="#AADDFF">game.Players.LocalPlayer.Character.Humanoid</font>
+То можно поменять свойства:
+- <b>WalkSpeed</b> — Скорость бега (обычно 16). Поставь 100 и будешь летать как флэш.
+- <b>Health</b> — Текущее здоровье.
+- <b>MaxHealth</b> — Максимальное здоровье. 
+Чтобы вылечить себя кодом, напиши: <font color="#AADDFF">Humanoid.Health = Humanoid.MaxHealth</font>
+
+<b>2. HumanoidRootPart</b> (Корневая часть)
+Это прозрачный кубик внутри твоего живота. Он держит все остальные части тела.
+<b>В ЧИТАХ ВСЕ ТЕЛЕПОРТЫ ДЕЛАЮТСЯ ЧЕРЕЗ НЕГО!</b>
+За позицию в пространстве отвечает свойство <b>CFrame</b>.
+Чтобы телепортироваться, мы пишем:
+<font color="#AADDFF">game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)</font>
+<i>(CFrame.new означает "Создать новую координату", цифры — это X, Y, Z. Высота — это средняя цифра Y).</i>
+
+<font color="#50FF50"><b>ГЛАВА 6: СВОЙСТВА И МЕТОДЫ</b></font>
+В Роблоксе мы используем точку (.) и двоеточие (:). В чем разница?
+- <b>Точка (.)</b> обращается к СВОЙСТВАМ (настройкам). Свойства можно менять через знак равно (=).
+- <b>Двоеточие (:)</b> обращается к МЕТОДАМ (действиям). Объект что-то ДЕЛАЕТ.
+
+Например, у нас есть правая рука персонажа: "Right Arm" (или "RightHand" в R15).
+Если мы применим метод <b>:Destroy()</b>, объект уничтожится навсегда!
+Пример отрыва руки:
+<font color="#AADDFF">game.Players.LocalPlayer.Character["Right Arm"]:Destroy()</font>
+
+Другой крутой метод: <b>:GetPlayers()</b>
+Если применить его к папке Players, он вернет ТАБЛИЦУ (список) всех игроков на сервере.
+<font color="#AADDFF">local all_players = game.Players:GetPlayers()</font>
+
+А чтобы узнать <b>КОЛИЧЕСТВО</b> элементов в таблице (сколько игроков), используется символ <b>#</b> (решетка).
+<font color="#AADDFF">print( #game.Players:GetPlayers() )</font> — Выведет в консоль число игроков!
+
+<font color="#50FF50"><b>ГЛАВА 7: ЦИКЛЫ (ПОВТОРЕНИЕ КОДА)</b></font>
+Циклы заставляют код выполняться много раз.
+
+<b>Цикл FOR (Для)</b>: Повторяет код заданное количество раз.
+<font color="#AADDFF">for i = 1, 5 do
+    print(i)
+end</font>
+<i>(Этот код выведет в консоль 1, 2, 3, 4, 5)</i>
+
+<b>БЕСКОНЕЧНЫЙ ЦИКЛ WHILE (Пока):</b>
+В читах (автофармах) код должен работать вечно. Используют while true do.
+<font color="#FF5050"><b>ВНИМАНИЕ! КРИТИЧЕСКАЯ ОШИБКА НОВИЧКОВ!</b></font>
+Если ты напишешь бесконечный цикл и не добавишь туда паузу (задержку), игра зависнет НАМЕРТВО за 1 миллисекунду, потому что скрипт попытается выполнить код бесконечное количество раз в секунду.
+Обязательно используй <b>task.wait()</b> внутри цикла!
+
+Для безопасности в обучении мы используем переменную _G.StopScript:
+<font color="#AADDFF">while not _G.StopScript do
+    print("Автофарм работает...")
+    task.wait(1) -- Ждем 1 секунду! Без этого игра умрет!
+end</font>
+
+Теперь ты знаешь всю базу! Переходи во вкладку 'Тесты', чтобы проверить себя, а затем приступай к Практике!
 ]]
         text.Parent = contentContainer
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, 1600)
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, 2200)
     end
     
     -- ===== 2. ТЕСТЫ =====
