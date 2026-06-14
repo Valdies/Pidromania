@@ -1,40 +1,300 @@
 -- Educational Hub "Pidromania Academy"
--- MAX DETAILED THEORY VERSION
+-- MAX DETAILED THEORY + RU/UK TRANSLATION
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
+-- Текущий язык (по умолчанию русский)
+local currentLang = "ru"
+
+-- База переводов интерфейса
+local LOC = {
+    ru = {
+        hubTitle = "Pidromania Academy: Учим Luau",
+        minimized = "Pidromania Academy",
+        tabTheory = "Теория",
+        tabTests = "Тесты (1-10)",
+        tabPractice = "Практика (11-20)",
+        tabControl = "Очистка / Сброс",
+        testTitle = "Тест %d из 10",
+        practiceTitle = "Практика %d из 20",
+        inputHintTest = "Введи ответ сюда...",
+        inputHintPractice = "-- Пиши код здесь\n",
+        btnHint = "Подсказка",
+        btnCheck = "Проверить",
+        btnExecute = "Выполнить и Проверить",
+        btnStop = "ОСТАНОВИТЬ СКРИПТЫ",
+        msgCorrect = "✅ Правильно!",
+        msgTestDone = "🎉 ТЕСТЫ ПРОЙДЕНЫ! Переходи к Практике.",
+        msgWrong = "❌ Неверно. Подумай еще.",
+        msgHint = "💡 Подсказка: ",
+        msgCodeError = "❌ Ошибка в коде! Проверь F9.",
+        msgPerfect = "✅ Идеально! Код сработал.",
+        msgPracticeDone = "🎉 ПОЗДРАВЛЯЮ! ТЫ ПРОШЕЛ АКАДЕМИЮ!",
+        msgWrongCommands = "⚠️ Код сработал, но задание не выполнено (не те команды).",
+        ctrlTitle = "Экстренная Остановка",
+        ctrlDesc = "Если ты случайно запустил бесконечный цикл (спам в консоль), нажми кнопку ниже. \n\nВАЖНО: Это сработает, только если в твоем цикле есть проверка: \n`while not _G.StopScript do`",
+        ctrlSent = "Сигнал остановки отправлен!",
+        ctrlReady = "Готово к новым скриптам.",
+        pressF9 = "(Нажми F9 чтобы видеть консоль)"
+    },
+    uk = {
+        hubTitle = "Pidromania Academy: Вчимо Luau",
+        minimized = "Pidromania Academy",
+        tabTheory = "Теорія",
+        tabTests = "Тести (1-10)",
+        tabPractice = "Практика (11-20)",
+        tabControl = "Очищення / Скидання",
+        testTitle = "Тест %d з 10",
+        practiceTitle = "Практика %d з 20",
+        inputHintTest = "Введи відповідь сюди...",
+        inputHintPractice = "-- Пиши код тут\n",
+        btnHint = "Підказка",
+        btnCheck = "Перевірити",
+        btnExecute = "Виконати та Перевірити",
+        btnStop = "ЗУПИНИТИ СКРИПТИ",
+        msgCorrect = "✅ Правильно!",
+        msgTestDone = "🎉 ТЕСТИ ПРОЙДЕНО! Переходь до Практики.",
+        msgWrong = "❌ Невірно. Подумай ще.",
+        msgHint = "💡 Підказка: ",
+        msgCodeError = "❌ Помилка в коді! Перевір F9.",
+        msgPerfect = "✅ Ідеально! Код спрацював.",
+        msgPracticeDone = "🎉 ВІТАЮ! ТИ ПРОЙШОВ АКАДЕМІЮ!",
+        msgWrongCommands = "⚠️ Код спрацював, але завдання не виконано (не ті команди).",
+        ctrlTitle = "Екстрена Зупинка",
+        ctrlDesc = "Якщо ти випадково запустив нескінченний цикл (спам у консоль), натисни кнопку нижче. \n\nВАЖЛИВО: Це спрацює, лише якщо у твоєму циклі є перевірка: \n`while not _G.StopScript do`",
+        ctrlSent = "Сигнал зупинки надіслано!",
+        ctrlReady = "Готово до нових скриптів.",
+        pressF9 = "(Натисни F9 щоб бачити консоль)"
+    }
+}
+
+-- Огромная теория
+local THEORY = {
+    ru = [[
+Добро пожаловать в <font color="#50FF50"><b>Академию Разработчиков Pidromania!</b></font>
+Если ты хочешь писать читы (скрипты) для Роблокса через экзекьюторы (Xeno, Solara и др.), тебе нужно понять язык <b>Luau</b> и то, как устроена игра изнутри.
+
+Твой самый главный инструмент — это <font color="#FF5050"><b>Консоль разработчика</b></font>. Чтобы ее открыть, нажми клавишу <b>F9</b> прямо в Роблоксе. В ней будут появляться все тексты, которые ты выводишь, и, самое главное, ошибки!
+
+<font color="#50FF50"><b>ГЛАВА 1: ВЫВОД В КОНСОЛЬ И КОММЕНТАРИИ</b></font>
+В Luau есть 3 функции вывода:
+<b>1. print</b> (от англ. "печать") — Выводит обычный белый текст. Помогает проверить, работает ли скрипт. Пример: <font color="#AADDFF">print("Я хакер!")</font>
+<b>2. warn</b> (от англ. "предупреждать") — Выводит <font color="#FFFF50">ЖЕЛТЫЙ ТЕКСТ</font>. Читеры используют его, чтобы выделить важную инфу. Пример: <font color="#AADDFF">warn("Мало ХП!")</font>
+<b>3. error</b> (от англ. "ошибка") — Выводит <font color="#FF5050">КРАСНЫЙ ТЕКСТ</font> и <b>ПОЛНОСТЬЮ ОСТАНАВЛИВАЕТ</b> скрипт. Пример: <font color="#AADDFF">error("Взлом не удался!")</font>
+
+<b>Комментарии:</b> Пишутся двумя минусами: <b>--</b>
+<font color="#AAAAAA">-- Этот текст игра проигнорирует</font>
+
+<font color="#50FF50"><b>ГЛАВА 2: ПЕРЕМЕННЫЕ</b></font>
+Создаются словом <b>local</b>.
+<font color="#AADDFF">local a = 5
+local b = 10
+print(a + b)</font> -- В консоль выведет 15!
+
+<font color="#50FF50"><b>ГЛАВА 3: ИЕРАРХИЯ (game)</b></font>
+1. <b>workspace</b> — Здесь лежит ВСЯ физика. Земля, дома, модельки игроков.
+2. <b>game.Players</b> — Здесь лежат ДАННЫЕ игроков (их ники, аккаунты, деньги).
+3. <b>game.Lighting</b> — Здесь лежит свет и время суток (<font color="#AADDFF">game.Lighting.ClockTime = 14</font>).
+
+<font color="#50FF50"><b>ГЛАВА 4: LocalPlayer</b></font>
+LocalPlayer — это ты. Лежит в game.Players.
+<font color="#AADDFF">local player = game.Players.LocalPlayer</font>
+Свойства: player.Name (Ник), player.Character (Моделька в игре).
+
+<font color="#50FF50"><b>ГЛАВА 5: CHARACTER (Твоя моделька)</b></font>
+<b>1. Humanoid</b> — Настройки жизни и движения (<font color="#AADDFF">WalkSpeed</font>, <font color="#AADDFF">Health</font>).
+<b>2. HumanoidRootPart</b> — Невидимый кубик в центре живота. <b>В ЧИТАХ ВСЕ ТЕЛЕПОРТЫ ДЕЛАЮТСЯ ЧЕРЕЗ НЕГО!</b>
+<font color="#AADDFF">game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)</font>
+
+<font color="#50FF50"><b>ГЛАВА 6: СВОЙСТВА И МЕТОДЫ</b></font>
+- <b>Точка (.)</b> — Свойства. Пример: <font color="#AADDFF">Part.Transparency = 0.5</font>
+- <b>Двоеточие (:)</b> — Методы (действия). Пример: <font color="#AADDFF">Part:Destroy()</font> (Уничтожить).
+Чтобы узнать количество элементов в таблице, используй <b>#</b>:
+<font color="#AADDFF">print( #game.Players:GetPlayers() )</font> — Выведет число игроков!
+
+<font color="#50FF50"><b>ГЛАВА 7: ЦИКЛЫ</b></font>
+<font color="#AADDFF">for i = 1, 5 do print(i) end</font>
+Для бесконечных циклов в читах (автофарм) ОСТРОЖНО! Если не добавить паузу <font color="#AADDFF">task.wait()</font> — игра зависнет!
+Для безопасности используй:
+<font color="#AADDFF">while not _G.StopScript do
+    print("Автофарм...")
+    task.wait(1)
+end</font>
+
+Переходи во вкладку 'Тесты', чтобы проверить себя!
+]],
+    uk = [[
+Ласкаво просимо до <font color="#50FF50"><b>Академії Розробників Pidromania!</b></font>
+Якщо ти хочеш писати чіти (скрипти) для Роблокса через екзек'ютори (Xeno, Solara тощо), тобі потрібно зрозуміти мову <b>Luau</b> і те, як влаштована гра.
+
+Твій найголовніший інструмент — це <font color="#FF5050"><b>Консоль розробника</b></font>. Щоб її відкрити, натисни <b>F9</b> прямо в грі. У ній будуть з'являтися всі тексти, які ти виводиш, і, головне, помилки!
+
+<font color="#50FF50"><b>ГЛАВА 1: ВИВІД У КОНСОЛЬ ТА КОМЕНТАРІ</b></font>
+У Luau є 3 функції виводу:
+<b>1. print</b> (друк) — Виводить звичайний білий текст. Приклад: <font color="#AADDFF">print("Я хакер!")</font>
+<b>2. warn</b> (попередження) — Виводить <font color="#FFFF50">ЖОВТИЙ ТЕКСТ</font>. Використовується для виділення важливої інфи. Приклад: <font color="#AADDFF">warn("Мало ХП!")</font>
+<b>3. error</b> (помилка) — Виводить <font color="#FF5050">ЧЕРВОНИЙ ТЕКСТ</font> і <b>ПОВНІСТЮ ЗУПИНЯЄ</b> скрипт. Приклад: <font color="#AADDFF">error("Злам не вдався!")</font>
+
+<b>Коментарі:</b> Пишуться двома мінусами: <b>--</b>
+<font color="#AAAAAA">-- Цей текст гра проігнорує</font>
+
+<font color="#50FF50"><b>ГЛАВА 2: ЗМІННІ</b></font>
+Створюються словом <b>local</b>.
+<font color="#AADDFF">local a = 5
+local b = 10
+print(a + b)</font> -- У консоль виведе 15!
+
+<font color="#50FF50"><b>ГЛАВА 3: ІЄРАРХІЯ (game)</b></font>
+1. <b>workspace</b> — Тут лежить УСЯ фізика. Земля, будинки, модельки гравців.
+2. <b>game.Players</b> — Тут лежать ДАНІ гравців (їхні ніки, акаунти, гроші).
+3. <b>game.Lighting</b> — Тут лежить світло і час доби (<font color="#AADDFF">game.Lighting.ClockTime = 14</font>).
+
+<font color="#50FF50"><b>ГЛАВА 4: LocalPlayer</b></font>
+LocalPlayer — це ти. Лежить у game.Players.
+<font color="#AADDFF">local player = game.Players.LocalPlayer</font>
+Властивості: player.Name (Нік), player.Character (Моделька у грі).
+
+<font color="#50FF50"><b>ГЛАВА 5: CHARACTER (Твоя моделька)</b></font>
+<b>1. Humanoid</b> — Налаштування життя та руху (<font color="#AADDFF">WalkSpeed</font>, <font color="#AADDFF">Health</font>).
+<b>2. HumanoidRootPart</b> — Невидимий кубик у центрі живота. <b>У ЧІТАХ УСІ ТЕЛЕПОРТИ РОБЛЯТЬСЯ ЧЕРЕЗ НЬОГО!</b>
+<font color="#AADDFF">game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)</font>
+
+<font color="#50FF50"><b>ГЛАВА 6: ВЛАСТИВОСТІ ТА МЕТОДИ</b></font>
+- <b>Крапка (.)</b> — Властивості. Приклад: <font color="#AADDFF">Part.Transparency = 0.5</font>
+- <b>Двокрапка (:)</b> — Методи (дії). Приклад: <font color="#AADDFF">Part:Destroy()</font> (Знищити).
+Щоб дізнатися кількість елементів у таблиці, використовуй <b>#</b>:
+<font color="#AADDFF">print( #game.Players:GetPlayers() )</font> — Виведе кількість гравців!
+
+<font color="#50FF50"><b>ГЛАВА 7: ЦИКЛИ</b></font>
+<font color="#AADDFF">for i = 1, 5 do print(i) end</font>
+Для нескінченних циклів у чітах (автофарм) ОБЕРЕЖНО! Якщо не додати паузу <font color="#AADDFF">task.wait()</font> — гра зависне!
+Для безпеки використовуй:
+<font color="#AADDFF">while not _G.StopScript do
+    print("Автофарм...")
+    task.wait(1)
+end</font>
+
+Переходь у вкладку 'Тести', щоб перевірити себе!
+]]
+}
+
 -- ====== БАЗА ЗАДАНИЙ ======
 local TESTS = {
-    { q = "Какой командой вывести обычный текст в консоль (F9)?", a = "print", hint = "Посмотри в Главе 1." },
-    { q = "Какой командой вывести желтое предупреждение?", a = "warn", hint = "Посмотри в Главе 1." },
-    { q = "Какая команда выводит красный текст и ОСТАНАВЛИВАЕТ скрипт?", a = "error", hint = "Посмотри в Главе 1." },
-    { q = "Как в Luau пишутся комментарии к коду (какие два символа)?", a = "--", hint = "Посмотри в Главе 1." },
-    { q = "Где хранятся все физические объекты карты (деревья, здания)?", a = "workspace", hint = "Посмотри в Главе 3." },
-    { q = "Где лежат все игроки на сервере (game.***)?", a = "players", hint = "Посмотри в Главе 3." },
-    { q = "Какое ключевое слово используется для создания переменной?", a = "local", hint = "Посмотри в Главе 2." },
-    { q = "Как называется объект твоего игрока (game.Players.***)?", a = "localplayer", hint = "Посмотри в Главе 4." },
-    { q = "Как называется часть персонажа, отвечающая за его здоровье и скорость?", a = "humanoid", hint = "Посмотри в Главе 5." },
-    { q = "Как называется главная 'коробка' (деталь) в персонаже, за которую его телепортируют?", a = "humanoidrootpart", hint = "Посмотри в Главе 5." }
+    { 
+        q = {ru = "Какой командой вывести обычный текст в консоль (F9)?", uk = "Якою командою вивести звичайний текст у консоль (F9)?"}, 
+        a = "print", 
+        hint = {ru = "Посмотри в Главе 1.", uk = "Подивись у Главі 1."}
+    },
+    { 
+        q = {ru = "Какой командой вывести желтое предупреждение?", uk = "Якою командою вивести жовте попередження?"}, 
+        a = "warn", 
+        hint = {ru = "Посмотри в Главе 1.", uk = "Подивись у Главі 1."}
+    },
+    { 
+        q = {ru = "Какая команда выводит красный текст и ОСТАНАВЛИВАЕТ скрипт?", uk = "Яка команда виводить червоний текст і ЗУПИНЯЄ скрипт?"}, 
+        a = "error", 
+        hint = {ru = "Посмотри в Главе 1.", uk = "Подивись у Главі 1."}
+    },
+    { 
+        q = {ru = "Как пишутся комментарии (какие два символа)?", uk = "Як пишуться коментарі (які два символи)?"}, 
+        a = "--", 
+        hint = {ru = "Посмотри в Главе 1.", uk = "Подивись у Главі 1."}
+    },
+    { 
+        q = {ru = "Где хранятся все физические объекты карты (деревья, здания)?", uk = "Де зберігаються всі фізичні об'єкти карти (дерева, будинки)?"}, 
+        a = "workspace", 
+        hint = {ru = "Посмотри в Главе 3.", uk = "Подивись у Главі 3."}
+    },
+    { 
+        q = {ru = "Где лежат все игроки на сервере (game.***)?", uk = "Де лежать всі гравці на сервері (game.***)?"}, 
+        a = "players", 
+        hint = {ru = "Посмотри в Главе 3.", uk = "Подивись у Главі 3."}
+    },
+    { 
+        q = {ru = "Какое ключевое слово используется для создания переменной?", uk = "Яке ключове слово використовується для створення змінної?"}, 
+        a = "local", 
+        hint = {ru = "Посмотри в Главе 2.", uk = "Подивись у Главі 2."}
+    },
+    { 
+        q = {ru = "Как называется объект твоего игрока (game.Players.***)?", uk = "Як називається об'єкт твого гравця (game.Players.***)?"}, 
+        a = "localplayer", 
+        hint = {ru = "Посмотри в Главе 4.", uk = "Подивись у Главі 4."}
+    },
+    { 
+        q = {ru = "Как называется часть персонажа, отвечающая за его здоровье и скорость?", uk = "Як називається частина персонажа, що відповідає за його здоров'я та швидкість?"}, 
+        a = "humanoid", 
+        hint = {ru = "Посмотри в Главе 5.", uk = "Подивись у Главі 5."}
+    },
+    { 
+        q = {ru = "Как называется главная деталь в персонаже, за которую его телепортируют?", uk = "Як називається головна деталь у персонажі, за яку його телепортують?"}, 
+        a = "humanoidrootpart", 
+        hint = {ru = "Посмотри в Главе 5.", uk = "Подивись у Главі 5."}
+    }
 }
 
 local PRACTICES = {
-    { q = "Выведи в консоль фразу 'Привет мир'.", check = {"print", "Привет мир"}, hint = "Напиши: print('Привет мир')" },
-    { q = "Выведи в консоль свое имя через LocalPlayer.", check = {"print", "localplayer.name"}, hint = "Сделай print, а внутри путь: game.Players.LocalPlayer.Name" },
-    { q = "Сделай переменную 'a' = 5, 'b' = 10, и выведи их сумму.", check = {"local", "5", "10", "print"}, hint = "Создай через local две переменные, а потом print(a + b)" },
-    { q = "Измени скорость (WalkSpeed) своему персонажу на 100.", check = {"localplayer.character.humanoid.walkspeed", "100"}, hint = "Путь: game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100" },
-    { q = "Удали у своего персонажа правую руку ('Right Arm').", check = {"localplayer.character", "destroy"}, hint = "Найди руку и примени к ней метод :Destroy()" },
-    { q = "Напиши цикл for от 1 до 5, который выводит цифры в консоль.", check = {"for", "1, 5", "do", "print"}, hint = "Посмотри Главу 8. Используй for i = 1, 5 do ..." },
-    { q = "Вылечи себя (сделай Health = MaxHealth у Humanoid).", check = {"humanoid.health", "humanoid.maxhealth"}, hint = "Нужно приравнять одно свойство Humanoid к другому." },
-    { q = "Измени время суток в игре на 14:00 (через game.Lighting.ClockTime).", check = {"game.lighting.clocktime", "14"}, hint = "Приравняй свойство ClockTime в Lighting к 14." },
-    { q = "Выведи в консоль красную ошибку 'Взлом жопы'.", check = {"error", "Взлом жопы"}, hint = "Используй функцию error() из Главы 1." },
-    { q = "Телепортируй себя на высоту 500 блоков вверх.", check = {"localplayer.character.humanoidrootpart.cframe", "cframe.new"}, hint = "Измени CFrame у HumanoidRootPart на CFrame.new(0, 500, 0)" }
+    { 
+        q = {ru = "Выведи в консоль фразу 'Привет мир'.", uk = "Виведи в консоль фразу 'Привіт світ'."}, 
+        check = {ru = {"print", "Привет мир"}, uk = {"print", "Привіт світ"}}, 
+        hint = {ru = "Напиши: print('Привет мир')", uk = "Напиши: print('Привіт світ')"}
+    },
+    { 
+        q = {ru = "Выведи в консоль свое имя через LocalPlayer.", uk = "Виведи в консоль своє ім'я через LocalPlayer."}, 
+        check = {ru = {"print", "localplayer.name"}, uk = {"print", "localplayer.name"}}, 
+        hint = {ru = "Сделай print, а внутри путь: game.Players.LocalPlayer.Name", uk = "Зроби print, а всередині шлях: game.Players.LocalPlayer.Name"}
+    },
+    { 
+        q = {ru = "Сделай переменную 'a' = 5, 'b' = 10, и выведи их сумму.", uk = "Зроби змінну 'a' = 5, 'b' = 10, і виведи їхню суму."}, 
+        check = {ru = {"local", "5", "10", "print"}, uk = {"local", "5", "10", "print"}}, 
+        hint = {ru = "Создай через local две переменные, а потом print(a + b)", uk = "Створи через local дві змінні, а потім print(a + b)"}
+    },
+    { 
+        q = {ru = "Измени скорость (WalkSpeed) персонажу на 100.", uk = "Зміни швидкість (WalkSpeed) персонажу на 100."}, 
+        check = {ru = {"localplayer.character.humanoid.walkspeed", "100"}, uk = {"localplayer.character.humanoid.walkspeed", "100"}}, 
+        hint = {ru = "Путь: game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100", uk = "Шлях: game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100"}
+    },
+    { 
+        q = {ru = "Удали у своего персонажа правую руку ('Right Arm').", uk = "Видали у свого персонажа праву руку ('Right Arm')."}, 
+        check = {ru = {"localplayer.character", "destroy"}, uk = {"localplayer.character", "destroy"}}, 
+        hint = {ru = "Найди руку и примени к ней метод :Destroy()", uk = "Знайди руку і застосуй до неї метод :Destroy()"}
+    },
+    { 
+        q = {ru = "Напиши цикл for от 1 до 5, который выводит цифры в консоль.", uk = "Напиши цикл for від 1 до 5, який виводить цифри в консоль."}, 
+        check = {ru = {"for", "1, 5", "do", "print"}, uk = {"for", "1, 5", "do", "print"}}, 
+        hint = {ru = "Посмотри Главу 7. Используй for i = 1, 5 do ...", uk = "Подивись Главу 7. Використовуй for i = 1, 5 do ..."}
+    },
+    { 
+        q = {ru = "Вылечи себя (сделай Health = MaxHealth у Humanoid).", uk = "Вилікуй себе (зроби Health = MaxHealth у Humanoid)."}, 
+        check = {ru = {"humanoid.health", "humanoid.maxhealth"}, uk = {"humanoid.health", "humanoid.maxhealth"}}, 
+        hint = {ru = "Нужно приравнять одно свойство Humanoid к другому.", uk = "Потрібно прирівняти одну властивість Humanoid до іншої."}
+    },
+    { 
+        q = {ru = "Измени время суток на 14:00 (через game.Lighting.ClockTime).", uk = "Зміни час доби на 14:00 (через game.Lighting.ClockTime)."}, 
+        check = {ru = {"game.lighting.clocktime", "14"}, uk = {"game.lighting.clocktime", "14"}}, 
+        hint = {ru = "Приравняй свойство ClockTime в Lighting к 14.", uk = "Прирівняй властивість ClockTime у Lighting до 14."}
+    },
+    { 
+        q = {ru = "Выведи красную ошибку 'Взлом'.", uk = "Виведи червону помилку 'Злам'."}, 
+        check = {ru = {"error", "Взлом"}, uk = {"error", "Злам"}}, 
+        hint = {ru = "Используй функцию error('Взлом')", uk = "Використовуй функцію error('Злам')"}
+    },
+    { 
+        q = {ru = "Телепортируй себя на высоту 500 блоков вверх.", uk = "Телепортуй себе на висоту 500 блоків вгору."}, 
+        check = {ru = {"localplayer.character.humanoidrootpart.cframe", "cframe.new"}, uk = {"localplayer.character.humanoidrootpart.cframe", "cframe.new"}}, 
+        hint = {ru = "Измени CFrame у HumanoidRootPart на CFrame.new(0, 500, 0)", uk = "Зміни CFrame у HumanoidRootPart на CFrame.new(0, 500, 0)"}
+    }
 }
 
 local currentTest = 1
 local currentPractice = 1
 _G.StopScript = false
+
+-- Функция для получения перевода
+local function L(key)
+    return LOC[currentLang][key] or key
+end
 
 -- ====== ПОСТРОЕНИЕ ИНТЕРФЕЙСА ======
 local screenGuiMain = nil
@@ -83,7 +343,7 @@ local function rebuildGUI()
     cornerMinimized.Parent = minimizedFrame
     
     local minimizedLabel = Instance.new("TextLabel")
-    minimizedLabel.Text = "Pidromania Academy"
+    minimizedLabel.Text = L("minimized")
     minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
     minimizedLabel.BackgroundTransparency = 1
     minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
@@ -109,7 +369,7 @@ local function rebuildGUI()
     cornerHeader.Parent = header
     
     local title = Instance.new("TextLabel")
-    title.Text = "Pidromania Academy: Учим Luau"
+    title.Text = L("hubTitle")
     title.Font = Enum.Font.GothamBold
     title.TextSize = 21
     title.BackgroundTransparency = 1
@@ -119,6 +379,27 @@ local function rebuildGUI()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = header
     
+    -- Кнопка языка
+    local langBtn = Instance.new("TextButton")
+    langBtn.Text = currentLang == "ru" and "RU 🇷🇺" or "UK 🇺🇦"
+    langBtn.Size = UDim2.new(0, 80, 0, 37.5)
+    langBtn.Position = UDim2.new(1, -135, 0, 7.5)
+    langBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    langBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    langBtn.Font = Enum.Font.GothamBold
+    langBtn.TextSize = 18
+    langBtn.Parent = header
+    
+    local langCorner = Instance.new("UICorner")
+    langCorner.CornerRadius = UDim.new(0, 9)
+    langCorner.Parent = langBtn
+    
+    langBtn.MouseButton1Click:Connect(function()
+        currentLang = currentLang == "ru" and "uk" or "ru"
+        rebuildGUI()
+    end)
+    
+    -- Кнопка сворачивания
     local minimizeBtn = Instance.new("TextButton")
     minimizeBtn.Text = "--"
     minimizeBtn.Size = UDim2.new(0, 37.5, 0, 37.5)
@@ -198,134 +479,23 @@ local function rebuildGUI()
         contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     end
     
-    -- ===== 1. ТЕОРИЯ (МАКСИМАЛЬНО ПОДРОБНАЯ) =====
+    -- ===== 1. ТЕОРИЯ =====
     local function showTheory()
         clearContent()
         local text = Instance.new("TextLabel")
-        text.Size = UDim2.new(1, -10, 0, 4800) -- Огромный размер под книгу
+        text.Size = UDim2.new(1, -10, 0, 3200) 
         text.Position = UDim2.new(0, 5, 0, 5)
         text.BackgroundTransparency = 1
         text.TextColor3 = Color3.fromRGB(220, 220, 220)
         text.Font = Enum.Font.Gotham
         text.TextSize = 16
         text.TextWrapped = true
-        text.RichText = true -- Позволяет использовать HTML теги для цвета
+        text.RichText = true
         text.TextXAlignment = Enum.TextXAlignment.Left
         text.TextYAlignment = Enum.TextYAlignment.Top
-        text.Text = [[
-Добро пожаловать в <font color="#50FF50"><b>Академию Разработчиков Pidromania!</b></font>
-Если ты хочешь писать читы (скрипты) для Роблокса через экзекьюторы (Xeno, Solara и др.), тебе нужно понять язык <b>Luau</b> и то, как устроена игра изнутри.
-
-Твой самый главный инструмент — это <font color="#FF5050"><b>Консоль разработчика</b></font>. Чтобы ее открыть, нажми клавишу <b>F9</b> прямо в Роблоксе. В ней будут появляться все тексты, которые ты выводишь, и, самое главное, ошибки!
-
-<font color="#50FF50"><b>ГЛАВА 1: ВЫВОД В КОНСОЛЬ И КОММЕНТАРИИ</b></font>
-Чтобы скрипт "поговорил" с тобой, мы выводим слова в консоль.
-В Luau есть 3 функции вывода:
-
-<b>1. print</b> (от англ. "печать") — Выводит обычный белый текст. Помогает проверить, работает ли скрипт.
-Пример: <font color="#AADDFF">print("Я крутой хакер!")</font>
-
-<b>2. warn</b> (от англ. "предупреждать") — Выводит <font color="#FFFF50">ЖЕЛТЫЙ ТЕКСТ</font>. Читеры используют его, чтобы выделить важную информацию в консоли (например: "Игрок найден!").
-Пример: <font color="#AADDFF">warn("Внимание! Здоровье на нуле!")</font>
-
-<b>3. error</b> (от англ. "ошибка") — Выводит <font color="#FF5050">КРАСНЫЙ ТЕКСТ</font> и <b>ПОЛНОСТЬЮ ОСТАНАВЛИВАЕТ</b> скрипт. Используется, когда что-то сломалось и скрипту нельзя работать дальше.
-Пример: <font color="#AADDFF">error("Взлом жопы не удался!")</font>
-
-<b>Комментарии:</b>
-Иногда нужно оставить записку для себя в коде, чтобы Роблокс её не читал. Комментарии пишутся двумя минусами (дефисами) подряд: <b>--</b>
-Пример: <font color="#AAAAAA">-- Это просто текст, игра его проигнорирует</font>
-
-<font color="#50FF50"><b>ГЛАВА 2: ПЕРЕМЕННЫЕ И МАТЕМАТИКА</b></font>
-Переменная — это коробка, в которую мы кладем значение (число или текст), чтобы потом его использовать. В Luau переменные создаются ключевым словом <b>local</b> (локальный).
-
-Пример:
-<font color="#AADDFF">local a = 5
-local b = 10
-print(a + b)</font> -- В консоль выведет число 15!
-
-<font color="#50FF50"><b>ГЛАВА 3: КАК УСТРОЕН МИР (ИЕРАРХИЯ)</b></font>
-Вся игра Роблокс — это огромный объект под названием <b>game</b>. Внутри него лежат "папки" (сервисы). Самые важные для нас:
-
-1. <b>workspace</b> (или game.Workspace) — Здесь лежит ВСЯ физика. Земля, дома, деревья, модельки игроков. Всё, что можно увидеть и потрогать, находится в workspace.
-2. <b>game.Players</b> — Здесь лежат ДАННЫЕ игроков (их ники, аккаунты, деньги).
-3. <b>game.Lighting</b> — Здесь лежит свет, небо и время суток.
-Например, если ты напишешь: <font color="#AADDFF">game.Lighting.ClockTime = 14</font> — в игре мгновенно станет 14:00 (день)!
-
-<font color="#50FF50"><b>ГЛАВА 4: ИГРОК VS ПЕРСОНАЖ</b></font>
-Это самая частая ошибка новичков. Игрок и Персонаж — это ДВЕ РАЗНЫЕ ВЕЩИ.
-
-<b>LocalPlayer</b> — это ты (Твой аккаунт, твои данные). Он лежит в game.Players.
-Как его получить: <font color="#AADDFF">local player = game.Players.LocalPlayer</font>
-У него есть свойства:
-- player.Name (Твой никнейм)
-- player.UserId (Твой ID)
-
-<b>Character</b> — это твоя физическая моделька из кубиков, которая бегает по workspace.
-Как её получить: <font color="#AADDFF">local char = game.Players.LocalPlayer.Character</font>
-Если Character умрет, LocalPlayer останется жить и просто заспавнит новый Character!
-
-<font color="#50FF50"><b>ГЛАВА 5: АНАТОМИЯ ПЕРСОНАЖА (CHARACTER)</b></font>
-Твоя моделька (Character) состоит из деталей. Две самые важные детали для написания читов:
-
-<b>1. Humanoid</b> (Хьюманоид / Человекоподобный)
-Это "душа" персонажа. В нем хранятся настройки жизни и движения.
-Если обратиться к: <font color="#AADDFF">game.Players.LocalPlayer.Character.Humanoid</font>
-То можно поменять свойства:
-- <b>WalkSpeed</b> — Скорость бега (обычно 16). Поставь 100 и будешь летать как флэш.
-- <b>Health</b> — Текущее здоровье.
-- <b>MaxHealth</b> — Максимальное здоровье. 
-Чтобы вылечить себя кодом, напиши: <font color="#AADDFF">Humanoid.Health = Humanoid.MaxHealth</font>
-
-<b>2. HumanoidRootPart</b> (Корневая часть)
-Это прозрачный кубик внутри твоего живота. Он держит все остальные части тела.
-<b>В ЧИТАХ ВСЕ ТЕЛЕПОРТЫ ДЕЛАЮТСЯ ЧЕРЕЗ НЕГО!</b>
-За позицию в пространстве отвечает свойство <b>CFrame</b>.
-Чтобы телепортироваться, мы пишем:
-<font color="#AADDFF">game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 500, 0)</font>
-<i>(CFrame.new означает "Создать новую координату", цифры — это X, Y, Z. Высота — это средняя цифра Y).</i>
-
-<font color="#50FF50"><b>ГЛАВА 6: СВОЙСТВА И МЕТОДЫ</b></font>
-В Роблоксе мы используем точку (.) и двоеточие (:). В чем разница?
-- <b>Точка (.)</b> обращается к СВОЙСТВАМ (настройкам). Свойства можно менять через знак равно (=).
-- <b>Двоеточие (:)</b> обращается к МЕТОДАМ (действиям). Объект что-то ДЕЛАЕТ.
-
-Например, у нас есть правая рука персонажа: "Right Arm" (или "RightHand" в R15).
-Если мы применим метод <b>:Destroy()</b>, объект уничтожится навсегда!
-Пример отрыва руки:
-<font color="#AADDFF">game.Players.LocalPlayer.Character["Right Arm"]:Destroy()</font>
-
-Другой крутой метод: <b>:GetPlayers()</b>
-Если применить его к папке Players, он вернет ТАБЛИЦУ (список) всех игроков на сервере.
-<font color="#AADDFF">local all_players = game.Players:GetPlayers()</font>
-
-А чтобы узнать <b>КОЛИЧЕСТВО</b> элементов в таблице (сколько игроков), используется символ <b>#</b> (решетка).
-<font color="#AADDFF">print( #game.Players:GetPlayers() )</font> — Выведет в консоль число игроков!
-
-<font color="#50FF50"><b>ГЛАВА 7: ЦИКЛЫ (ПОВТОРЕНИЕ КОДА)</b></font>
-Циклы заставляют код выполняться много раз.
-
-<b>Цикл FOR (Для)</b>: Повторяет код заданное количество раз.
-<font color="#AADDFF">for i = 1, 5 do
-    print(i)
-end</font>
-<i>(Этот код выведет в консоль 1, 2, 3, 4, 5)</i>
-
-<b>БЕСКОНЕЧНЫЙ ЦИКЛ WHILE (Пока):</b>
-В читах (автофармах) код должен работать вечно. Используют while true do.
-<font color="#FF5050"><b>ВНИМАНИЕ! КРИТИЧЕСКАЯ ОШИБКА НОВИЧКОВ!</b></font>
-Если ты напишешь бесконечный цикл и не добавишь туда паузу (задержку), игра зависнет НАМЕРТВО за 1 миллисекунду, потому что скрипт попытается выполнить код бесконечное количество раз в секунду.
-Обязательно используй <b>task.wait()</b> внутри цикла!
-
-Для безопасности в обучении мы используем переменную _G.StopScript:
-<font color="#AADDFF">while not _G.StopScript do
-    print("Автофарм работает...")
-    task.wait(1) -- Ждем 1 секунду! Без этого игра умрет!
-end</font>
-
-Теперь ты знаешь всю базу! Переходи во вкладку 'Тесты', чтобы проверить себя, а затем приступай к Практике!
-]]
+        text.Text = THEORY[currentLang]
         text.Parent = contentContainer
-        contentContainer.CanvasSize = UDim2.new(0, 0, 0, 2200)
+        contentContainer.CanvasSize = UDim2.new(0, 0, 0, 3200)
     end
     
     -- ===== 2. ТЕСТЫ =====
@@ -338,7 +508,7 @@ end</font>
         title.TextColor3 = Color3.fromRGB(200, 200, 255)
         title.Font = Enum.Font.GothamBold
         title.TextSize = 24
-        title.Text = "Тест " .. currentTest .. " из 10"
+        title.Text = string.format(L("testTitle"), currentTest)
         title.Parent = contentContainer
         
         local question = Instance.new("TextLabel")
@@ -349,7 +519,7 @@ end</font>
         question.Font = Enum.Font.GothamSemibold
         question.TextSize = 20
         question.TextWrapped = true
-        question.Text = TESTS[currentTest].q
+        question.Text = TESTS[currentTest].q[currentLang]
         question.Parent = contentContainer
         
         local input = Instance.new("TextBox")
@@ -360,13 +530,11 @@ end</font>
         input.Font = Enum.Font.Code
         input.TextSize = 18
         input.Text = ""
-        input.PlaceholderText = "Введи ответ сюда..."
+        input.PlaceholderText = L("inputHintTest")
         input.ClearTextOnFocus = false
         input.Parent = contentContainer
         
-        local inputCorner = Instance.new("UICorner")
-        inputCorner.CornerRadius = UDim.new(0, 8)
-        inputCorner.Parent = input
+        local inputCorner = Instance.new("UICorner") inputCorner.CornerRadius = UDim.new(0, 8) inputCorner.Parent = input
         
         local resultMsg = Instance.new("TextLabel")
         resultMsg.Size = UDim2.new(1, 0, 0, 30)
@@ -377,7 +545,6 @@ end</font>
         resultMsg.Text = ""
         resultMsg.Parent = contentContainer
         
-        -- Кнопка Подсказки
         local hintBtn = Instance.new("TextButton")
         hintBtn.Size = UDim2.new(0, 140, 0, 50)
         hintBtn.Position = UDim2.new(0.5, 60, 0, 250)
@@ -385,11 +552,10 @@ end</font>
         hintBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         hintBtn.Font = Enum.Font.GothamBold
         hintBtn.TextSize = 16
-        hintBtn.Text = "Подсказка"
+        hintBtn.Text = L("btnHint")
         hintBtn.Parent = contentContainer
         local hintCorner = Instance.new("UICorner") hintCorner.CornerRadius = UDim.new(0, 8) hintCorner.Parent = hintBtn
         
-        -- Кнопка Проверки
         local submitBtn = Instance.new("TextButton")
         submitBtn.Size = UDim2.new(0, 200, 0, 50)
         submitBtn.Position = UDim2.new(0.5, -150, 0, 250)
@@ -397,11 +563,10 @@ end</font>
         submitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         submitBtn.Font = Enum.Font.GothamBold
         submitBtn.TextSize = 18
-        submitBtn.Text = "Проверить"
+        submitBtn.Text = L("btnCheck")
         submitBtn.Parent = contentContainer
         local btnCorner = Instance.new("UICorner") btnCorner.CornerRadius = UDim.new(0, 8) btnCorner.Parent = submitBtn
         
-        -- Текст подсказки
         local hintText = Instance.new("TextLabel")
         hintText.Size = UDim2.new(1, -20, 0, 50)
         hintText.Position = UDim2.new(0, 10, 0, 360)
@@ -414,24 +579,24 @@ end</font>
         hintText.Parent = contentContainer
 
         hintBtn.MouseButton1Click:Connect(function()
-            hintText.Text = "💡 Подсказка: " .. TESTS[currentTest].hint
+            hintText.Text = L("msgHint") .. TESTS[currentTest].hint[currentLang]
         end)
         
         submitBtn.MouseButton1Click:Connect(function()
             local ans = string.lower(string.match(input.Text, "^%s*(.-)%s*$"))
             if ans == string.lower(TESTS[currentTest].a) then
                 resultMsg.TextColor3 = Color3.fromRGB(50, 255, 50)
-                resultMsg.Text = "✅ Правильно!"
+                resultMsg.Text = L("msgCorrect")
                 task.wait(1.5)
                 if currentTest < 10 then
                     currentTest = currentTest + 1
                     showTests()
                 else
-                    resultMsg.Text = "🎉 ТЕСТЫ ПРОЙДЕНЫ! Переходи к Практике."
+                    resultMsg.Text = L("msgTestDone")
                 end
             else
                 resultMsg.TextColor3 = Color3.fromRGB(255, 50, 50)
-                resultMsg.Text = "❌ Неверно. Подумай еще."
+                resultMsg.Text = L("msgWrong")
             end
         end)
     end
@@ -446,7 +611,7 @@ end</font>
         title.TextColor3 = Color3.fromRGB(200, 200, 255)
         title.Font = Enum.Font.GothamBold
         title.TextSize = 24
-        title.Text = "Практика " .. (currentPractice + 10) .. " из 20"
+        title.Text = string.format(L("practiceTitle"), currentPractice + 10)
         title.Parent = contentContainer
         
         local question = Instance.new("TextLabel")
@@ -457,7 +622,7 @@ end</font>
         question.Font = Enum.Font.GothamSemibold
         question.TextSize = 18
         question.TextWrapped = true
-        question.Text = PRACTICES[currentPractice].q .. "\n(Нажми F9 чтобы видеть консоль)"
+        question.Text = PRACTICES[currentPractice].q[currentLang] .. "\n" .. L("pressF9")
         question.Parent = contentContainer
         
         local input = Instance.new("TextBox")
@@ -469,7 +634,7 @@ end</font>
         input.TextSize = 16
         input.TextXAlignment = Enum.TextXAlignment.Left
         input.TextYAlignment = Enum.TextYAlignment.Top
-        input.Text = "-- Пиши код здесь\n"
+        input.Text = L("inputHintPractice")
         input.MultiLine = true
         input.ClearTextOnFocus = false
         input.Parent = contentContainer
@@ -484,7 +649,6 @@ end</font>
         resultMsg.Text = ""
         resultMsg.Parent = contentContainer
         
-        -- Кнопка Подсказки
         local hintBtn = Instance.new("TextButton")
         hintBtn.Size = UDim2.new(0, 140, 0, 50)
         hintBtn.Position = UDim2.new(0.5, 130, 0, 320)
@@ -492,11 +656,10 @@ end</font>
         hintBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         hintBtn.Font = Enum.Font.GothamBold
         hintBtn.TextSize = 16
-        hintBtn.Text = "Подсказка"
+        hintBtn.Text = L("btnHint")
         hintBtn.Parent = contentContainer
         local hintCorner = Instance.new("UICorner") hintCorner.CornerRadius = UDim.new(0, 8) hintCorner.Parent = hintBtn
 
-        -- Кнопка Выполнить
         local executeBtn = Instance.new("TextButton")
         executeBtn.Size = UDim2.new(0, 250, 0, 50)
         executeBtn.Position = UDim2.new(0.5, -135, 0, 320)
@@ -504,11 +667,10 @@ end</font>
         executeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         executeBtn.Font = Enum.Font.GothamBold
         executeBtn.TextSize = 18
-        executeBtn.Text = "Выполнить и Проверить"
+        executeBtn.Text = L("btnExecute")
         executeBtn.Parent = contentContainer
         local btnCorner = Instance.new("UICorner") btnCorner.CornerRadius = UDim.new(0, 8) btnCorner.Parent = executeBtn
         
-        -- Текст подсказки
         local hintText = Instance.new("TextLabel")
         hintText.Size = UDim2.new(1, -20, 0, 80)
         hintText.Position = UDim2.new(0, 10, 0, 430)
@@ -521,14 +683,14 @@ end</font>
         hintText.Parent = contentContainer
 
         hintBtn.MouseButton1Click:Connect(function()
-            hintText.Text = "💡 Подсказка: \n" .. PRACTICES[currentPractice].hint
+            hintText.Text = L("msgHint") .. "\n" .. PRACTICES[currentPractice].hint[currentLang]
         end)
 
         executeBtn.MouseButton1Click:Connect(function()
             local code = input.Text
             local passed = true
             
-            for _, req in ipairs(PRACTICES[currentPractice].check) do
+            for _, req in ipairs(PRACTICES[currentPractice].check[currentLang]) do
                 local lowerCode = string.lower(code)
                 local lowerReq = string.lower(req)
                 local found = string.find(lowerCode, lowerReq, 1, true) or string.find(code, req, 1, true)
@@ -542,29 +704,29 @@ end</font>
             local success, err = pcall(function()
                 if loadstring then
                     local func = loadstring(code)
-                    if func then func() else error("Синтаксическая ошибка") end
+                    if func then func() else error("Syntax Error") end
                 else
-                    warn("Executor не поддерживает loadstring. Проверка только по тексту.")
+                    warn("Executor doesn't support loadstring.")
                 end
             end)
             
             if not success then
                 resultMsg.TextColor3 = Color3.fromRGB(255, 50, 50)
-                resultMsg.Text = "❌ Ошибка в коде! Проверь F9."
-                warn("Ошибка в обучении: " .. tostring(err))
+                resultMsg.Text = L("msgCodeError")
+                warn("Ошибка: " .. tostring(err))
             elseif passed then
                 resultMsg.TextColor3 = Color3.fromRGB(50, 255, 50)
-                resultMsg.Text = "✅ Идеально! Код сработал."
+                resultMsg.Text = L("msgPerfect")
                 task.wait(2)
                 if currentPractice < 10 then
                     currentPractice = currentPractice + 1
                     showPractice()
                 else
-                    resultMsg.Text = "🎉 ПОЗДРАВЛЯЮ! ТЫ ПРОШЕЛ АКАДЕМИЮ!"
+                    resultMsg.Text = L("msgPracticeDone")
                 end
             else
                 resultMsg.TextColor3 = Color3.fromRGB(255, 150, 50)
-                resultMsg.Text = "⚠️ Код сработал, но задание не выполнено (не те команды)."
+                resultMsg.Text = L("msgWrongCommands")
             end
         end)
     end
@@ -578,7 +740,7 @@ end</font>
         title.TextColor3 = Color3.fromRGB(255, 100, 100)
         title.Font = Enum.Font.GothamBold
         title.TextSize = 24
-        title.Text = "Экстренная Остановка"
+        title.Text = L("ctrlTitle")
         title.Parent = contentContainer
         
         local desc = Instance.new("TextLabel")
@@ -589,7 +751,7 @@ end</font>
         desc.Font = Enum.Font.GothamSemibold
         desc.TextSize = 16
         desc.TextWrapped = true
-        desc.Text = "Если ты случайно запустил бесконечный цикл (спам в консоль), нажми кнопку ниже. \n\nВАЖНО: Это сработает, только если в твоем цикле есть проверка: \n`while not _G.StopScript do`"
+        desc.Text = L("ctrlDesc")
         desc.Parent = contentContainer
         
         local stopBtn = Instance.new("TextButton")
@@ -599,7 +761,7 @@ end</font>
         stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         stopBtn.Font = Enum.Font.GothamBold
         stopBtn.TextSize = 20
-        stopBtn.Text = "ОСТАНОВИТЬ СКРИПТЫ"
+        stopBtn.Text = L("btnStop")
         stopBtn.Parent = contentContainer
         
         local btnCorner = Instance.new("UICorner")
@@ -618,17 +780,17 @@ end</font>
         stopBtn.MouseButton1Click:Connect(function()
             _G.StopScript = true
             msg.TextColor3 = Color3.fromRGB(50, 255, 50)
-            msg.Text = "Сигнал остановки отправлен!"
+            msg.Text = L("ctrlSent")
             task.wait(1)
             _G.StopScript = false
-            msg.Text = "Готово к новым скриптам."
+            msg.Text = L("ctrlReady")
         end)
     end
     
-    local theoryBtn = createMenuItem("Теория", "📚")
-    local testBtn = createMenuItem("Тесты (1-10)", "📝")
-    local practiceBtn = createMenuItem("Практика (11-20)", "💻")
-    local controlBtn = createMenuItem("Очистка / Сброс", "🛑")
+    local theoryBtn = createMenuItem(L("tabTheory"), "📚")
+    local testBtn = createMenuItem(L("tabTests"), "📝")
+    local practiceBtn = createMenuItem(L("tabPractice"), "💻")
+    local controlBtn = createMenuItem(L("tabControl"), "🛑")
     
     local function selectButton(btn)
         for _, b in ipairs(menuItems) do b.BackgroundColor3 = Color3.fromRGB(50, 50, 60) end
