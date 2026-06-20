@@ -18,6 +18,49 @@ local VIM = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
+-- === МОБИЛЬНЫЕ ФИКСЫ (МАСШТАБ И ПЕРЕТАСКИВАНИЕ) ===
+local function ApplyMobileScale(guiObject, baseWidth)
+    local uiScale = Instance.new("UIScale")
+    uiScale.Parent = guiObject
+    
+    local function updateScale()
+        local vpSize = workspace.CurrentCamera.ViewportSize
+        if vpSize.X < baseWidth then
+            uiScale.Scale = vpSize.X / (baseWidth + 50) -- Уменьшаем под экран телефона
+        else
+            uiScale.Scale = 1 -- Оставляем как есть на ПК
+        end
+    end
+    updateScale()
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+end
+
+local function MakeDraggableTouch(topbar, mainUI)
+    local dragging, dragInput, dragStart, startPos
+    topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainUI.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    topbar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainUI.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+-- ===================================================
+
 local friendsCache = {}
 local function isFriend(targetPlr)
     if targetPlr == player then return true end
@@ -513,8 +556,8 @@ local function setUILocked(isLocked, msg)
         
         local btn = Instance.new("TextButton")
         btn.Name = "EmergencyBtn"
-        btn.Size = UDim2.new(0, 400, 0, 50)
-        btn.Position = UDim2.new(0.5, -200, 0.6, 0)
+        btn.Size = UDim2.new(0.8, 0, 0, 50) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+        btn.Position = UDim2.new(0.1, 0, 0.6, 0) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
         btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
@@ -1689,11 +1732,11 @@ local function createMiniForgeUI()
     
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 260, 0, 130)
-    frame.Position = UDim2.new(1, -280, 0, 320)
+    frame.Position = UDim2.new(0.5, -130, 0, 20) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     frame.BorderSizePixel = 0
     frame.Active = true
-    frame.Draggable = true 
+    -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК (Удалили Draggable)
     frame.Parent = miniForgeGui
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     
@@ -1704,7 +1747,10 @@ local function createMiniForgeUI()
     header.TextColor3 = Color3.fromRGB(255, 200, 100)
     header.Font = Enum.Font.GothamBold
     header.TextSize = 14
+    header.Active = true -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     header.Parent = frame
+    
+    MakeDraggableTouch(header, frame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     
     miniForgeStatus = Instance.new("TextLabel")
     miniForgeStatus.Size = UDim2.new(1, -10, 0, 35)
@@ -1891,7 +1937,7 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     updateToggle()
     
     switchFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isEnabled = not isEnabled
             onToggle(isEnabled)
             updateToggle()
@@ -1918,24 +1964,22 @@ local function rebuildGUI()
     screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGuiMain.Parent = player:WaitForChild("PlayerGui")
     
+    ApplyMobileScale(screenGuiMain, 1250) -- ПРИМЕНЯЕМ МАСШТАБ
+    
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 1200, 0, 750)
     mainFrame.Position = UDim2.new(0.5, -600, 0.5, -375)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
-    mainFrame.Draggable = true
+    -- mainFrame.Draggable = true УДАЛЕНО ДЛЯ МОБИЛОК
     mainFrame.Parent = screenGuiMain
     
     local mainFrameCorner = Instance.new("UICorner")
     mainFrameCorner.CornerRadius = UDim.new(0, 15)
     mainFrameCorner.Parent = mainFrame
     
-    local dragDetector = Instance.new("Frame")
-    dragDetector.Size = UDim2.new(1, -75, 1, 0)
-    dragDetector.Position = UDim2.new(0, 0, 0, 0)
-    dragDetector.BackgroundTransparency = 1
-    dragDetector.Parent = mainFrame
+    -- DRAG DETECTOR УДАЛЁН (Он блокировал экран)
     
     local minimizedFrame = Instance.new("Frame")
     minimizedFrame.Size = UDim2.new(0, 150, 0, 45)
@@ -1944,8 +1988,10 @@ local function rebuildGUI()
     minimizedFrame.BorderSizePixel = 0
     minimizedFrame.Visible = false
     minimizedFrame.Active = true
-    minimizedFrame.Draggable = true
+    -- minimizedFrame.Draggable = true УДАЛЕНО ДЛЯ МОБИЛОК
     minimizedFrame.Parent = screenGuiMain
+    
+    MakeDraggableTouch(minimizedFrame, minimizedFrame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     
     local cornerMinimized = Instance.new("UICorner")
     cornerMinimized.CornerRadius = UDim.new(0, 9)
@@ -1961,7 +2007,7 @@ local function rebuildGUI()
     minimizedLabel.Parent = minimizedFrame
     
     minimizedFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             mainFrame.Visible = true
             minimizedFrame.Visible = false
         end
@@ -1971,11 +2017,14 @@ local function rebuildGUI()
     header.Size = UDim2.new(1, 0, 0, 52.5)
     header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     header.BorderSizePixel = 0
+    header.Active = true -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     header.Parent = mainFrame
+    
+    MakeDraggableTouch(header, mainFrame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
     
     local cornerHeader = Instance.new("UICorner")
     cornerHeader.CornerRadius = UDim.new(0, 9)
-    header.Parent = header
+    cornerHeader.Parent = header
     
     local title = Instance.new("TextLabel")
     title.Text = T("hubTitle")
