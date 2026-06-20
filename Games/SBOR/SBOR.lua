@@ -1,12 +1,13 @@
 print("[MAIN] Запуск GameAFK.lua начат...")
 
-getgenv().SBOPIDROMANIA = true
+wait(1)
 print("[MAIN] Флаг SBOPIDROMANIA установлен в true")
-print("[MAIN] Пауза 6 секунд прошла, подгружаю сервисы...")
-
-local Players = game:GetService("Players")
+getgenv().SBOPIDROMANIA = true
+print("getgenv().SBOPIDROMANIA = true")
+print("Вы так же можете использовать его для своих модификаций")
+wait(2)
 print("[MAIN] Скрипт полностью инициализирован!")
-
+local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
@@ -86,7 +87,7 @@ local translations = {
         forgeSelect = "Выбрать предмет",
         forgeRefresh = "Обновить",
         forgeFarmItem = "▶ ФАРМ ПРЕДМЕТА",
-        forgeFarmIngots = "💎 ФАРМ СК (Только слитки)",
+        forgeFarmIngots = "💎 СК ФАРМ",
         forgeStop = "⏹ ОСТАНОВИТЬ",
         forgeMiniTitle = "🛠️ Управление кузней",
         forgeWaiting = "Ожидание...",
@@ -108,7 +109,7 @@ local translations = {
         errorTitle = "⚠️ Ошибка",
         forgeErrNoItem = "Сначала выбери предмет из списка!",
         farmStopped = "Фарм остановлен",
-        forgeErrNoIngots = "Доступные слитки закончились!",
+        forgeErrNoIngots = "Доступные предметы для СК закончились!",
         forgeErrNoMats = "Ресурсы для предмета закончились!",
         forgeErrNoMatsFor = "Ресурсы для %s закончились!",
         forgeItem = "Предмет: ",
@@ -166,7 +167,7 @@ local translations = {
         forgeSelect = "Обрати предмет",
         forgeRefresh = "Оновити",
         forgeFarmItem = "▶ ФАРМ ПРЕДМЕТА",
-        forgeFarmIngots = "💎 ФАРМ СК (Тільки злитки)",
+        forgeFarmIngots = "💎 СК ФАРМ",
         forgeStop = "⏹ ЗУПИНИТИ",
         forgeMiniTitle = "🛠️ Керування кузнею",
         forgeWaiting = "Очікування...",
@@ -188,7 +189,7 @@ local translations = {
         errorTitle = "⚠️ Помилка",
         forgeErrNoItem = "Спочатку обери предмет зі списку!",
         farmStopped = "Фарм зупинено",
-        forgeErrNoIngots = "Доступні злитки закінчилися!",
+        forgeErrNoIngots = "Доступні предмети для СК закінчилися!",
         forgeErrNoMats = "Ресурси для предмета закінчилися!",
         forgeErrNoMatsFor = "Ресурси для %s закінчилися!",
         forgeItem = "Предмет: ",
@@ -246,7 +247,7 @@ local translations = {
         forgeSelect = "Select item",
         forgeRefresh = "Refresh",
         forgeFarmItem = "▶ FARM ITEM",
-        forgeFarmIngots = "💎 FARM INGOTS ONLY",
+        forgeFarmIngots = "💎 SC FARM",
         forgeStop = "⏹ STOP",
         forgeMiniTitle = "🛠️ Forge Control",
         forgeWaiting = "Waiting...",
@@ -268,7 +269,7 @@ local translations = {
         errorTitle = "⚠️ Error",
         forgeErrNoItem = "Select an item from the list first!",
         farmStopped = "Farm stopped",
-        forgeErrNoIngots = "No available ingots left!",
+        forgeErrNoIngots = "No available items for SC left!",
         forgeErrNoMats = "Resources for item ran out!",
         forgeErrNoMatsFor = "Resources for %s ran out!",
         forgeItem = "Item: ",
@@ -1368,7 +1369,7 @@ end
 local function stopFishFarm() fishFarmActive = false end
 
 local function notify(title, text)
-    pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title = title, Text = text, Duration = 3}) end)
+    -- Всплывающие уведомления отключены по просьбе
 end
 
 local function updateForgeUI(statusText, color)
@@ -1460,7 +1461,7 @@ local function clickSuccessExit()
     return false
 end
 
-local function getAvailableProducts(filter)
+local function getAvailableProducts(isSCMode)
     local playerGuiLocal = player:FindFirstChild("PlayerGui")
     if not playerGuiLocal then return {} end
     local gameGui = playerGuiLocal:FindFirstChild("GameGui")
@@ -1474,7 +1475,18 @@ local function getAvailableProducts(filter)
     for _, btn in ipairs(products:GetChildren()) do
         if btn:IsA("TextButton") and btn.Name ~= "Template" then
             if btn.BackgroundTransparency < 0.5 then
-                if not filter or filter == "" or string.find(string.lower(btn.Name), string.lower(filter)) then
+                local nameLower = string.lower(btn.Name)
+                if isSCMode then
+                    if nameLower == "heavenly ingot" then
+                        -- skip
+                    elseif string.find(nameLower, "ingot") 
+                        or string.find(nameLower, "fish") 
+                        or string.find(nameLower, "candy bar") 
+                        or string.find(nameLower, "refined obsidium") 
+                        or string.find(nameLower, "refined gem") then
+                        table.insert(available, btn.Name)
+                    end
+                else
                     table.insert(available, btn.Name)
                 end
             end
@@ -1545,7 +1557,7 @@ local function startForgeAutoFarm(isIngotMode)
     forgeAutoFarmLoop = task.spawn(function()
         while forgeActive do
             if forgeStopping then stopForgeAutoFarm() break end
-            local availableItems = getAvailableProducts(forgeIngotsMode and "ingot" or "")
+            local availableItems = getAvailableProducts(forgeIngotsMode)
             local isCurrentAvailable = false
             for _, v in ipairs(availableItems) do
                 if v == forgeSelectedProduct then isCurrentAvailable = true break end
@@ -1556,7 +1568,7 @@ local function startForgeAutoFarm(isIngotMode)
                     if #availableItems > 0 then
                         forgeSelectedProduct = availableItems[1]
                         updateForgeUI(T("forgeChangedTarget") .. forgeSelectedProduct, Color3.fromRGB(255, 150, 0))
-                        if refForgeSelectBtn then refForgeSelectBtn.Text = "[[" .. forgeSelectedProduct .. "]]" end
+                        if refForgeSelectBtn then refForgeSelectBtn.Text = forgeSelectedProduct end
                     else
                         notify(T("farmStopped"), T("forgeErrNoIngots"))
                         stopForgeAutoFarm()
@@ -1630,7 +1642,7 @@ local function startForgeAutoFarm(isIngotMode)
                     if not forgeIngotsMode then
                         if not safeWait(1) then stopForgeAutoFarm() break end
                         local canCraft = false
-                        for _, v in ipairs(getAvailableProducts()) do
+                        for _, v in ipairs(getAvailableProducts(false)) do
                             if v == forgeSelectedProduct then canCraft = true break end
                         end
                         if canCraft then
@@ -1643,12 +1655,12 @@ local function startForgeAutoFarm(isIngotMode)
                     else
                         if not safeWait(2) then stopForgeAutoFarm() break end
                         local foundNew = false
-                        for _, v in ipairs(getAvailableProducts("ingot")) do
+                        for _, v in ipairs(getAvailableProducts(true)) do
                             if v ~= forgeSelectedProduct then
                                 forgeSelectedProduct = v
                                 foundNew = true
                                 updateForgeUI(T("forgeTakeOther") .. forgeSelectedProduct, Color3.fromRGB(200, 150, 255))
-                                if refForgeSelectBtn then refForgeSelectBtn.Text = "[[" .. forgeSelectedProduct .. "]]" end
+                                if refForgeSelectBtn then refForgeSelectBtn.Text = forgeSelectedProduct end
                                 break
                             end
                         end
@@ -1963,7 +1975,7 @@ local function rebuildGUI()
     
     local cornerHeader = Instance.new("UICorner")
     cornerHeader.CornerRadius = UDim.new(0, 9)
-    cornerHeader.Parent = header
+    header.Parent = header
     
     local title = Instance.new("TextLabel")
     title.Text = T("hubTitle")
@@ -2417,15 +2429,15 @@ local function rebuildGUI()
         forgeTitle.Parent = contentContainer
         
         local topRow = Instance.new("Frame")
-        topRow.Size = UDim2.new(1, -15, 0, 45) 
+        topRow.Size = UDim2.new(1, -15, 0, 40) 
         topRow.BackgroundTransparency = 1
         topRow.LayoutOrder = orderCounter; orderCounter = orderCounter + 1
         topRow.Parent = contentContainer
         
         refForgeSelectBtn = Instance.new("TextButton")
-        refForgeSelectBtn.Size = UDim2.new(1, -60, 1, 0)
+        refForgeSelectBtn.Size = UDim2.new(1, -45, 1, 0)
         refForgeSelectBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        refForgeSelectBtn.Text = forgeSelectedProduct and ("[["..forgeSelectedProduct.."]]") or T("forgeSelect")
+        refForgeSelectBtn.Text = forgeSelectedProduct and forgeSelectedProduct or T("forgeSelect")
         refForgeSelectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         refForgeSelectBtn.Font = Enum.Font.GothamBold
         refForgeSelectBtn.TextSize = 18
@@ -2433,8 +2445,8 @@ local function rebuildGUI()
         refForgeSelectBtn.Parent = topRow
         
         local refreshBtn = Instance.new("TextButton")
-        refreshBtn.Size = UDim2.new(0, 50, 1, 0)
-        refreshBtn.Position = UDim2.new(1, -50, 0, 0)
+        refreshBtn.Size = UDim2.new(0, 40, 1, 0)
+        refreshBtn.Position = UDim2.new(1, -40, 0, 0)
         refreshBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
         refreshBtn.Text = "🔄"
         refreshBtn.TextSize = 20
@@ -2450,13 +2462,13 @@ local function rebuildGUI()
         gridContainer.Parent = contentContainer
         
         local gridLayout = Instance.new("UIGridLayout")
-        gridLayout.CellSize = UDim2.new(0.32, 0, 0, 35)
+        gridLayout.CellSize = UDim2.new(0.31, 0, 0, 35)
         gridLayout.CellPadding = UDim2.new(0.02, 0, 0, 10)
         gridLayout.Parent = gridContainer
 
         local function populateForgeGrid()
             for _, c in ipairs(gridContainer:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
-            local items = getAvailableProducts()
+            local items = getAvailableProducts(false)
             for _, name in ipairs(items) do
                 local itemBtn = Instance.new("TextButton")
                 itemBtn.Text = name
@@ -2467,7 +2479,7 @@ local function rebuildGUI()
                 Instance.new("UICorner", itemBtn).CornerRadius = UDim.new(0, 6)
                 itemBtn.MouseButton1Click:Connect(function()
                     forgeSelectedProduct = name
-                    refForgeSelectBtn.Text = "[[" .. name .. "]]"
+                    refForgeSelectBtn.Text = name
                     gridContainer.Visible = false
                     gridContainer.Size = UDim2.new(1, -15, 0, 0)
                     updateForgeUI(T("forgeReady"), Color3.fromRGB(0, 255, 0))
