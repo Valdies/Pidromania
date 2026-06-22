@@ -23,7 +23,7 @@ local CONFIG = {
     DroneSpeed = 90,
     Acceleration = 3,
     HoverHeight = 5,
-    Collision = true,
+    Collision = false, -- По умолчанию ВЫКЛЮЧЕНО (проходит сквозь стены)
     TurnSpeed = 2.5,
     Deadzone = 0.05
 }
@@ -72,6 +72,9 @@ local Keys = { W = false, A = false, S = false, D = false, Q = false, E = false 
 local currentVelocity = Vector3.zero
 local orbitYaw, fpvRotation = 0, CFrame.identity
 local propSpin, currentPropSpeed, planeRoll, tiltX, tiltZ = 0, 0, 0, 0, 0
+
+-- Состояния запоминаются и по умолчанию ВКЛЮЧЕНЫ
+local DroneState = { Invisible = true, SunMode = true }
 
 local function updateNotificationStack()
     local startY = 75 
@@ -157,7 +160,6 @@ local function setCharacterState(stateName)
         originalStats.JumpPower = hum.JumpPower
         hum.WalkSpeed = 0
         hum.JumpPower = 0
-        -- Убрали заморозку, теперь персонаж падает если в воздухе!
         hrp.Anchored = false 
         hum.PlatformStand = false
     elseif stateName == "Falling" then
@@ -177,15 +179,47 @@ local function updateDroneAppearance()
     if not DroneModel or not Hitbox then return end
     Hitbox.CanCollide = CONFIG.Collision
     
-    -- Устанавливаем прозрачность на 40% (0.4), чтобы дрон стал призраком, а не невидимкой
     local alpha = CONFIG.Collision and 0 or 0.4
+    if DroneState.Invisible then alpha = 1 end
     
     if PrimaryPart then PrimaryPart.Transparency = alpha end
     if EyePart then EyePart.Transparency = alpha end
     
     for _, p in ipairs(Props) do
         p.Arm.Transparency = alpha
-        p.Prop.Transparency = CONFIG.Collision and 0.2 or 0.6
+        p.Prop.Transparency = DroneState.Invisible and 1 or (CONFIG.Collision and 0.2 or 0.6)
+    end
+end
+
+local function updateDroneLighting()
+    if not EyePart then return end
+    local light = EyePart:FindFirstChildOfClass("PointLight")
+    if isPowered then
+        if DroneState.SunMode then
+            EyePart.Color = Color3.fromRGB(255, 255, 200)
+            EyePart.Material = Enum.Material.Neon
+            if light then
+                light.Color = Color3.fromRGB(255, 255, 200)
+                light.Brightness = 15
+                light.Range = 60
+                light.Shadows = true
+                light.Enabled = true
+            end
+        else
+            EyePart.Color = STYLE.ToggleOnColor
+            EyePart.Material = Enum.Material.Neon
+            if light then
+                light.Color = STYLE.ToggleOnColor
+                light.Brightness = 2
+                light.Range = 12
+                light.Shadows = false
+                light.Enabled = true
+            end
+        end
+    else
+        EyePart.Color = Color3.fromRGB(30, 30, 30)
+        EyePart.Material = Enum.Material.Glass
+        if light then light.Enabled = false end
     end
 end
 
@@ -208,7 +242,6 @@ local function createDroneVehicle()
     local model = Instance.new("Model")
     model.Name = "LocalQuadcopter"
 
-    -- Создаем невидимую ФИЗИЧЕСКУЮ КОРОБКУ
     Hitbox = Instance.new("Part", model)
     Hitbox.Name = "DroneHitbox"
     Hitbox.Size = Vector3.new(2.2, 0.8, 2.2) 
@@ -231,7 +264,6 @@ local function createDroneVehicle()
     alignOri.MaxTorque = 150000
     alignOri.Responsiveness = 40
 
-    -- Визуальные части (привязываются к хитбоксу через скрипт)
     PrimaryPart = Instance.new("Part", model)
     PrimaryPart.Size = Vector3.new(1.2, 0.4, 1.2)
     PrimaryPart.Color = Color3.fromRGB(30, 30, 40)
@@ -245,8 +277,11 @@ local function createDroneVehicle()
     EyePart.Material = Enum.Material.Neon
     EyePart.Anchored = true
     EyePart.CanCollide = false
+    
     local light = Instance.new("PointLight", EyePart)
     light.Color = STYLE.ToggleOnColor
+    light.Brightness = 2
+    light.Range = 12
 
     local offsets = { Vector3.new(0.8, 0.2, 0.8), Vector3.new(-0.8, 0.2, 0.8), Vector3.new(0.8, 0.2, -0.8), Vector3.new(-0.8, 0.2, -0.8) }
     Props = {}
@@ -280,8 +315,8 @@ local function createDroneUI()
     
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 280, 0, 310)
-    mainFrame.Position = UDim2.new(0, 15, 1, -325)
+    mainFrame.Size = UDim2.new(0, 280, 0, 395)
+    mainFrame.Position = UDim2.new(0, 15, 1, -410)
     mainFrame.BackgroundColor3 = STYLE.Background
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = screenGui
@@ -378,6 +413,7 @@ local function createDroneUI()
     btnMinus.MouseButton1Click:Connect(function() changeSpeed(-5) end)
     btnPlus.MouseButton1Click:Connect(function() changeSpeed(5) end)
 
+    -- КНОПКА КОЛЛИЗИИ
     local btnCol = Instance.new("TextButton", contentFrame)
     btnCol.Size = UDim2.new(1, 0, 0, 30)
     btnCol.Text = CONFIG.Collision and "Коллизия: ВКЛ" or "Коллизия: ВЫКЛ"
@@ -392,6 +428,40 @@ local function createDroneUI()
         btnCol.Text = CONFIG.Collision and "Коллизия: ВКЛ" or "Коллизия: ВЫКЛ"
         btnCol.BackgroundColor3 = CONFIG.Collision and STYLE.Success or STYLE.Danger
         updateDroneAppearance()
+    end)
+    
+    -- КНОПКА НЕВИДИМОСТИ
+    local btnInvis = Instance.new("TextButton", contentFrame)
+    btnInvis.Size = UDim2.new(1, 0, 0, 30)
+    btnInvis.Text = DroneState.Invisible and "Невидимость: ВКЛ" or "Невидимость: ВЫКЛ"
+    btnInvis.BackgroundColor3 = DroneState.Invisible and STYLE.Success or STYLE.Danger
+    btnInvis.TextColor3 = Color3.new(1, 1, 1)
+    btnInvis.Font = STYLE.FontBold
+    btnInvis.TextSize = 12
+    Instance.new("UICorner", btnInvis).CornerRadius = UDim.new(0, 6)
+
+    btnInvis.MouseButton1Click:Connect(function()
+        DroneState.Invisible = not DroneState.Invisible
+        btnInvis.Text = DroneState.Invisible and "Невидимость: ВКЛ" or "Невидимость: ВЫКЛ"
+        btnInvis.BackgroundColor3 = DroneState.Invisible and STYLE.Success or STYLE.Danger
+        updateDroneAppearance()
+    end)
+
+    -- КНОПКА СОЛНЦА
+    local btnSun = Instance.new("TextButton", contentFrame)
+    btnSun.Size = UDim2.new(1, 0, 0, 30)
+    btnSun.Text = DroneState.SunMode and "Солнце: ВКЛ" or "Солнце: ВЫКЛ"
+    btnSun.BackgroundColor3 = DroneState.SunMode and STYLE.Success or STYLE.Danger
+    btnSun.TextColor3 = Color3.new(1, 1, 1)
+    btnSun.Font = STYLE.FontBold
+    btnSun.TextSize = 12
+    Instance.new("UICorner", btnSun).CornerRadius = UDim.new(0, 6)
+
+    btnSun.MouseButton1Click:Connect(function()
+        DroneState.SunMode = not DroneState.SunMode
+        btnSun.Text = DroneState.SunMode and "Солнце: ВКЛ" or "Солнце: ВЫКЛ"
+        btnSun.BackgroundColor3 = DroneState.SunMode and STYLE.Success or STYLE.Danger
+        updateDroneLighting()
     end)
     
     local separator = Instance.new("Frame", contentFrame)
@@ -442,18 +512,7 @@ local function handleDroneInput(actionName, inputState, inputObject)
     elseif key == Enum.KeyCode.E then Keys.E = isPressed
     elseif key == Enum.KeyCode.B and isPressed then
         isPowered = not isPowered
-        if EyePart then
-            local light = EyePart:FindFirstChildOfClass("PointLight")
-            if isPowered then
-                EyePart.Color = STYLE.ToggleOnColor
-                EyePart.Material = Enum.Material.Neon
-                if light then light.Enabled = true end
-            else
-                EyePart.Color = Color3.fromRGB(30, 30, 30)
-                EyePart.Material = Enum.Material.Glass
-                if light then light.Enabled = false end
-            end
-        end
+        updateDroneLighting()
         updateDroneUIHints()
     elseif key == Enum.KeyCode.J and isPressed then
         camMode = camMode == "Orbit" and "Plane" or "Orbit"
@@ -474,9 +533,14 @@ end
 local function toggleDroneSystem(state)
     if state then
         isPowered = true
+        
+        -- Настройки (DroneState.Invisible, DroneState.SunMode, CONFIG.Collision) 
+        -- теперь не сбрасываются и сохраняют свои значения.
+        
         DroneModel = createDroneVehicle()
         createDroneUI()
         updateDroneAppearance()
+        updateDroneLighting()
         
         Hitbox.Position = getSafeDronePosition()
         orbitYaw = math.atan2(-Camera.CFrame.LookVector.X, -Camera.CFrame.LookVector.Z)
@@ -611,6 +675,48 @@ local function createSpyUI()
 
     local httpClearBtn = Instance.new("TextButton"); httpClearBtn.Parent = httpSpyPage; httpClearBtn.Size = UDim2.new(1, 0, 0, 25); httpClearBtn.BackgroundColor3 = STYLE.Danger; httpClearBtn.Font = STYLE.FontBold; httpClearBtn.TextColor3 = Color3.fromRGB(255, 220, 220); httpClearBtn.Text = "🗑️ Clear HTTP Logs"; httpClearBtn.TextSize = 12; httpClearBtn.LayoutOrder = -1; Instance.new("UICorner", httpClearBtn).CornerRadius = UDim.new(0, 4)
     httpClearBtn.MouseButton1Click:Connect(function() for _, c in ipairs(httpSpyPage:GetChildren()) do if c.Name == "HttpLogEntry" then c:Destroy() end end; task.wait(); httpSpyPage.CanvasSize = UDim2.new(0, 0, 0, httpSpyLayout.AbsoluteContentSize.Y + 10) end)
+
+    local remoteCopyAllBtn = Instance.new("TextButton")
+    remoteCopyAllBtn.Parent = remoteSpyList
+    remoteCopyAllBtn.Size = UDim2.new(1, 0, 0, 25)
+    remoteCopyAllBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 140)
+    remoteCopyAllBtn.Font = STYLE.FontBold
+    remoteCopyAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    remoteCopyAllBtn.Text = "📋 Copy All Remotes"
+    remoteCopyAllBtn.TextSize = 12
+    remoteCopyAllBtn.LayoutOrder = -1
+    Instance.new("UICorner", remoteCopyAllBtn).CornerRadius = UDim.new(0, 4)
+
+    remoteCopyAllBtn.MouseButton1Click:Connect(function()
+        local allRemotes = {}
+        for _, r in ipairs(game:GetDescendants()) do
+            if r:IsA("RemoteEvent") or r:IsA("RemoteFunction") then
+                local rType = r:IsA("RemoteEvent") and "RE" or "RF"
+                table.insert(allRemotes, string.format("[%s] %s", rType, r:GetFullName()))
+            end
+        end
+        table.sort(allRemotes)
+        
+        if setclipboard and #allRemotes > 0 then
+            setclipboard(table.concat(allRemotes, "\n"))
+            local oldText = remoteCopyAllBtn.Text
+            local oldColor = remoteCopyAllBtn.BackgroundColor3
+            remoteCopyAllBtn.Text = "✅ СКОПИРОВАНО!"
+            remoteCopyAllBtn.BackgroundColor3 = STYLE.Success
+            task.delay(1.5, function()
+                remoteCopyAllBtn.Text = oldText
+                remoteCopyAllBtn.BackgroundColor3 = oldColor
+            end)
+        elseif #allRemotes == 0 then
+            local oldText = remoteCopyAllBtn.Text
+            remoteCopyAllBtn.Text = "❌ НИЧЕГО НЕ НАЙДЕНО"
+            remoteCopyAllBtn.BackgroundColor3 = STYLE.Danger
+            task.delay(1.5, function() 
+                remoteCopyAllBtn.Text = oldText
+                remoteCopyAllBtn.BackgroundColor3 = Color3.fromRGB(70, 100, 140) 
+            end)
+        end
+    end)
 end
 createMainUI(); createSettingsUI(); createSpyUI()
 
@@ -852,7 +958,6 @@ GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
 
         if moveInput.Magnitude > 0.001 then moveInput = moveInput.Unit else moveInput = Vector3.zero end
         
-        -- Устанавливаем целевую скорость для физического движка Роблокса
         local targetVelocity = moveInput * CONFIG.DroneSpeed
         currentVelocity = currentVelocity:Lerp(targetVelocity, CONFIG.Acceleration * dt)
 
@@ -861,15 +966,12 @@ GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
 
         currentPropSpeed = math.min(2000, currentPropSpeed + 4000 * dt)
     else
-        -- Если двигатели выключены - отдаем дрон гравитации
         linVel.Enabled = false
         alignOri.Enabled = false
         
-        -- Считываем реальную скорость и позицию, чтобы при включении не было резких дерганий
         currentVelocity = Hitbox.AssemblyLinearVelocity
         local tumbleCFrame = Hitbox.CFrame - Hitbox.Position
         
-        -- Обновляем переменные угла камеры, чтобы при включении он продолжал смотреть куда упал
         orbitYaw = math.atan2(-tumbleCFrame.LookVector.X, -tumbleCFrame.LookVector.Z)
         fpvRotation = tumbleCFrame
         tiltX, tiltZ, planeRoll = 0, 0, 0
@@ -877,7 +979,6 @@ GlobalENV.QuadcopterConnection = RunService.RenderStepped:Connect(function(dt)
         currentPropSpeed = math.max(0, currentPropSpeed - 1500 * dt)
     end
 
-    -- Визуальное перемещение частей дрона к невидимому хитбоксу
     local finalCFrame = Hitbox.CFrame
     PrimaryPart.CFrame = finalCFrame
     EyePart.CFrame = finalCFrame * CFrame.new(0, 0, -0.3)
