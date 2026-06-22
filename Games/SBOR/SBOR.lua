@@ -932,28 +932,49 @@ end
 local function setupResurrection()
     cleanupResurrection()
     resurrectionActive = true
+    
     local function onCharacterAdded(character)
         local humanoid = character:WaitForChild("Humanoid", 10)
         local rootPart = character:WaitForChild("HumanoidRootPart", 10)
         if not humanoid or not rootPart then return end
 
         if savedDeathPosition then
-            task.delay(0.5, function()
+            -- Запоминаем позицию локально и очищаем глобальную, чтобы избежать багов при быстрой смерти
+            local posToTeleport = savedDeathPosition
+            savedDeathPosition = nil 
+            
+            task.spawn(function()
+                -- Ждем 1.5 секунды, пока игра завершит свои базовые процессы спавна
+                task.wait(1.5)
                 local currentRoot = character:FindFirstChild("HumanoidRootPart")
-                if currentRoot then currentRoot.CFrame = savedDeathPosition end
-                savedDeathPosition = nil
+                if currentRoot then
+                    -- Делаем 4 попытки телепортации в течение 2 секунд
+                    -- Это гарантированно перебьет "возврат на спавн" от самой игры
+                    for i = 1, 4 do
+                        if character and character.Parent and humanoid.Health > 0 then
+                            -- Добавляем +5 к высоте (Y), чтобы персонаж не проваливался под текстуры карты
+                            currentRoot.CFrame = posToTeleport + Vector3.new(0, 5, 0)
+                        end
+                        task.wait(0.5)
+                    end
+                end
             end)
         end
 
         local diedConn = humanoid.Died:Connect(function()
-            if rootPart then savedDeathPosition = rootPart.CFrame end
+            if rootPart then 
+                savedDeathPosition = rootPart.CFrame 
+            end
         end)
         table.insert(resurrectionConnections, diedConn)
     end
     
     local charAddedConn = player.CharacterAdded:Connect(onCharacterAdded)
     table.insert(resurrectionConnections, charAddedConn)
-    if player.Character then onCharacterAdded(player.Character) end
+    
+    if player.Character then 
+        onCharacterAdded(player.Character) 
+    end
 end
 
 local autoFLoopRunning = false
