@@ -23,7 +23,7 @@ local CONFIG = {
     DroneSpeed = 90,
     Acceleration = 3,
     HoverHeight = 5,
-    Collision = false, -- По умолчанию ВЫКЛЮЧЕНО (проходит сквозь стены)
+    Collision = false, 
     TurnSpeed = 2.5,
     Deadzone = 0.05
 }
@@ -45,7 +45,8 @@ local STYLE = {
     FontBold = Enum.Font.GothamBold
 }
 
-local Settings = { RouteLog = false, Teleport = false, DeleteEnabled = false, InspectEnabled = false, PilotAllowed = false }
+-- Добавлен флаг AnalyzeGui
+local Settings = { RouteLog = false, Teleport = false, DeleteEnabled = false, InspectEnabled = false, PilotAllowed = false, AnalyzeGui = false }
 local ActiveModes = { Deleting = false, Inspecting = false, Piloting = false }
 
 local listOrder, labelsOrder = {}, {}
@@ -72,9 +73,34 @@ local Keys = { W = false, A = false, S = false, D = false, Q = false, E = false 
 local currentVelocity = Vector3.zero
 local orbitYaw, fpvRotation = 0, CFrame.identity
 local propSpin, currentPropSpeed, planeRoll, tiltX, tiltZ = 0, 0, 0, 0, 0
-
--- Состояния запоминаются и по умолчанию ВКЛЮЧЕНЫ
 local DroneState = { Invisible = true, SunMode = true }
+
+-- =====================================
+-- УТИЛИТЫ ДЛЯ GUI АНАЛИЗАТОРА
+-- =====================================
+local function colorToString(color)
+    return string.format("RGB(%d, %d, %d)", 
+        math.floor(color.R * 255), 
+        math.floor(color.G * 255), 
+        math.floor(color.B * 255)
+    )
+end
+
+local function getPath(instance)
+    local realPath = ""
+    local current = instance
+    while current do
+        if realPath == "" then
+            realPath = current.Name
+        else
+            realPath = current.Name .. "." .. realPath
+        end
+        current = current.Parent
+        if current == game then break end
+    end
+    return realPath
+end
+-- =====================================
 
 local function updateNotificationStack()
     local startY = 75 
@@ -178,13 +204,10 @@ end
 local function updateDroneAppearance()
     if not DroneModel or not Hitbox then return end
     Hitbox.CanCollide = CONFIG.Collision
-    
     local alpha = CONFIG.Collision and 0 or 0.4
     if DroneState.Invisible then alpha = 1 end
-    
     if PrimaryPart then PrimaryPart.Transparency = alpha end
     if EyePart then EyePart.Transparency = alpha end
-    
     for _, p in ipairs(Props) do
         p.Arm.Transparency = alpha
         p.Prop.Transparency = DroneState.Invisible and 1 or (CONFIG.Collision and 0.2 or 0.6)
@@ -413,7 +436,6 @@ local function createDroneUI()
     btnMinus.MouseButton1Click:Connect(function() changeSpeed(-5) end)
     btnPlus.MouseButton1Click:Connect(function() changeSpeed(5) end)
 
-    -- КНОПКА КОЛЛИЗИИ
     local btnCol = Instance.new("TextButton", contentFrame)
     btnCol.Size = UDim2.new(1, 0, 0, 30)
     btnCol.Text = CONFIG.Collision and "Коллизия: ВКЛ" or "Коллизия: ВЫКЛ"
@@ -430,7 +452,6 @@ local function createDroneUI()
         updateDroneAppearance()
     end)
     
-    -- КНОПКА НЕВИДИМОСТИ
     local btnInvis = Instance.new("TextButton", contentFrame)
     btnInvis.Size = UDim2.new(1, 0, 0, 30)
     btnInvis.Text = DroneState.Invisible and "Невидимость: ВКЛ" or "Невидимость: ВЫКЛ"
@@ -447,7 +468,6 @@ local function createDroneUI()
         updateDroneAppearance()
     end)
 
-    -- КНОПКА СОЛНЦА
     local btnSun = Instance.new("TextButton", contentFrame)
     btnSun.Size = UDim2.new(1, 0, 0, 30)
     btnSun.Text = DroneState.SunMode and "Солнце: ВКЛ" or "Солнце: ВЫКЛ"
@@ -533,10 +553,6 @@ end
 local function toggleDroneSystem(state)
     if state then
         isPowered = true
-        
-        -- Настройки (DroneState.Invisible, DroneState.SunMode, CONFIG.Collision) 
-        -- теперь не сбрасываются и сохраняют свои значения.
-        
         DroneModel = createDroneVehicle()
         createDroneUI()
         updateDroneAppearance()
@@ -607,7 +623,7 @@ end
 local function createSettingsUI()
     if CoreGui:FindFirstChild(settingsUiName) then CoreGui[settingsUiName]:Destroy() end
     local screenGui = Instance.new("ScreenGui"); screenGui.Name = settingsUiName; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.Parent = CoreGui
-    local frame = Instance.new("Frame"); frame.Name = "SettingsFrame"; frame.Size = UDim2.new(0, 280, 0, 200); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
+    local frame = Instance.new("Frame"); frame.Name = "SettingsFrame"; frame.Size = UDim2.new(0, 280, 0, 230); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
     local header = Instance.new("Frame"); header.Size = UDim2.new(1, 0, 0, 30); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame; Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
     local title = Instance.new("TextLabel"); title.Text = "System Controls"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
     local listContainer = Instance.new("Frame"); listContainer.Size = UDim2.new(1, -10, 1, -35); listContainer.Position = UDim2.new(0, 5, 0, 32); listContainer.BackgroundTransparency = 1; listContainer.Parent = frame; Instance.new("UIListLayout", listContainer).Padding = UDim.new(0, 5)
@@ -641,7 +657,13 @@ local function createSettingsUI()
         end)
         ToggleUpdaters[settingKey] = updateState; updateState()
     end
-    createToggle("Log Coords (Z)", "RouteLog"); createToggle("Teleport (X)", "Teleport"); createToggle("Delete (C)", "DeleteEnabled"); createToggle("Inspect (V)", "InspectEnabled"); createToggle("Allow Pilot (H)", "PilotAllowed")
+    
+    createToggle("Log Coords (Z)", "RouteLog")
+    createToggle("Teleport (X)", "Teleport")
+    createToggle("Delete (C)", "DeleteEnabled")
+    createToggle("Inspect (V)", "InspectEnabled")
+    createToggle("Allow Pilot (H)", "PilotAllowed")
+    createToggle("Analyze GUI (P)", "AnalyzeGui") -- НОВЫЙ ПЕРЕКЛЮЧАТЕЛЬ
 end
 
 local dropdownMode, spectatingPlayer, originalCameraSubject = nil, nil, nil
@@ -808,46 +830,128 @@ Hook:AddRefernce(game, { Globals = {"game", "Game"}, Hooks = { ["HttpGet"] = "HT
 Hook:AddRefernce(GlobalENV, { Hooks = { ["http_request"] = "HTTP_HOOK", ["request"] = "HTTP_HOOK" } }); if http then Hook:AddRefernce(http, { Hooks = { ["request"] = "HTTP_HOOK" } }) end; if syn then Hook:AddRefernce(syn, { Hooks = { ["request"] = "HTTP_HOOK" } }) end
 Hook:ApplyHooks(); setActiveSpyPage("http")
 
+-- ==========================================
+-- ИДЕАЛЬНЫЙ ПЕРЕХВАТ НАЖАТИЙ КЛАВИШ ЧЕРЕЗ CAS
+-- ==========================================
+local function handleToolHotkeys(actionName, inputState, inputObject)
+    -- Реагируем только на нажатие клавиши (а не отпускание)
+    if inputState ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
+    -- Если игрок пишет в чат, пропускаем нажатия
+    if UserInputService:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+
+    local key = inputObject.KeyCode
+    local keyHandled = false
+
+    if key == Enum.KeyCode.Z and Settings.RouteLog then
+        local char = LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local pos = hrp.Position
+                local coords = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
+                table.insert(listOrder, coords)
+                local lbl = #listOrder == 1 and "Start" or tostring(#listOrder - 1)
+                table.insert(labelsOrder, lbl)
+                addCoordinateToUI(coords, lbl)
+                if setclipboard then setclipboard(coords) end
+            end
+        end
+        keyHandled = true
+
+    elseif key == Enum.KeyCode.X and Settings.Teleport then
+        local char = LocalPlayer.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local hit = mouse.Hit.Position
+                if hit.Y ~= math.huge and hit == hit then 
+                    hrp.CFrame = CFrame.new(hit.X, hit.Y + 2, hit.Z) 
+                end
+            end
+        end
+        keyHandled = true
+
+    elseif key == Enum.KeyCode.C and Settings.DeleteEnabled then
+        ActiveModes.Deleting = not ActiveModes.Deleting
+        showNotification("УДАЛЕНИЕ", ActiveModes.Deleting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
+        keyHandled = true
+
+    elseif key == Enum.KeyCode.V and Settings.InspectEnabled then
+        ActiveModes.Inspecting = not ActiveModes.Inspecting
+        showNotification("ИНСПЕКТОР", ActiveModes.Inspecting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
+        keyHandled = true
+
+    elseif key == Enum.KeyCode.H and Settings.PilotAllowed then
+        ActiveModes.Piloting = not ActiveModes.Piloting
+        toggleDroneSystem(ActiveModes.Piloting)
+        showNotification("КВАДРОКОПТЕР", ActiveModes.Piloting and "АКТИВИРОВАН" or "ОТКЛЮЧЕН")
+        keyHandled = true
+
+    elseif key == Enum.KeyCode.P and Settings.AnalyzeGui then
+        print("🔍 Сканирование под курсором...")
+        local coreObjects = CoreGui:GetGuiObjectsAtPosition(mouse.X, mouse.Y)
+        local playerObjects = LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(mouse.X, mouse.Y)
+        local allFound = {}
+        local seen = {}
+        
+        for _, v in pairs(coreObjects) do if not seen[v] then table.insert(allFound, v); seen[v] = true end end
+        for _, v in pairs(playerObjects) do if not seen[v] then table.insert(allFound, v); seen[v] = true end end
+        
+        if #allFound > 0 then
+            local fullListText = "📋 Результаты сканирования:\n\n"
+            for i, obj in ipairs(allFound) do
+                local path = getPath(obj)
+                local className = obj.ClassName
+                local bgColor = "N/A"
+                local transparency = "N/A"
+                
+                if obj:IsA("GuiObject") then
+                    pcall(function()
+                        bgColor = colorToString(obj.BackgroundColor3)
+                        transparency = string.format("%.2f", obj.BackgroundTransparency)
+                    end)
+                end
+                
+                local infoLine = string.format("%d. [%s]\nПуть: %s\nЦвет: %s | Прозрачность: %s\n", i, className, path, bgColor, transparency)
+                fullListText = fullListText .. infoLine .. "------------------\n"
+                print(infoLine)
+            end
+            
+            if setclipboard then
+                setclipboard(fullListText)
+                showNotification("GUI АНАЛИЗАТОР", "СКОПИРОВАНО В БУФЕР")
+            else
+                showNotification("GUI АНАЛИЗАТОР", "ВЫВЕДЕНО В КОНСОЛЬ (F9)")
+            end
+        else
+            showNotification("GUI АНАЛИЗАТОР", "НИЧЕГО НЕ НАЙДЕНО")
+        end
+        keyHandled = true
+    end
+
+    -- Если действие выполнено, мы блокируем клавишу, чтобы игра её не увидела
+    if keyHandled then
+        return Enum.ContextActionResult.Sink
+    end
+    
+    -- Иначе разрешаем игре использовать клавишу
+    return Enum.ContextActionResult.Pass
+end
+
+-- Регистрируем горячие клавиши поверх всех скриптов игры
+ContextActionService:BindActionAtPriority(
+    "PidromaniaGeneralHotkeys", 
+    handleToolHotkeys, 
+    false, 
+    Enum.ContextActionPriority.High.Value + 5, 
+    Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V, Enum.KeyCode.H, Enum.KeyCode.P
+)
+
+-- Кнопка 'G' для скрытия меню остается в UserInputService, так как она глобальная 
+-- и мы не хотим случайно перебить важные игровые функции на букву G, если меню открыто.
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if UserInputService:GetFocusedTextBox() then return end
-
-    if input.KeyCode == Enum.KeyCode.Z then
-        if Settings.RouteLog then 
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local pos = hrp.Position
-                    local coords = string.format("%.2f, %.2f, %.2f", pos.X, pos.Y, pos.Z)
-                    table.insert(listOrder, coords)
-                    local lbl = #listOrder == 1 and "Start" or tostring(#listOrder - 1)
-                    table.insert(labelsOrder, lbl); addCoordinateToUI(coords, lbl)
-                    if setclipboard then setclipboard(coords) end
-                end
-            end
-        end
-    elseif input.KeyCode == Enum.KeyCode.X then
-        if Settings.Teleport then 
-            local char = LocalPlayer.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local hit = mouse.Hit.Position
-                    if hit.Y ~= math.huge and hit == hit then char.HumanoidRootPart.CFrame = CFrame.new(hit.X, hit.Y + 2, hit.Z) end
-                end
-            end
-        end
-    elseif input.KeyCode == Enum.KeyCode.C and Settings.DeleteEnabled then ActiveModes.Deleting = not ActiveModes.Deleting; showNotification("УДАЛЕНИЕ", ActiveModes.Deleting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
-    elseif input.KeyCode == Enum.KeyCode.V and Settings.InspectEnabled then ActiveModes.Inspecting = not ActiveModes.Inspecting; showNotification("ИНСПЕКТОР", ActiveModes.Inspecting and "ВКЛЮЧЕНО" or "ВЫКЛЮЧЕНО")
-    elseif input.KeyCode == Enum.KeyCode.H then
-        if Settings.PilotAllowed then
-            ActiveModes.Piloting = not ActiveModes.Piloting
-            toggleDroneSystem(ActiveModes.Piloting)
-            showNotification("КВАДРОКОПТЕР", ActiveModes.Piloting and "АКТИВИРОВАН" or "ОТКЛЮЧЕН")
-        else
-            showNotification("КВАДРОКОПТЕР", "СНАЧАЛА РАЗРЕШИТЕ В НАСТРОЙКАХ")
-        end
-    elseif input.KeyCode == Enum.KeyCode.G then
+    if input.KeyCode == Enum.KeyCode.G then
         isUiVisible = not isUiVisible 
         local mainGui = CoreGui:FindFirstChild(uiName); local setGui = CoreGui:FindFirstChild(settingsUiName); local spyGui = CoreGui:FindFirstChild(spyUiName)
         local twInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
