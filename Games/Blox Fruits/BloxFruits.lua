@@ -12,6 +12,7 @@ local currentLang = "ru"
 local translations = {
 	ru = {
 		hubTitle = "Pidromania Hub: Blox Fruits",
+        minimizedTitle = "Pidromania Hub",
 		byAuthor = "by @Pidromania",
 		floor = "Море",
 		farm = "Фарм",
@@ -424,6 +425,7 @@ local function getNearestTarget()
 	return nearest
 end
 
+-- === ИСПРАВЛЕННАЯ ЛОГИКА ТЕЛЕПОРТА/УДЕРЖАНИЯ В ВОЗДУХЕ ===
 local function flyToTarget(target, yOffset)
 	local character = player.Character
 	if not character then return end
@@ -431,8 +433,16 @@ local function flyToTarget(target, yOffset)
 	if not rootPart then return end
 	local targetRoot = target:FindFirstChild("HumanoidRootPart")
 	if not targetRoot then return end
-	local pos = Vector3.new(targetRoot.Position.X, targetRoot.Position.Y + yOffset, targetRoot.Position.Z)
-	rootPart.CFrame = CFrame.new(pos)
+	
+	local targetPos = targetRoot.Position
+	local flyPos = Vector3.new(targetPos.X, targetPos.Y + yOffset, targetPos.Z)
+	
+	-- Простой телепорт без поворота вниз
+	rootPart.CFrame = CFrame.new(flyPos)
+	
+	-- Сброс скорости, чтобы персонаж не падал из-за гравитации
+	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+	rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 end
 
 -- === ФАРМ КВЕСТОВ ===
@@ -468,11 +478,7 @@ local function startQuestFarm()
 					if isQuestFarming and targets[mob.Name] and not countedMobs[mob] then
 						count += 1
 						countedMobs[mob] = true
-						if count >= maxCount then
-							return
-						end
 					end
-					if diedConn.Connected then diedConn:Disconnect() end
 					trackedMobs[mob] = nil
 				end)
 			end
@@ -487,9 +493,11 @@ local function startQuestFarm()
 				end
 				local mob = findNearestMobByTable(targets)
 				if mob then
-					attackTarget(mob)
+                    -- Летим непосредственно к самому мобу сверху
+					flyToTarget(mob, 15) 
 				end
-				task.wait(0.3)
+                -- Запускаем обновление каждый кадр, чтобы персонаж не успевал падать
+				RunService.Heartbeat:Wait()
 			end
 		end
 		isQuestFarming = false
@@ -516,12 +524,14 @@ local function startMaterialsFarm(materialType)
 			while isMaterialFarming do
 				local mob = findNearestMobByTable(matData.mobs)
 				if mob then
-					attackTarget(mob)
+                    -- Летим к мобу
+					flyToTarget(mob, 15)
 				else
 					task.wait(2)
 					break
 				end
-				task.wait(0.3)
+                -- Тоже обновление каждый кадр для анти-гравитации
+				RunService.Heartbeat:Wait()
 			end
 		end
 	end)
@@ -532,19 +542,16 @@ local function stopMaterialsFarm()
 	stopFlight()
 end
 
--- === MODE1 / MODE2 ===
+-- === MODE1 ===
 local function startFlyingMode1()
 	if flyingMode1Active then return end
 	flyingMode1Active = true
 	flyConnection1 = RunService.Heartbeat:Connect(function()
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		local dist = (player.Character.HumanoidRootPart.Position - target.HumanoidRootPart.Position).Magnitude
-		if dist > 5 then
-			flyToTarget(target, 15)
-		else
-			attackTarget(target)
-		end
+		
+		-- Постоянно держим позицию +15 стадов и НЕ падаем
+		flyToTarget(target, 15)
 	end)
 end
 
@@ -553,18 +560,16 @@ local function stopFlyingMode1()
 	flyingMode1Active = false
 end
 
+-- === MODE2 ===
 local function startFlyingMode2()
 	if flyingMode2Active then return end
 	flyingMode2Active = true
 	flyConnection2 = RunService.Heartbeat:Connect(function()
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		local dist = (player.Character.HumanoidRootPart.Position - target.HumanoidRootPart.Position).Magnitude
-		if dist > 5 then
-			flyToTarget(target, -10)
-		else
-			attackTarget(target)
-		end
+		
+		-- Постоянно держим позицию -10 стадов
+		flyToTarget(target, -10)
 	end)
 end
 
@@ -632,7 +637,10 @@ local function startStickToPlayer()
 	stickConnection = RunService.Heartbeat:Connect(function()
 		local p = getNearestPlayer()
 		if p and p:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			player.Character.HumanoidRootPart.CFrame = CFrame.new(p.HumanoidRootPart.Position)
+			local root = player.Character.HumanoidRootPart
+			root.CFrame = CFrame.new(p.HumanoidRootPart.Position)
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 		end
 	end)
 end
@@ -642,87 +650,94 @@ local function stopStickToPlayer()
 	stickToPlayerActive = false
 end
 
--- === ПОСТОЯННАЯ АТАКА МОБОВ ===
-RunService.Heartbeat:Connect(function()
-	if not (flyingMode1Active or flyingMode2Active or playerAttackEnabled) then
-		local target = getNearestTarget()
-		if target then
-			attackTarget(target)
+-- === ГЛОБАЛЬНАЯ НЕЗАВИСИМАЯ АТАКА ===
+task.spawn(function()
+	while true do
+		-- Атакуем только если включена хотя бы одна функция, требующая атаки
+		if isQuestFarming or isMaterialFarming or flyingMode1Active or flyingMode2Active or playerAttackEnabled then
+			local target = getNearestTarget()
+			if target then
+				attackTarget(target)
+			end
 		end
+		-- Задержка 0.1 сек (10 ударов в секунду). Это идеальный тайминг для Blox Fruits, 
+		-- чтобы сервер стабильно регал все удары и не блокировал их.
+		task.wait(0.1)
 	end
 end)
 
--- === TOGGLE SWITCH ===
+-- === ОБЩИЙ ЭЛЕМЕНТ - ПЕРЕКЛЮЧАТЕЛЬ ===
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
-	local switchFrame = Instance.new("Frame")
-	switchFrame.Size = UDim2.new(1, -15, 0, 45)
-	switchFrame.Position = UDim2.new(0, 7.5, 0, 0)
-	switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-	switchFrame.BorderSizePixel = 0
-	switchFrame.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 9)
-	corner.Parent = switchFrame
-
-	local labelText = Instance.new("TextLabel")
-	labelText.Text = label
-	labelText.Size = UDim2.new(0, 270, 1, 0)
-	labelText.BackgroundTransparency = 1
-	labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
-	labelText.Font = Enum.Font.GothamSemibold
-	labelText.TextSize = 21
-	labelText.TextXAlignment = Enum.TextXAlignment.Left
-	labelText.Position = UDim2.new(0, 7.5, 0, 0)
-	labelText.Parent = switchFrame
-
-	local toggleBg = Instance.new("Frame")
-	toggleBg.Size = UDim2.new(0, 60, 0, 30)
-	toggleBg.Position = UDim2.new(1, -67.5, 0.5, -15)
-	toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-	toggleBg.BorderSizePixel = 0
-	toggleBg.Parent = switchFrame
-
-	local cornerBg = Instance.new("UICorner")
-	cornerBg.CornerRadius = UDim.new(0, 15)
-	cornerBg.Parent = toggleBg
-
-	local toggleKnob = Instance.new("Frame")
-	toggleKnob.Size = UDim2.new(0, 24, 0, 24)
-	toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	toggleKnob.BorderSizePixel = 0
-	toggleKnob.Parent = toggleBg
-
-	local cornerKnob = Instance.new("UICorner")
-	cornerKnob.CornerRadius = UDim.new(0, 12)
-	cornerKnob.Parent = toggleKnob
-
-	local isEnabled = initialEnabled
-	local function updateToggle()
-		if isEnabled then
-			toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
-			toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			toggleKnob.Position = UDim2.new(1, -27, 0.5, -12)
-		else
-			toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-			toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-			toggleKnob.Position = UDim2.new(0, 3, 0.5, -12)
-		end
-	end
-	updateToggle()
-
-	switchFrame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			isEnabled = not isEnabled
-			onToggle(isEnabled)
-			updateToggle()
-		end
-	end)
-
-	return switchFrame, function(state)
-		isEnabled = state
-		updateToggle()
-	end
+    local switchFrame = Instance.new("Frame")
+    switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+    switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+    switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    switchFrame.BorderSizePixel = 0
+    switchFrame.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6 * 1.5)
+    corner.Parent = switchFrame
+    
+    local labelText = Instance.new("TextLabel")
+    labelText.Text = label
+    labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
+    labelText.BackgroundTransparency = 1
+    labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
+    labelText.Font = Enum.Font.GothamSemibold
+    labelText.TextSize = 14 * 1.5
+    labelText.TextXAlignment = Enum.TextXAlignment.Left
+    labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+    labelText.Parent = switchFrame
+    
+    local toggleBg = Instance.new("Frame")
+    toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
+    toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
+    toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+    toggleBg.BorderSizePixel = 0
+    toggleBg.Parent = switchFrame
+    
+    local cornerBg = Instance.new("UICorner")
+    cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
+    cornerBg.Parent = toggleBg
+    
+    local toggleKnob = Instance.new("Frame")
+    toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
+    toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    toggleKnob.BorderSizePixel = 0
+    toggleKnob.Parent = toggleBg
+    
+    local cornerKnob = Instance.new("UICorner")
+    cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
+    cornerKnob.Parent = toggleKnob
+    
+    local isEnabled = initialEnabled
+    
+    local function updateToggle()
+        if isEnabled then
+            toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+            toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
+        else
+            toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+            toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
+        end
+    end
+    updateToggle()
+    
+    switchFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isEnabled = not isEnabled
+            onToggle(isEnabled)
+            updateToggle()
+        end
+    end)
+    
+    return switchFrame, function(state)
+        isEnabled = state
+        updateToggle()
+    end
 end
 
 -- === ОКНО ВЫБОРА МАТЕРИАЛА ===
@@ -735,8 +750,8 @@ local function createMaterialWindow()
 	materialWindow.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0, 300, 0, 400)
-	frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+	frame.Size = UDim2.new(0, 200 * 1.5, 0, 266 * 1.5)
+	frame.Position = UDim2.new(0.5, -(200 * 1.5)/2, 0.5, -(266 * 1.5)/2)
 	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	frame.BorderSizePixel = 0
 	frame.Active = true
@@ -744,23 +759,23 @@ local function createMaterialWindow()
 	frame.Parent = materialWindow
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
+	corner.CornerRadius = UDim.new(0, 8 * 1.5)
 	corner.Parent = frame
 
 	local title = Instance.new("TextLabel")
 	title.Text = T("materialWindowTitle")
-	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Size = UDim2.new(1, 0, 0, 30 * 1.5)
 	title.BackgroundTransparency = 1
 	title.TextColor3 = Color3.fromRGB(220, 220, 255)
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 20
+	title.TextSize = 13 * 1.5
 	title.Parent = frame
 
 	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(1, -15, 1, -55)
-	scroll.Position = UDim2.new(0, 7.5, 0, 47.5)
+	scroll.Size = UDim2.new(1, -10 * 1.5, 1, -35 * 1.5)
+	scroll.Position = UDim2.new(0, 5 * 1.5, 0, 30 * 1.5)
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-	scroll.ScrollBarThickness = 6
+	scroll.ScrollBarThickness = 4 * 1.5
 	scroll.BackgroundTransparency = 1
 	scroll.Parent = frame
 
@@ -768,16 +783,16 @@ local function createMaterialWindow()
 	for matName, _ in pairs(MATERIALS) do
 		local btn = Instance.new("TextButton")
 		btn.Text = matName
-		btn.Size = UDim2.new(1, -15, 0, 40)
-		btn.Position = UDim2.new(0, 7.5, 0, y)
+		btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+		btn.Position = UDim2.new(0, 5 * 1.5, 0, y)
 		btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 		btn.TextColor3 = Color3.fromRGB(240, 240, 255)
 		btn.Font = Enum.Font.GothamSemibold
-		btn.TextSize = 18
+		btn.TextSize = 13 * 1.5
 		btn.Parent = scroll
 
 		local cornerBtn = Instance.new("UICorner")
-		cornerBtn.CornerRadius = UDim.new(0, 9)
+		cornerBtn.CornerRadius = UDim.new(0, 6 * 1.5)
 		cornerBtn.Parent = btn
 
 		btn.MouseButton1Click:Connect(function()
@@ -786,183 +801,188 @@ local function createMaterialWindow()
 			materialWindow = nil
 		end)
 
-		y += 47
+		y += 35 * 1.5
 	end
 	scroll.CanvasSize = UDim2.new(0, 0, 0, y)
 end
 
--- === GUI ===
+-- === ОСНОВНОЙ GUI ===
 local screenGuiMain = nil
 
 local function rebuildGUI()
-	if screenGuiMain then
-		screenGuiMain:Destroy()
-	end
-	screenGuiMain = Instance.new("ScreenGui")
-	screenGuiMain.Name = "PidromaniaHub"
-	screenGuiMain.ResetOnSpawn = false
-	screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	screenGuiMain.Parent = player:WaitForChild("PlayerGui")
-
-	local mainFrame = Instance.new("Frame")
-	mainFrame.Size = UDim2.new(0, 1200, 0, 750)
-	mainFrame.Position = UDim2.new(0.5, -600, 0.5, -375)
-	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-	mainFrame.BorderSizePixel = 0
-	mainFrame.Active = true
-	mainFrame.Draggable = true
-	mainFrame.Parent = screenGuiMain
-
-	local mainFrameCorner = Instance.new("UICorner")
-	mainFrameCorner.CornerRadius = UDim.new(0, 15)
-	mainFrameCorner.Parent = mainFrame
-
-	local dragDetector = Instance.new("Frame")
-	dragDetector.Size = UDim2.new(1, -75, 1, 0)
-	dragDetector.Position = UDim2.new(0, 0, 0, 0)
-	dragDetector.BackgroundTransparency = 1
-	dragDetector.Parent = mainFrame
-
-	local minimizedFrame = Instance.new("Frame")
-	minimizedFrame.Size = UDim2.new(0, 150, 0, 45)
-	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
-	minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	minimizedFrame.BorderSizePixel = 0
-	minimizedFrame.Visible = false
-	minimizedFrame.Active = true
-	minimizedFrame.Draggable = true
-	minimizedFrame.Parent = screenGuiMain
-
-	local cornerMinimized = Instance.new("UICorner")
-	cornerMinimized.CornerRadius = UDim.new(0, 9)
-	cornerMinimized.Parent = minimizedFrame
-
-	local minimizedLabel = Instance.new("TextLabel")
-	minimizedLabel.Text = T("hubTitle")
-	minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
-	minimizedLabel.BackgroundTransparency = 1
-	minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-	minimizedLabel.Font = Enum.Font.GothamBold
-	minimizedLabel.TextSize = 18
-	minimizedLabel.Parent = minimizedFrame
-
-	minimizedFrame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			mainFrame.Visible = true
-			minimizedFrame.Visible = false
-		end
-	end)
-
-	-- HEADER
-	local header = Instance.new("Frame")
-	header.Size = UDim2.new(1, 0, 0, 52.5)
-	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	header.BorderSizePixel = 0
-	header.Parent = mainFrame
-
-	local cornerHeader = Instance.new("UICorner")
-	cornerHeader.CornerRadius = UDim.new(0, 9)
-	cornerHeader.Parent = header
-
-	local title = Instance.new("TextLabel")
-	title.Text = T("hubTitle")
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 21
-	title.BackgroundTransparency = 1
-	title.TextColor3 = Color3.fromRGB(220, 220, 255)
-	local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
-	title.Size = UDim2.new(0, textSize.X * 1.1, 0, 30)
-	title.Position = UDim2.new(0, 5, 0, 10.5)
-	title.Parent = header
-
-	local author = Instance.new("TextLabel")
-	author.Text = T("byAuthor")
-	author.Font = Enum.Font.GothamSemibold
-	author.TextSize = 18
-	author.BackgroundTransparency = 1
-	author.TextColor3 = Color3.fromRGB(150, 150, 180)
-	local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
-	author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 30)
-	author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset - 15, 0, 10.5)
-	author.Parent = header
-
-	local minimizeBtn = Instance.new("TextButton")
-	minimizeBtn.Text = "--"
-	minimizeBtn.Size = UDim2.new(0, 37.5, 0, 37.5)
-	minimizeBtn.Position = UDim2.new(1, -45, 0, 7.5)
-	minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-	minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	minimizeBtn.Font = Enum.Font.GothamBold
-	minimizeBtn.TextSize = 21
-	minimizeBtn.Parent = header
-	minimizeBtn.MouseButton1Click:Connect(function()
-		mainFrame.Visible = false
-		minimizedFrame.Visible = true
-	end)
-
-	-- ПАНЕЛИ
-	local leftPanel = Instance.new("Frame")
-	leftPanel.Size = UDim2.new(0, 300, 1, -52.5)
-	leftPanel.Position = UDim2.new(0, 0, 0, 52.5)
-	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-	leftPanel.BorderSizePixel = 0
-	leftPanel.Parent = mainFrame
-
-	local cornerLeft = Instance.new("UICorner")
-	cornerLeft.CornerRadius = UDim.new(0, 12)
-	cornerLeft.Parent = leftPanel
-
-	local rightPanel = Instance.new("Frame")
-	rightPanel.Size = UDim2.new(1, -315, 1, -52.5)
-	rightPanel.Position = UDim2.new(0, 315, 0, 52.5)
-	rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-	rightPanel.BorderSizePixel = 0
-	rightPanel.Parent = mainFrame
-
-	local cornerRight = Instance.new("UICorner")
-	cornerRight.CornerRadius = UDim.new(0, 12)
-	cornerRight.Parent = rightPanel
-
-	local contentContainer = Instance.new("ScrollingFrame")
-	contentContainer.Size = UDim2.new(1, -15, 1, -15)
-	contentContainer.Position = UDim2.new(0, 7.5, 0, 7.5)
-	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-	contentContainer.ScrollBarThickness = 6
-	contentContainer.BackgroundTransparency = 1
-	contentContainer.Parent = rightPanel
-
-	local cornerContent = Instance.new("UICorner")
-	cornerContent.CornerRadius = UDim.new(0, 9)
-	cornerContent.Parent = contentContainer
-
-	-- МЕНЮ
-	local menuItems = {}
-	local function createMenuItem(name, icon)
-		local btn = Instance.new("TextButton")
-		btn.Name = name
-		btn.Text = "  " .. (icon or "") .. "  " .. name
-		btn.Size = UDim2.new(1, -15, 0, 52.5)
-		btn.Position = UDim2.new(0, 7.5, 0, (#menuItems * 57) + 7.5)
-		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-		btn.TextColor3 = Color3.fromRGB(220, 220, 255)
-		btn.Font = Enum.Font.GothamSemibold
-		btn.TextSize = 21
-		btn.AutoButtonColor = true
-		btn.Parent = leftPanel
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 9)
-		corner.Parent = btn
-
-		table.insert(menuItems, btn)
-		return btn
-	end
+    if screenGuiMain then screenGuiMain:Destroy() end
+    
+    local pGui = player:FindFirstChild("PlayerGui")
+    if pGui then
+        for _, v in ipairs(pGui:GetChildren()) do
+            if v.Name == "PidromaniaHub" then v:Destroy() end
+        end
+    end
+    
+    screenGuiMain = Instance.new("ScreenGui")
+    screenGuiMain.Name = "PidromaniaHub"
+    screenGuiMain.ResetOnSpawn = false
+    screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGuiMain.Parent = player:WaitForChild("PlayerGui")
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
+    mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGuiMain
+    
+    local mainFrameCorner = Instance.new("UICorner")
+    mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
+    mainFrameCorner.Parent = mainFrame
+    
+    local dragDetector = Instance.new("Frame")
+    dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
+    dragDetector.Position = UDim2.new(0, 0, 0, 0)
+    dragDetector.BackgroundTransparency = 1
+    dragDetector.Parent = mainFrame
+    
+    local minimizedFrame = Instance.new("Frame")
+    minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
+    minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
+    minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    minimizedFrame.BorderSizePixel = 0
+    minimizedFrame.Visible = false
+    minimizedFrame.Active = true
+    minimizedFrame.Draggable = true
+    minimizedFrame.Parent = screenGuiMain
+    
+    local cornerMinimized = Instance.new("UICorner")
+    cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
+    cornerMinimized.Parent = minimizedFrame
+    
+    local minimizedLabel = Instance.new("TextLabel")
+    minimizedLabel.Text = T("minimizedTitle")
+    minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
+    minimizedLabel.BackgroundTransparency = 1
+    minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+    minimizedLabel.Font = Enum.Font.GothamBold
+    minimizedLabel.TextSize = 12 * 1.5
+    minimizedLabel.Parent = minimizedFrame
+    
+    minimizedFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            mainFrame.Visible = true
+            minimizedFrame.Visible = false
+        end
+    end)
+    
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
+    header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    header.BorderSizePixel = 0
+    header.Parent = mainFrame
+    
+    local cornerHeader = Instance.new("UICorner")
+    cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
+    cornerHeader.Parent = header
+    
+    local title = Instance.new("TextLabel")
+    title.Text = T("hubTitle")
+    title.TextScaled = false
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14 * 1.5
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(220, 220, 255)
+    local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
+    title.Size = UDim2.new(0, textSize.X * 1.1, 0, 20 * 1.5)
+    title.Position = UDim2.new(0, 5, 0, 7 * 1.5)
+    title.Parent = header
+    
+    local author = Instance.new("TextLabel")
+    author.Text = T("byAuthor")
+    author.TextScaled = false
+    author.Font = Enum.Font.GothamSemibold
+    author.TextSize = 12 * 1.5
+    author.BackgroundTransparency = 1
+    author.TextColor3 = Color3.fromRGB(150, 150, 180)
+    local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
+    author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 20 * 1.5)
+    local offset = -15
+    author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
+    author.Parent = header
+    
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Text = "--"
+    minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
+    minimizeBtn.Position = UDim2.new(1, -30 * 1.5, 0, 5 * 1.5)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.TextSize = 14 * 1.5
+    minimizeBtn.Parent = header
+    
+    minimizeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        minimizedFrame.Visible = true
+    end)
+    
+    local leftPanel = Instance.new("Frame")
+    leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
+    leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
+    leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    leftPanel.BorderSizePixel = 0
+    leftPanel.Parent = mainFrame
+    
+    local cornerLeft = Instance.new("UICorner")
+    cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
+    cornerLeft.Parent = leftPanel
+    
+    local rightPanel = Instance.new("Frame")
+    rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
+    rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
+    rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    rightPanel.BorderSizePixel = 0
+    rightPanel.Parent = mainFrame
+    
+    local cornerRight = Instance.new("UICorner")
+    cornerRight.CornerRadius = UDim.new(0, 8 * 1.5)
+    cornerRight.Parent = rightPanel
+    
+    local contentContainer = Instance.new("ScrollingFrame")
+    contentContainer.Size = UDim2.new(1, -10 * 1.5, 1, -10 * 1.5)
+    contentContainer.Position = UDim2.new(0, 5 * 1.5, 0, 5 * 1.5)
+    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    contentContainer.ScrollBarThickness = 4 * 1.5
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.Parent = rightPanel
+    
+    local cornerContent = Instance.new("UICorner")
+    cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
+    cornerContent.Parent = contentContainer
+    
+    local menuItems = {}
+    local function createMenuItem(name, icon)
+        local btn = Instance.new("TextButton")
+        btn.Name = name
+        btn.Text = "  " .. (icon or "") .. "  " .. name
+        btn.Size = UDim2.new(1, -10 * 1.5, 0, 35 * 1.5)
+        btn.Position = UDim2.new(0, 5 * 1.5, 0, (#menuItems * (38 * 1.5)) + (5 * 1.5))
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+        btn.Font = Enum.Font.GothamSemibold
+        btn.TextSize = 14 * 1.5
+        btn.AutoButtonColor = true
+        btn.Parent = leftPanel
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6 * 1.5)
+        corner.Parent = btn
+        
+        table.insert(menuItems, btn)
+        return btn
+    end
 
 	local function clearContent()
 		for _, child in ipairs(contentContainer:GetChildren()) do
-			if child:IsA("GuiObject") then
-				child:Destroy()
-			end
+			if child:IsA("GuiObject") then child:Destroy() end
 		end
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 	end
@@ -972,11 +992,11 @@ local function rebuildGUI()
 		clearContent()
 		local title = Instance.new("TextLabel")
 		title.Text = T("selectFloor")
-		title.Size = UDim2.new(1, 0, 0, 37.5)
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
 		title.BackgroundTransparency = 1
 		title.TextColor3 = Color3.fromRGB(200, 200, 255)
 		title.Font = Enum.Font.GothamBold
-		title.TextSize = 21
+		title.TextSize = 14 * 1.5
 		title.Parent = contentContainer
 
 		for i, data in ipairs(FLOORS) do
@@ -984,16 +1004,16 @@ local function rebuildGUI()
 			local btn = Instance.new("TextButton")
 			btn.Name = "Floor" .. floorNum
 			btn.Text = string.format("Floor %d — %s", floorNum, name)
-			btn.Size = UDim2.new(1, -15, 0, 45)
-			btn.Position = UDim2.new(0, 7.5, 0, 45 + (i - 1) * 52.5)
+			btn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+			btn.Position = UDim2.new(0, 5 * 1.5, 0, (30 * 1.5) + (i - 1) * (35 * 1.5))
 			btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 			btn.TextColor3 = Color3.fromRGB(240, 240, 255)
 			btn.Font = Enum.Font.GothamSemibold
-			btn.TextSize = 21
+			btn.TextSize = 14 * 1.5
 			btn.AutoButtonColor = true
 
 			local corner = Instance.new("UICorner")
-			corner.CornerRadius = UDim.new(0, 9)
+			corner.CornerRadius = UDim.new(0, 6 * 1.5)
 			corner.Parent = btn
 
 			btn.MouseButton1Click:Connect(function()
@@ -1006,7 +1026,7 @@ local function rebuildGUI()
 			end)
 			btn.Parent = contentContainer
 		end
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * 52.5 + 60)
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, #FLOORS * (35 * 1.5) + (40 * 1.5))
 	end
 
 	local function showFarm()
@@ -1015,28 +1035,28 @@ local function rebuildGUI()
 
 		local title = Instance.new("TextLabel")
 		title.Text = T("farm") .. ":"
-		title.Size = UDim2.new(1, 0, 0, 37.5)
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
 		title.BackgroundTransparency = 1
 		title.TextColor3 = Color3.fromRGB(200, 200, 255)
 		title.Font = Enum.Font.GothamBold
-		title.TextSize = 21
+		title.TextSize = 14 * 1.5
 		title.Parent = contentContainer
-		yOffset += 45
+		yOffset += 30 * 1.5
 
 		local selectMatBtn = Instance.new("TextButton")
 		selectMatBtn.Text = T("selectMaterialBtn")
-		selectMatBtn.Size = UDim2.new(1, -15, 0, 45)
-		selectMatBtn.Position = UDim2.new(0, 7.5, 0, yOffset)
+		selectMatBtn.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+		selectMatBtn.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
 		selectMatBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 90)
 		selectMatBtn.TextColor3 = Color3.fromRGB(240, 240, 255)
 		selectMatBtn.Font = Enum.Font.GothamSemibold
-		selectMatBtn.TextSize = 21
+		selectMatBtn.TextSize = 14 * 1.5
 		selectMatBtn.Parent = contentContainer
 		local cornerBtn = Instance.new("UICorner")
-		cornerBtn.CornerRadius = UDim.new(0, 9)
+		cornerBtn.CornerRadius = UDim.new(0, 6 * 1.5)
 		cornerBtn.Parent = selectMatBtn
 		selectMatBtn.MouseButton1Click:Connect(createMaterialWindow)
-		yOffset += 52.5
+		yOffset += 35 * 1.5
 
 		local materialToggle, _ = createToggleSwitch(contentContainer, T("materialFarmToggle"), isMaterialFarming, function(enabled)
 			if enabled then
@@ -1049,8 +1069,8 @@ local function rebuildGUI()
 				stopMaterialsFarm()
 			end
 		end)
-		materialToggle.Position = UDim2.new(0, 7.5, 0, yOffset)
-		yOffset += 52.5
+		materialToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+		yOffset += 35 * 1.5
 
 		local questToggle, _ = createToggleSwitch(contentContainer, T("questFarmToggle"), isQuestFarming, function(enabled)
 			if enabled then
@@ -1059,21 +1079,24 @@ local function rebuildGUI()
 				stopQuestFarm()
 			end
 		end)
-		questToggle.Position = UDim2.new(0, 7.5, 0, yOffset)
+		questToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 52.5)
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5)
 	end
 
 	local function showConvenience()
 		clearContent()
 		local title = Instance.new("TextLabel")
 		title.Text = T("tools") .. ":"
-		title.Size = UDim2.new(1, 0, 0, 37.5)
+		title.Size = UDim2.new(1, 0, 0, 25 * 1.5)
 		title.BackgroundTransparency = 1
 		title.TextColor3 = Color3.fromRGB(200, 200, 255)
 		title.Font = Enum.Font.GothamBold
-		title.TextSize = 21
+		title.TextSize = 14 * 1.5
 		title.Parent = contentContainer
+        
+        local yOffset = 30 * 1.5
 
 		local freezeSwitch, _ = createToggleSwitch(contentContainer, T("freezeToggle"), isFrozen, function(enabled)
 			isFrozen = enabled
@@ -1083,12 +1106,14 @@ local function rebuildGUI()
 				unfreezePlayer()
 			end
 		end)
-		freezeSwitch.Position = UDim2.new(0, 7.5, 0, 45)
+		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
 		local pAtkSwitch, _ = createToggleSwitch(contentContainer, T("pAtkToggle"), playerAttackEnabled, function(enabled)
 			playerAttackEnabled = enabled
 		end)
-		pAtkSwitch.Position = UDim2.new(0, 7.5, 0, 45 + 52.5)
+		pAtkSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
 		local mode1Switch, _ = createToggleSwitch(contentContainer, T("mode1Toggle"), flyingMode1Active, function(enabled)
 			if enabled then
@@ -1097,7 +1122,8 @@ local function rebuildGUI()
 				stopFlyingMode1()
 			end
 		end)
-		mode1Switch.Position = UDim2.new(0, 7.5, 0, 45 + 52.5 * 2)
+		mode1Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
 		local mode2Switch, _ = createToggleSwitch(contentContainer, T("mode2Toggle"), flyingMode2Active, function(enabled)
 			if enabled then
@@ -1106,7 +1132,8 @@ local function rebuildGUI()
 				stopFlyingMode2()
 			end
 		end)
-		mode2Switch.Position = UDim2.new(0, 7.5, 0, 45 + 52.5 * 3)
+		mode2Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
 		local aimSwitch, _ = createToggleSwitch(contentContainer, T("aimToggle"), aimbotActive, function(enabled)
 			if enabled then
@@ -1115,7 +1142,8 @@ local function rebuildGUI()
 				stopAimbot()
 			end
 		end)
-		aimSwitch.Position = UDim2.new(0, 7.5, 0, 45 + 52.5 * 4)
+		aimSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
 		local stickSwitch, _ = createToggleSwitch(contentContainer, T("stickToggle"), stickToPlayerActive, function(enabled)
 			if enabled then
@@ -1124,9 +1152,10 @@ local function rebuildGUI()
 				stopStickToPlayer()
 			end
 		end)
-		stickSwitch.Position = UDim2.new(0, 7.5, 0, 45 + 52.5 * 5)
+		stickSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+        yOffset += 35 * 1.5
 
-		contentContainer.CanvasSize = UDim2.new(0, 0, 0, 45 + 52.5 * 6)
+		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5)
 	end
 
 	-- МЕНЮ КНОПКИ
@@ -1157,7 +1186,6 @@ local function rebuildGUI()
 	selectButton(floorBtn)
 	showFloors()
 
-	-- ✅ ИСПРАВЛЕННЫЙ ОБРАБОТЧИК G
 	if guiToggleConnection then
 		guiToggleConnection:Disconnect()
 	end
