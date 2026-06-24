@@ -5,57 +5,15 @@ local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
-
--- === МОБИЛЬНЫЕ ФИКСЫ (МАСШТАБ И ПЕРЕТАСКИВАНИЕ) ===
-local function ApplyMobileScale(guiObject, baseWidth)
-    local uiScale = Instance.new("UIScale")
-    uiScale.Parent = guiObject
-    
-    local function updateScale()
-        local vpSize = workspace.CurrentCamera.ViewportSize
-        if vpSize.X < baseWidth then
-            uiScale.Scale = vpSize.X / (baseWidth + 50) -- Уменьшаем под экран телефона
-        else
-            uiScale.Scale = 1 -- Оставляем как есть на ПК/Планшетах
-        end
-    end
-    updateScale()
-    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
-end
-
-local function MakeDraggableTouch(topbar, mainUI)
-    local dragging, dragInput, dragStart, startPos
-    topbar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = mainUI.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then dragging = false end
-            end)
-        end
-    end)
-    topbar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            mainUI.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
--- ===================================================
 
 -- === ЛОКАЛИЗАЦИЯ ===
 local currentLang = "ru"
 local translations = {
 	ru = {
 		hubTitle = "Pidromania Hub: Blox Fruits",
-        minimizedTitle = "Pidromania Hub",
+		minimizedTitle = "Pidromania Hub",
 		byAuthor = "by @Pidromania",
 		floor = "Море",
 		farm = "Фарм",
@@ -64,6 +22,7 @@ local translations = {
 		freezeToggle = "Фриз игрока на месте",
 		questFarmToggle = "Фарм квестов",
 		materialFarmToggle = "Фарм предметов",
+		autoRaidToggle = "Авто Рейды",
 		selectMaterialBtn = "Выбрать материал...",
 		noMaterialSelected = "Сначала выберите материал!",
 		materialWindowTitle = "Выберите материал для фарма",
@@ -71,13 +30,107 @@ local translations = {
 		mode1Toggle = "Mode1 (+15Y)",
 		mode2Toggle = "Mode2 (-10Y)",
 		aimToggle = "Aim",
-		stickToggle = "Stick"
+		stickToggle = "Stick",
+		raidFinishedTitle = "Система",
+		raidFinishedMsg = "Фарм закончен",
+		playerJoinedTitle = "Игрок зашёл",
+		friendJoinedTitle = "🌸 Твой друг зашёл! 🌸"
 	}
 }
 
 local function T(key)
 	return translations[currentLang][key] or ("???" .. key .. "???")
 end
+
+-- === УВЕДОМЛЕНИЯ (СИНЕ-ФИОЛЕТОВЫЕ, УМЕНЬШЕННЫЕ В 2 РАЗА) ===
+local activeNotifications = {}
+
+local function showNotification(titleText, msgText)
+	if activeNotifications[msgText] then return end
+	activeNotifications[msgText] = true
+
+	local notificationGui = Instance.new("ScreenGui")
+	notificationGui.Name = "Notify_" .. msgText
+	notificationGui.ResetOnSpawn = false
+	notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	notificationGui.Parent = game:GetService("CoreGui")
+
+	local frame = Instance.new("Frame")
+	-- Размеры уменьшены ровно в 2 раза (было 480x110)
+	frame.Size = UDim2.new(0, 240, 0, 55)
+	frame.Position = UDim2.new(1, 10, 1, -70) 
+	frame.BorderSizePixel = 0
+	frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	frame.Parent = notificationGui
+	
+	-- Сине-фиолетовый градиент
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 100, 255)),  -- Синий
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 40, 255))   -- Фиолетовый
+	})
+	gradient.Rotation = 30
+	gradient.Parent = frame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 7) -- Уменьшено в 2 раза
+	corner.Parent = frame
+
+	local topLabel = Instance.new("TextLabel")
+	topLabel.Size = UDim2.new(1, -8, 0, 20)
+	topLabel.Position = UDim2.new(0, 4, 0, 4)
+	topLabel.BackgroundTransparency = 1
+	topLabel.Font = Enum.Font.GothamBold
+	topLabel.TextSize = 11 -- Уменьшено в 2 раза
+	topLabel.TextXAlignment = Enum.TextXAlignment.Center
+	topLabel.Text = titleText
+	topLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	topLabel.Parent = frame
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, -8, 0, 24)
+	nameLabel.Position = UDim2.new(0, 4, 0, 27)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = msgText
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 15 -- Уменьшено в 2 раза
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.Parent = frame
+	
+	-- Анимация появления
+	local tweenIn = TweenService:Create(
+		frame,
+		TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(1, -250, 1, -70) }
+	)
+	tweenIn:Play()
+
+	-- Удаление через 5 секунд
+	task.spawn(function()
+		task.wait(5)
+		local tweenOut = TweenService:Create(
+			frame,
+			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = UDim2.new(1, 10, 1, -70) }
+		)
+		tweenOut:Play()
+		tweenOut.Completed:Wait()
+		notificationGui:Destroy()
+		activeNotifications[msgText] = nil
+	end)
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	if plr == Players.LocalPlayer then return end
+	task.wait(0.5)
+	local isFriend = false
+	pcall(function() isFriend = Players.LocalPlayer:IsFriendsWith(plr.UserId) end)
+	
+	local titleText = isFriend and T("friendJoinedTitle") or T("playerJoinedTitle")
+	showNotification(titleText, plr.Name)
+end)
 
 -- === ДАННЫЕ ИГРЫ ===
 local FLOORS = {
@@ -252,6 +305,7 @@ local isFrozen = false
 local freezeConnection = nil
 local isQuestFarming = false
 local isMaterialFarming = false
+local isAutoRaiding = false
 local selectedMaterialType = nil
 local materialWindow = nil
 
@@ -274,12 +328,7 @@ local MAX_FLIGHT_SPEED = 150
 -- GUI
 local guiToggleConnection = nil
 
--- === ФУНКЦИИ (С ЗАЩИТОЙ ОТ СМЕРТИ) ===
-local function isPlayerAlive()
-    local char = player.Character
-    return char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
-end
-
+-- === ФУНКЦИИ ===
 local function stopFlight()
 	if flightConnection then
 		flightConnection:Disconnect()
@@ -299,7 +348,7 @@ local function flyTo(targetPos, onComplete)
 	local goalPos = Vector3.new(targetPos.X, targetPos.Y + 20, targetPos.Z)
 
 	flightConnection = RunService.Heartbeat:Connect(function(dt)
-		if not isPlayerAlive() then
+		if not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) then
 			stopFlight()
 			return
 		end
@@ -473,7 +522,6 @@ local function getNearestTarget()
 	return nearest
 end
 
--- ТЕЛЕПОРТ И УДЕРЖАНИЕ ВОЗЛЕ ВРАГА
 local function flyToTarget(target, yOffset)
 	local character = player.Character
 	if not character then return end
@@ -495,12 +543,6 @@ local function startQuestFarm()
 	isQuestFarming = true
 	spawn(function()
 		while isQuestFarming do
-            -- Проверка на смерть
-            if not isPlayerAlive() then
-                task.wait(2)
-                continue
-            end
-
 			local lvl = getLevelFromGUI()
 			if not lvl then break end
 			local q = findQuestByLevel(lvl)
@@ -510,20 +552,7 @@ local function startQuestFarm()
 
 			local arrived = false
 			flyTo(q.SpawnLocation, function() arrived = true end)
-            
-            -- Безопасное ожидание полета с защитой от смерти
-            while not arrived and isQuestFarming do
-                if not isPlayerAlive() then
-                    stopFlight()
-                    player.CharacterAdded:Wait() -- Ждем пока игрок не возродится
-                    task.wait(1)
-                    if isQuestFarming then
-                        flyTo(q.SpawnLocation, function() arrived = true end)
-                    end
-                end
-                task.wait(0.1)
-            end
-            
+			repeat task.wait() until arrived or not isQuestFarming
 			if not isQuestFarming then break end
 
 			local targets = {[q.Target] = true}
@@ -548,12 +577,6 @@ local function startQuestFarm()
 			end
 
 			while count < maxCount and isQuestFarming do
-                -- Если умер в процессе фарма
-                if not isPlayerAlive() then
-                    task.wait(1)
-                    continue
-                end
-
 				if Workspace:FindFirstChild("Enemies") then
 					for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
 						if targets[enemy.Name] and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and not trackedMobs[enemy] then
@@ -584,35 +607,12 @@ local function startMaterialsFarm(materialType)
 	isMaterialFarming = true
 	spawn(function()
 		while isMaterialFarming do
-            if not isPlayerAlive() then
-                task.wait(2)
-                continue
-            end
-
 			local arrived = false
 			flyTo(matData.spawnLocation, function() arrived = true end)
-            
-            -- Безопасное ожидание
-            while not arrived and isMaterialFarming do
-                if not isPlayerAlive() then
-                    stopFlight()
-                    player.CharacterAdded:Wait()
-                    task.wait(1)
-                    if isMaterialFarming then
-                        flyTo(matData.spawnLocation, function() arrived = true end)
-                    end
-                end
-                task.wait(0.1)
-            end
-
+			repeat task.wait() until arrived or not isMaterialFarming
 			if not isMaterialFarming then break end
 
 			while isMaterialFarming do
-                if not isPlayerAlive() then
-                    task.wait(1)
-                    break -- Выходим из внутреннего цикла, чтобы снова полететь на спавн
-                end
-
 				local mob = findNearestMobByTable(matData.mobs)
 				if mob then
 					flyToTarget(mob, 15)
@@ -636,9 +636,9 @@ local function startFlyingMode1()
 	if flyingMode1Active then return end
 	flyingMode1Active = true
 	flyConnection1 = RunService.Heartbeat:Connect(function()
-        if not isPlayerAlive() then return end
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
+		
 		flyToTarget(target, 15)
 	end)
 end
@@ -653,9 +653,9 @@ local function startFlyingMode2()
 	if flyingMode2Active then return end
 	flyingMode2Active = true
 	flyConnection2 = RunService.Heartbeat:Connect(function()
-        if not isPlayerAlive() then return end
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
+		
 		flyToTarget(target, -10)
 	end)
 end
@@ -663,6 +663,104 @@ end
 local function stopFlyingMode2()
 	if flyConnection2 then flyConnection2:Disconnect() flyConnection2 = nil end
 	flyingMode2Active = false
+end
+
+-- === АВТО РЕЙДЫ ===
+local function getRaidIslandCenter(n)
+	local raidMap = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("RaidMap")
+	if not raidMap then return nil end
+	
+	local island = raidMap:FindFirstChild("RaidIsland" .. tostring(n))
+	if not island then return nil end
+	
+	for _, obj in ipairs(island:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			return obj.Position
+		end
+	end
+	return nil
+end
+
+local function startAutoRaid()
+	isAutoRaiding = true
+	task.spawn(function()
+		local n = 1
+		while isAutoRaiding do
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if not hrp then task.wait(1) continue end
+
+			local island1Pos = getRaidIslandCenter(1)
+			
+			if not island1Pos or (hrp.Position - island1Pos).Magnitude > 3000 then
+				local startPos = Vector3.new(-5005.37, 315.21, -2820.61)
+				local arrived = false
+				flyTo(startPos, function() arrived = true end)
+				repeat task.wait() until arrived or not isAutoRaiding
+				
+				if not isAutoRaiding then break end
+				task.wait(2)
+				continue
+			else
+				if n == 1 and (hrp.Position - island1Pos).Magnitude < 3000 then
+					n = 1 
+				end
+			end
+
+			local currentIslandPos = getRaidIslandCenter(n)
+			if not currentIslandPos then task.wait(1) continue end
+
+			local hasMobs = false
+			if Workspace:FindFirstChild("Enemies") then
+				for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
+					if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+						local eRoot = enemy:FindFirstChild("HumanoidRootPart")
+						if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 1000 then
+							hasMobs = true
+							break
+						end
+					end
+				end
+			end
+
+			if not hasMobs then
+				if n >= 5 then
+					showNotification(T("raidFinishedTitle"), T("raidFinishedMsg"))
+					isAutoRaiding = false
+					break
+				else
+					local mode1WasActive = flyingMode1Active
+					stopFlyingMode1()
+					
+					hrp.CFrame = CFrame.new(currentIslandPos.X, currentIslandPos.Y + 25, currentIslandPos.Z)
+					task.wait(0.5)
+
+					n = n + 1
+					local nextIslandPos = getRaidIslandCenter(n)
+					if nextIslandPos then
+						local arrived = false
+						flyTo(Vector3.new(nextIslandPos.X, nextIslandPos.Y + 25, nextIslandPos.Z), function()
+							arrived = true
+						end)
+						repeat task.wait() until arrived or not isAutoRaiding
+						
+						task.wait(1.5)
+						startFlyingMode1()
+					end
+				end
+			else
+				if not flyingMode1Active and isAutoRaiding then
+					startFlyingMode1()
+				end
+				task.wait(1)
+			end
+		end
+	end)
+end
+
+local function stopAutoRaid()
+	isAutoRaiding = false
+	stopFlight()
 end
 
 -- === AIMBOT ===
@@ -701,7 +799,6 @@ local function startAimbot()
 	if aimbotActive then return end
 	aimbotActive = true
 	aimbotConnection = RunService.Heartbeat:Connect(function()
-        if not isPlayerAlive() then return end
 		local p = getNearestPlayer()
 		if p and p:FindFirstChild("HumanoidRootPart") then
 			local cam = Workspace.CurrentCamera
@@ -723,7 +820,6 @@ local function startStickToPlayer()
 	if stickToPlayerActive then return end
 	stickToPlayerActive = true
 	stickConnection = RunService.Heartbeat:Connect(function()
-        if not isPlayerAlive() then return end
 		local p = getNearestPlayer()
 		if p and p:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 			local root = player.Character.HumanoidRootPart
@@ -742,14 +838,11 @@ end
 -- === ГЛОБАЛЬНАЯ НЕЗАВИСИМАЯ АТАКА ===
 task.spawn(function()
 	while true do
-		if isQuestFarming or isMaterialFarming or flyingMode1Active or flyingMode2Active or playerAttackEnabled then
-            -- Проверка: бьем только если сами живы
-            if isPlayerAlive() then
-                local target = getNearestTarget()
-                if target then
-                    attackTarget(target)
-                end
-            end
+		if isQuestFarming or isMaterialFarming or isAutoRaiding or flyingMode1Active or flyingMode2Active or playerAttackEnabled then
+			local target = getNearestTarget()
+			if target then
+				attackTarget(target)
+			end
 		end
 		task.wait(0.1)
 	end
@@ -757,76 +850,76 @@ end)
 
 -- === ОБЩИЙ ЭЛЕМЕНТ - ПЕРЕКЛЮЧАТЕЛЬ ===
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
-    local switchFrame = Instance.new("Frame")
-    switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
-    switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-    switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    switchFrame.BorderSizePixel = 0
-    switchFrame.Parent = parent
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6 * 1.5)
-    corner.Parent = switchFrame
-    
-    local labelText = Instance.new("TextLabel")
-    labelText.Text = label
-    labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
-    labelText.BackgroundTransparency = 1
-    labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
-    labelText.Font = Enum.Font.GothamSemibold
-    labelText.TextSize = 14 * 1.5
-    labelText.TextXAlignment = Enum.TextXAlignment.Left
-    labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
-    labelText.Parent = switchFrame
-    
-    local toggleBg = Instance.new("Frame")
-    toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
-    toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
-    toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-    toggleBg.BorderSizePixel = 0
-    toggleBg.Parent = switchFrame
-    
-    local cornerBg = Instance.new("UICorner")
-    cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
-    cornerBg.Parent = toggleBg
-    
-    local toggleKnob = Instance.new("Frame")
-    toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
-    toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    toggleKnob.BorderSizePixel = 0
-    toggleKnob.Parent = toggleBg
-    
-    local cornerKnob = Instance.new("UICorner")
-    cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
-    cornerKnob.Parent = toggleKnob
-    
-    local isEnabled = initialEnabled
-    
-    local function updateToggle()
-        if isEnabled then
-            toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
-            toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
-        else
-            toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
-            toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-            toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
-        end
-    end
-    updateToggle()
-    
-    switchFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            isEnabled = not isEnabled
-            onToggle(isEnabled)
-            updateToggle()
-        end
-    end)
-    
-    return switchFrame, function(state)
-        isEnabled = state
-        updateToggle()
-    end
+	local switchFrame = Instance.new("Frame")
+	switchFrame.Size = UDim2.new(1, -10 * 1.5, 0, 30 * 1.5)
+	switchFrame.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	switchFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	switchFrame.BorderSizePixel = 0
+	switchFrame.Parent = parent
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6 * 1.5)
+	corner.Parent = switchFrame
+	
+	local labelText = Instance.new("TextLabel")
+	labelText.Text = label
+	labelText.Size = UDim2.new(0, 180 * 1.5, 1, 0)
+	labelText.BackgroundTransparency = 1
+	labelText.TextColor3 = Color3.fromRGB(240, 240, 255)
+	labelText.Font = Enum.Font.GothamSemibold
+	labelText.TextSize = 14 * 1.5
+	labelText.TextXAlignment = Enum.TextXAlignment.Left
+	labelText.Position = UDim2.new(0, 5 * 1.5, 0, 0)
+	labelText.Parent = switchFrame
+	
+	local toggleBg = Instance.new("Frame")
+	toggleBg.Size = UDim2.new(0, 40 * 1.5, 0, 20 * 1.5)
+	toggleBg.Position = UDim2.new(1, -45 * 1.5, 0.5, -10 * 1.5)
+	toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	toggleBg.BorderSizePixel = 0
+	toggleBg.Parent = switchFrame
+	
+	local cornerBg = Instance.new("UICorner")
+	cornerBg.CornerRadius = UDim.new(0, 10 * 1.5)
+	cornerBg.Parent = toggleBg
+	
+	local toggleKnob = Instance.new("Frame")
+	toggleKnob.Size = UDim2.new(0, 16 * 1.5, 0, 16 * 1.5)
+	toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	toggleKnob.BorderSizePixel = 0
+	toggleKnob.Parent = toggleBg
+	
+	local cornerKnob = Instance.new("UICorner")
+	cornerKnob.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerKnob.Parent = toggleKnob
+	
+	local isEnabled = initialEnabled
+	
+	local function updateToggle()
+		if isEnabled then
+			toggleBg.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			toggleKnob.Position = UDim2.new(1, -18 * 1.5, 0.5, -8 * 1.5)
+		else
+			toggleBg.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+			toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+			toggleKnob.Position = UDim2.new(0, 2 * 1.5, 0.5, -8 * 1.5)
+		end
+	end
+	updateToggle()
+	
+	switchFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isEnabled = not isEnabled
+			onToggle(isEnabled)
+			updateToggle()
+		end
+	end)
+	
+	return switchFrame, function(state)
+		isEnabled = state
+		updateToggle()
+	end
 end
 
 -- === ОКНО ВЫБОРА МАТЕРИАЛА ===
@@ -844,7 +937,7 @@ local function createMaterialWindow()
 	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	frame.BorderSizePixel = 0
 	frame.Active = true
-	-- frame.Draggable = true (УДАЛЕНО ДЛЯ МОБИЛОК)
+	frame.Draggable = true
 	frame.Parent = materialWindow
 
 	local corner = Instance.new("UICorner")
@@ -858,11 +951,7 @@ local function createMaterialWindow()
 	title.TextColor3 = Color3.fromRGB(220, 220, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 13 * 1.5
-    title.Active = true
 	title.Parent = frame
-    
-    MakeDraggableTouch(title, frame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ
-    ApplyMobileScale(frame, 500) -- ПРИМЕНЯЕМ МАСШТАБ К ОКНУ МАТЕРИАЛОВ
 
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Size = UDim2.new(1, -10 * 1.5, 1, -35 * 1.5)
@@ -903,177 +992,175 @@ end
 local screenGuiMain = nil
 
 local function rebuildGUI()
-    if screenGuiMain then screenGuiMain:Destroy() end
-    
-    local pGui = player:FindFirstChild("PlayerGui")
-    if pGui then
-        for _, v in ipairs(pGui:GetChildren()) do
-            if v.Name == "PidromaniaHub" then v:Destroy() end
-        end
-    end
-    
-    screenGuiMain = Instance.new("ScreenGui")
-    screenGuiMain.Name = "PidromaniaHub"
-    screenGuiMain.ResetOnSpawn = false
-    screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGuiMain.Parent = player:WaitForChild("PlayerGui")
-    
-    -- ПРИМЕНЯЕМ АДАПТИВНЫЙ МАСШТАБ
-    ApplyMobileScale(screenGuiMain, 1200)
-    
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
-    mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Active = true
-    -- mainFrame.Draggable = true (УДАЛЕНО)
-    mainFrame.Parent = screenGuiMain
-    
-    local mainFrameCorner = Instance.new("UICorner")
-    mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
-    mainFrameCorner.Parent = mainFrame
-    
-    local minimizedFrame = Instance.new("Frame")
-    minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
-    minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
-    minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    minimizedFrame.BorderSizePixel = 0
-    minimizedFrame.Visible = false
-    minimizedFrame.Active = true
-    -- minimizedFrame.Draggable = true (УДАЛЕНО)
-    minimizedFrame.Parent = screenGuiMain
-    
-    MakeDraggableTouch(minimizedFrame, minimizedFrame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ СВЕРНУТОГО
-    
-    local cornerMinimized = Instance.new("UICorner")
-    cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
-    cornerMinimized.Parent = minimizedFrame
-    
-    local minimizedLabel = Instance.new("TextLabel")
-    minimizedLabel.Text = T("minimizedTitle")
-    minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
-    minimizedLabel.BackgroundTransparency = 1
-    minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-    minimizedLabel.Font = Enum.Font.GothamBold
-    minimizedLabel.TextSize = 12 * 1.5
-    minimizedLabel.Parent = minimizedFrame
-    
-    minimizedFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            mainFrame.Visible = true
-            minimizedFrame.Visible = false
-        end
-    end)
-    
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
-    header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    header.BorderSizePixel = 0
-    header.Active = true
-    header.Parent = mainFrame
-    
-    MakeDraggableTouch(header, mainFrame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ ОКНА
-    
-    local cornerHeader = Instance.new("UICorner")
-    cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
-    cornerHeader.Parent = header
-    
-    local title = Instance.new("TextLabel")
-    title.Text = T("hubTitle")
-    title.TextScaled = false
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14 * 1.5
-    title.BackgroundTransparency = 1
-    title.TextColor3 = Color3.fromRGB(220, 220, 255)
-    local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
-    title.Size = UDim2.new(0, textSize.X * 1.1, 0, 20 * 1.5)
-    title.Position = UDim2.new(0, 5, 0, 7 * 1.5)
-    title.Parent = header
-    
-    local author = Instance.new("TextLabel")
-    author.Text = T("byAuthor")
-    author.TextScaled = false
-    author.Font = Enum.Font.GothamSemibold
-    author.TextSize = 12 * 1.5
-    author.BackgroundTransparency = 1
-    author.TextColor3 = Color3.fromRGB(150, 150, 180)
-    local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
-    author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 20 * 1.5)
-    local offset = -15
-    author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
-    author.Parent = header
-    
-    local minimizeBtn = Instance.new("TextButton")
-    minimizeBtn.Text = "--"
-    minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
-    minimizeBtn.Position = UDim2.new(1, -30 * 1.5, 0, 5 * 1.5)
-    minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minimizeBtn.Font = Enum.Font.GothamBold
-    minimizeBtn.TextSize = 14 * 1.5
-    minimizeBtn.Parent = header
-    
-    minimizeBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        minimizedFrame.Visible = true
-    end)
-    
-    local leftPanel = Instance.new("Frame")
-    leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
-    leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
-    leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    leftPanel.BorderSizePixel = 0
-    leftPanel.Parent = mainFrame
-    
-    local cornerLeft = Instance.new("UICorner")
-    cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
-    cornerLeft.Parent = leftPanel
-    
-    local rightPanel = Instance.new("Frame")
-    rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
-    rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
-    rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    rightPanel.BorderSizePixel = 0
-    rightPanel.Parent = mainFrame
-    
-    local cornerRight = Instance.new("UICorner")
-    cornerRight.CornerRadius = UDim.new(0, 8 * 1.5)
-    cornerRight.Parent = rightPanel
-    
-    local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Size = UDim2.new(1, -10 * 1.5, 1, -10 * 1.5)
-    contentContainer.Position = UDim2.new(0, 5 * 1.5, 0, 5 * 1.5)
-    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    contentContainer.ScrollBarThickness = 4 * 1.5
-    contentContainer.BackgroundTransparency = 1
-    contentContainer.Parent = rightPanel
-    
-    local cornerContent = Instance.new("UICorner")
-    cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
-    cornerContent.Parent = contentContainer
-    
-    local menuItems = {}
-    local function createMenuItem(name, icon)
-        local btn = Instance.new("TextButton")
-        btn.Name = name
-        btn.Text = "  " .. (icon or "") .. "  " .. name
-        btn.Size = UDim2.new(1, -10 * 1.5, 0, 35 * 1.5)
-        btn.Position = UDim2.new(0, 5 * 1.5, 0, (#menuItems * (38 * 1.5)) + (5 * 1.5))
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-        btn.TextColor3 = Color3.fromRGB(220, 220, 255)
-        btn.Font = Enum.Font.GothamSemibold
-        btn.TextSize = 14 * 1.5
-        btn.AutoButtonColor = true
-        btn.Parent = leftPanel
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6 * 1.5)
-        corner.Parent = btn
-        
-        table.insert(menuItems, btn)
-        return btn
-    end
+	if screenGuiMain then screenGuiMain:Destroy() end
+	
+	local pGui = player:FindFirstChild("PlayerGui")
+	if pGui then
+		for _, v in ipairs(pGui:GetChildren()) do
+			if v.Name == "PidromaniaHub" then v:Destroy() end
+		end
+	end
+	
+	screenGuiMain = Instance.new("ScreenGui")
+	screenGuiMain.Name = "PidromaniaHub"
+	screenGuiMain.ResetOnSpawn = false
+	screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGuiMain.Parent = player:WaitForChild("PlayerGui")
+	
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
+	mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = screenGuiMain
+	
+	local mainFrameCorner = Instance.new("UICorner")
+	mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
+	mainFrameCorner.Parent = mainFrame
+	
+	local dragDetector = Instance.new("Frame")
+	dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
+	dragDetector.Position = UDim2.new(0, 0, 0, 0)
+	dragDetector.BackgroundTransparency = 1
+	dragDetector.Parent = mainFrame
+	
+	local minimizedFrame = Instance.new("Frame")
+	minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
+	minimizedFrame.Position = UDim2.new(0, 10, 0, 10)
+	minimizedFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	minimizedFrame.BorderSizePixel = 0
+	minimizedFrame.Visible = false
+	minimizedFrame.Active = true
+	minimizedFrame.Draggable = true
+	minimizedFrame.Parent = screenGuiMain
+	
+	local cornerMinimized = Instance.new("UICorner")
+	cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerMinimized.Parent = minimizedFrame
+	
+	local minimizedLabel = Instance.new("TextLabel")
+	minimizedLabel.Text = T("minimizedTitle")
+	minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
+	minimizedLabel.BackgroundTransparency = 1
+	minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+	minimizedLabel.Font = Enum.Font.GothamBold
+	minimizedLabel.TextSize = 12 * 1.5
+	minimizedLabel.Parent = minimizedFrame
+	
+	minimizedFrame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			mainFrame.Visible = true
+			minimizedFrame.Visible = false
+		end
+	end)
+	
+	local header = Instance.new("Frame")
+	header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
+	header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	header.BorderSizePixel = 0
+	header.Parent = mainFrame
+	
+	local cornerHeader = Instance.new("UICorner")
+	cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerHeader.Parent = header
+	
+	local title = Instance.new("TextLabel")
+	title.Text = T("hubTitle")
+	title.TextScaled = false
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 14 * 1.5
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(220, 220, 255)
+	local textSize = TextService:GetTextSize(title.Text, title.TextSize, title.Font, Vector2.new(math.huge, math.huge))
+	title.Size = UDim2.new(0, textSize.X * 1.1, 0, 20 * 1.5)
+	title.Position = UDim2.new(0, 5, 0, 7 * 1.5)
+	title.Parent = header
+	
+	local author = Instance.new("TextLabel")
+	author.Text = T("byAuthor")
+	author.TextScaled = false
+	author.Font = Enum.Font.GothamSemibold
+	author.TextSize = 12 * 1.5
+	author.BackgroundTransparency = 1
+	author.TextColor3 = Color3.fromRGB(150, 150, 180)
+	local authorTextSize = TextService:GetTextSize(author.Text, author.TextSize, author.Font, Vector2.new(math.huge, math.huge))
+	author.Size = UDim2.new(0, authorTextSize.X * 1.1, 0, 20 * 1.5)
+	local offset = -15
+	author.Position = UDim2.new(0, title.Position.X.Offset + title.Size.X.Offset + offset, 0, 7 * 1.5)
+	author.Parent = header
+	
+	local minimizeBtn = Instance.new("TextButton")
+	minimizeBtn.Text = "--"
+	minimizeBtn.Size = UDim2.new(0, 25 * 1.5, 0, 25 * 1.5)
+	minimizeBtn.Position = UDim2.new(1, -30 * 1.5, 0, 5 * 1.5)
+	minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+	minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	minimizeBtn.Font = Enum.Font.GothamBold
+	minimizeBtn.TextSize = 14 * 1.5
+	minimizeBtn.Parent = header
+	
+	minimizeBtn.MouseButton1Click:Connect(function()
+		mainFrame.Visible = false
+		minimizedFrame.Visible = true
+	end)
+	
+	local leftPanel = Instance.new("Frame")
+	leftPanel.Size = UDim2.new(0, 200 * 1.5, 1, -35 * 1.5)
+	leftPanel.Position = UDim2.new(0, 0, 0, 35 * 1.5)
+	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	leftPanel.BorderSizePixel = 0
+	leftPanel.Parent = mainFrame
+	
+	local cornerLeft = Instance.new("UICorner")
+	cornerLeft.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerLeft.Parent = leftPanel
+	
+	local rightPanel = Instance.new("Frame")
+	rightPanel.Size = UDim2.new(1, -210 * 1.5, 1, -35 * 1.5)
+	rightPanel.Position = UDim2.new(0, 210 * 1.5, 0, 35 * 1.5)
+	rightPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	rightPanel.BorderSizePixel = 0
+	rightPanel.Parent = mainFrame
+	
+	local cornerRight = Instance.new("UICorner")
+	cornerRight.CornerRadius = UDim.new(0, 8 * 1.5)
+	cornerRight.Parent = rightPanel
+	
+	local contentContainer = Instance.new("ScrollingFrame")
+	contentContainer.Size = UDim2.new(1, -10 * 1.5, 1, -10 * 1.5)
+	contentContainer.Position = UDim2.new(0, 5 * 1.5, 0, 5 * 1.5)
+	contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	contentContainer.ScrollBarThickness = 4 * 1.5
+	contentContainer.BackgroundTransparency = 1
+	contentContainer.Parent = rightPanel
+	
+	local cornerContent = Instance.new("UICorner")
+	cornerContent.CornerRadius = UDim.new(0, 6 * 1.5)
+	cornerContent.Parent = contentContainer
+	
+	local menuItems = {}
+	local function createMenuItem(name, icon)
+		local btn = Instance.new("TextButton")
+		btn.Name = name
+		btn.Text = "  " .. (icon or "") .. "  " .. name
+		btn.Size = UDim2.new(1, -10 * 1.5, 0, 35 * 1.5)
+		btn.Position = UDim2.new(0, 5 * 1.5, 0, (#menuItems * (38 * 1.5)) + (5 * 1.5))
+		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+		btn.TextColor3 = Color3.fromRGB(220, 220, 255)
+		btn.Font = Enum.Font.GothamSemibold
+		btn.TextSize = 14 * 1.5
+		btn.AutoButtonColor = true
+		btn.Parent = leftPanel
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6 * 1.5)
+		corner.Parent = btn
+		
+		table.insert(menuItems, btn)
+		return btn
+	end
 
 	local function clearContent()
 		for _, child in ipairs(contentContainer:GetChildren()) do
@@ -1175,7 +1262,18 @@ local function rebuildGUI()
 			end
 		end)
 		questToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
+
+		-- НОВЫЙ ТУМБЛЕР АВТО РЕЙДОВ
+		local autoRaidToggleSwitch, _ = createToggleSwitch(contentContainer, T("autoRaidToggle"), isAutoRaiding, function(enabled)
+			if enabled then
+				startAutoRaid()
+			else
+				stopAutoRaid()
+			end
+		end)
+		autoRaidToggleSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
+		yOffset += 35 * 1.5
 
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5)
 	end
@@ -1190,8 +1288,8 @@ local function rebuildGUI()
 		title.Font = Enum.Font.GothamBold
 		title.TextSize = 14 * 1.5
 		title.Parent = contentContainer
-        
-        local yOffset = 30 * 1.5
+		
+		local yOffset = 30 * 1.5
 
 		local freezeSwitch, _ = createToggleSwitch(contentContainer, T("freezeToggle"), isFrozen, function(enabled)
 			isFrozen = enabled
@@ -1202,13 +1300,13 @@ local function rebuildGUI()
 			end
 		end)
 		freezeSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		local pAtkSwitch, _ = createToggleSwitch(contentContainer, T("pAtkToggle"), playerAttackEnabled, function(enabled)
 			playerAttackEnabled = enabled
 		end)
 		pAtkSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		local mode1Switch, _ = createToggleSwitch(contentContainer, T("mode1Toggle"), flyingMode1Active, function(enabled)
 			if enabled then
@@ -1218,7 +1316,7 @@ local function rebuildGUI()
 			end
 		end)
 		mode1Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		local mode2Switch, _ = createToggleSwitch(contentContainer, T("mode2Toggle"), flyingMode2Active, function(enabled)
 			if enabled then
@@ -1228,7 +1326,7 @@ local function rebuildGUI()
 			end
 		end)
 		mode2Switch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		local aimSwitch, _ = createToggleSwitch(contentContainer, T("aimToggle"), aimbotActive, function(enabled)
 			if enabled then
@@ -1238,7 +1336,7 @@ local function rebuildGUI()
 			end
 		end)
 		aimSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		local stickSwitch, _ = createToggleSwitch(contentContainer, T("stickToggle"), stickToPlayerActive, function(enabled)
 			if enabled then
@@ -1248,7 +1346,7 @@ local function rebuildGUI()
 			end
 		end)
 		stickSwitch.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
-        yOffset += 35 * 1.5
+		yOffset += 35 * 1.5
 
 		contentContainer.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10 * 1.5)
 	end
