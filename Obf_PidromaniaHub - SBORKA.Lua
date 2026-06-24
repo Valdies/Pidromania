@@ -10,6 +10,7 @@ local GAME_REGISTRY = {
     [100117331123089] = "Games/Blox%20Fruits/BloxFruits.lua",
     [79091703265657] = "Games/Blox%20Fruits/BloxFruits.lua",
     [85211729168715] = "Games/Blox%20Fruits/BloxFruits.lua",
+    [73902483975735] = "Games/Blox%20Fruits/BloxFruits.lua",
     
     -- The Apocalypse
     [75519253084635] = "Games/The%20Apocalypse/The%20Apocalypse.lua",
