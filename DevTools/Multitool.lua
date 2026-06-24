@@ -45,7 +45,6 @@ local STYLE = {
     FontBold = Enum.Font.GothamBold
 }
 
--- Добавлен флаг AnalyzeGui
 local Settings = { RouteLog = false, Teleport = false, DeleteEnabled = false, InspectEnabled = false, PilotAllowed = false, AnalyzeGui = false }
 local ActiveModes = { Deleting = false, Inspecting = false, Piloting = false }
 
@@ -622,24 +621,90 @@ end
 
 local function createSettingsUI()
     if CoreGui:FindFirstChild(settingsUiName) then CoreGui[settingsUiName]:Destroy() end
-    local screenGui = Instance.new("ScreenGui"); screenGui.Name = settingsUiName; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.Parent = CoreGui
-    local frame = Instance.new("Frame"); frame.Name = "SettingsFrame"; frame.Size = UDim2.new(0, 280, 0, 230); frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY); frame.BackgroundColor3 = STYLE.Background; frame.Parent = screenGui; Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
-    local header = Instance.new("Frame"); header.Size = UDim2.new(1, 0, 0, 30); header.BackgroundColor3 = STYLE.Panel; header.Parent = frame; Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
-    local title = Instance.new("TextLabel"); title.Text = "System Controls"; title.Size = UDim2.new(1, -15, 1, 0); title.Position = UDim2.new(0, 15, 0, 0); title.BackgroundTransparency = 1; title.TextColor3 = STYLE.TextMain; title.Font = STYLE.FontBold; title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left; title.Parent = header
-    local listContainer = Instance.new("Frame"); listContainer.Size = UDim2.new(1, -10, 1, -35); listContainer.Position = UDim2.new(0, 5, 0, 32); listContainer.BackgroundTransparency = 1; listContainer.Parent = frame; Instance.new("UIListLayout", listContainer).Padding = UDim.new(0, 5)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = settingsUiName
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.Parent = CoreGui
+    
+    local frame = Instance.new("Frame")
+    frame.Name = "SettingsFrame"
+    -- Высота уменьшена до 200, чтобы влезало ровно 5 элементов, а 6-й скрывался скроллом
+    frame.Size = UDim2.new(0, 280, 0, 200) 
+    frame.Position = UDim2.new(1, CONFIG.UiOffsetX, 0, CONFIG.SettingsOffsetY)
+    frame.BackgroundColor3 = STYLE.Background
+    frame.Parent = screenGui
+    Instance.new("UICorner", frame).CornerRadius = STYLE.Corner
+    
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 30)
+    header.BackgroundColor3 = STYLE.Panel
+    header.Parent = frame
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 8)
+    
+    local title = Instance.new("TextLabel")
+    title.Text = "System Controls"
+    title.Size = UDim2.new(1, -15, 1, 0)
+    title.Position = UDim2.new(0, 15, 0, 0)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = STYLE.TextMain
+    title.Font = STYLE.FontBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+    
+    local listContainer = Instance.new("ScrollingFrame")
+    -- Высота 160 пикселей под 5 кнопок
+    listContainer.Size = UDim2.new(1, -10, 0, 160) 
+    listContainer.Position = UDim2.new(0, 5, 0, 35)
+    listContainer.BackgroundTransparency = 1
+    listContainer.BorderSizePixel = 0
+    listContainer.ScrollBarThickness = 4
+    listContainer.ScrollBarImageColor3 = STYLE.Button
+    listContainer.ClipsDescendants = true
+    listContainer.Parent = frame
+    
+    local listLayout = Instance.new("UIListLayout", listContainer)
+    listLayout.Padding = UDim.new(0, 5)
 
     local function createToggle(name, settingKey)
-        local row = Instance.new("Frame"); row.Size = UDim2.new(1, 0, 0, 28); row.BackgroundTransparency = 1; row.Parent = listContainer
-        local label = Instance.new("TextLabel"); label.Text = name; label.Size = UDim2.new(0.6, 0, 1, 0); label.BackgroundTransparency = 1; label.TextColor3 = Color3.fromRGB(255, 255, 255); label.Font = STYLE.Font; label.TextSize = 16; label.TextXAlignment = Enum.TextXAlignment.Left; label.Parent = row
-        local toggleBg = Instance.new("Frame"); toggleBg.Size = UDim2.new(0, 40, 0, 20); toggleBg.Position = UDim2.new(1, -45, 0.5, -10); toggleBg.BackgroundColor3 = STYLE.Button; toggleBg.Parent = row; Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(0, 10)
-        local toggleKnob = Instance.new("Frame"); toggleKnob.Size = UDim2.new(0, 16, 0, 16); toggleKnob.Position = UDim2.new(0, 2, 0.5, -8); toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200); toggleKnob.Parent = toggleBg; Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(0, 8)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, -5, 0, 28)
+        row.BackgroundTransparency = 1
+        row.Parent = listContainer
+        
+        local label = Instance.new("TextLabel")
+        label.Text = name
+        label.Size = UDim2.new(0.6, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Font = STYLE.Font
+        label.TextSize = 16
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = row
+        
+        local toggleBg = Instance.new("Frame")
+        toggleBg.Size = UDim2.new(0, 40, 0, 20)
+        toggleBg.Position = UDim2.new(1, -45, 0.5, -10)
+        toggleBg.BackgroundColor3 = STYLE.Button
+        toggleBg.Parent = row
+        Instance.new("UICorner", toggleBg).CornerRadius = UDim.new(0, 10)
+        
+        local toggleKnob = Instance.new("Frame")
+        toggleKnob.Size = UDim2.new(0, 16, 0, 16)
+        toggleKnob.Position = UDim2.new(0, 2, 0.5, -8)
+        toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        toggleKnob.Parent = toggleBg
+        Instance.new("UICorner", toggleKnob).CornerRadius = UDim.new(0, 8)
 
         local function updateState()
             if Settings[settingKey] then
-                toggleBg.BackgroundColor3 = STYLE.ToggleOnColor; toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                toggleBg.BackgroundColor3 = STYLE.ToggleOnColor
+                toggleKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(1, -18, 0.5, -8)}):Play()
             else
-                toggleBg.BackgroundColor3 = STYLE.Button; toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                toggleBg.BackgroundColor3 = STYLE.Button
+                toggleKnob.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
                 TweenService:Create(toggleKnob, TweenInfo.new(0.2), {Position = UDim2.new(0, 2, 0.5, -8)}):Play()
             end
         end
@@ -655,7 +720,8 @@ local function createSettingsUI()
                 end
             end
         end)
-        ToggleUpdaters[settingKey] = updateState; updateState()
+        ToggleUpdaters[settingKey] = updateState
+        updateState()
     end
     
     createToggle("Log Coords (Z)", "RouteLog")
@@ -663,7 +729,13 @@ local function createSettingsUI()
     createToggle("Delete (C)", "DeleteEnabled")
     createToggle("Inspect (V)", "InspectEnabled")
     createToggle("Allow Pilot (H)", "PilotAllowed")
-    createToggle("Analyze GUI (P)", "AnalyzeGui") -- НОВЫЙ ПЕРЕКЛЮЧАТЕЛЬ
+    createToggle("Analyze GUI (P)", "AnalyzeGui")
+    
+    -- Надежный пересчет размера холста для скролла
+    task.spawn(function()
+        task.wait()
+        listContainer.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+    end)
 end
 
 local dropdownMode, spectatingPlayer, originalCameraSubject = nil, nil, nil
@@ -810,7 +882,7 @@ Hook.Alliases = { ["HTTP_HOOK"] = HttpCallback }
 function Http:ScanHTTPRequest(Args)
     local Request = {}; for _, Arg in next, Args do if Typeof(Arg) == "string" then Request.Url = Arg; break elseif Typeof(Arg) == "table" then local Url = Arg.Url or Arg.url; if not Url then continue end; Request.Url = Url; Request.Body = Arg.Body or Arg.body; Request.IsPost = Request.Body and true or false; Request.IsTable = true; Request.Headers = Arg.Headers; break end end; return Request
 end
-function Http:FindIntercept(Url) for UrlMatch, Data in next, UrlIntercepts do if Url:match(UrlMatch) then return Data end end return end
+function Hook:FindIntercept(Url) for UrlMatch, Data in next, UrlIntercepts do if Url:match(UrlMatch) then return Data end end return end
 function Hook:IsObject(Obj) return Typeof(Obj) == "Instance" end; function Hook:AddRefernce(Inst, Hooks) if Inst then self.Hooks[Inst] = Hooks end end; function Hook:GetCached(Inst) return self.Cache[Inst] end; function Hook:AddCached(Inst, Proxy) self.Cache[Inst] = Proxy end
 function Hook:Hook(Object, HooksList)
     if self:GetCached(Object) then return self:GetCached(Object) end; local Proxy = newproxy(true); local Meta = getmetatable(Proxy); Meta.__index = function(self, Key) local HookFunc = HooksList[Key]; if HookFunc then return HookFunc end; local Value = Object[Key]; if type(Value) == "function" then return function(self, ...) return Value(Object, ...) end end; return Value end; Meta.__newindex = function(self, Key, New) Object[Key] = New end; Meta.__tostring = function() return tostring(Object) end; Meta.__metatable = getmetatable(Object); self:AddCached(Object, Proxy); return Proxy
@@ -834,9 +906,7 @@ Hook:ApplyHooks(); setActiveSpyPage("http")
 -- ИДЕАЛЬНЫЙ ПЕРЕХВАТ НАЖАТИЙ КЛАВИШ ЧЕРЕЗ CAS
 -- ==========================================
 local function handleToolHotkeys(actionName, inputState, inputObject)
-    -- Реагируем только на нажатие клавиши (а не отпускание)
     if inputState ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
-    -- Если игрок пишет в чат, пропускаем нажатия
     if UserInputService:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
 
     local key = inputObject.KeyCode
@@ -929,16 +999,13 @@ local function handleToolHotkeys(actionName, inputState, inputObject)
         keyHandled = true
     end
 
-    -- Если действие выполнено, мы блокируем клавишу, чтобы игра её не увидела
     if keyHandled then
         return Enum.ContextActionResult.Sink
     end
     
-    -- Иначе разрешаем игре использовать клавишу
     return Enum.ContextActionResult.Pass
 end
 
--- Регистрируем горячие клавиши поверх всех скриптов игры
 ContextActionService:BindActionAtPriority(
     "PidromaniaGeneralHotkeys", 
     handleToolHotkeys, 
@@ -947,8 +1014,6 @@ ContextActionService:BindActionAtPriority(
     Enum.KeyCode.Z, Enum.KeyCode.X, Enum.KeyCode.C, Enum.KeyCode.V, Enum.KeyCode.H, Enum.KeyCode.P
 )
 
--- Кнопка 'G' для скрытия меню остается в UserInputService, так как она глобальная 
--- и мы не хотим случайно перебить важные игровые функции на букву G, если меню открыто.
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if UserInputService:GetFocusedTextBox() then return end
     if input.KeyCode == Enum.KeyCode.G then
