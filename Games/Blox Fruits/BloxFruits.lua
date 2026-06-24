@@ -7,6 +7,49 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
+-- === МОБИЛЬНЫЕ ФИКСЫ (МАСШТАБ И ПЕРЕТАСКИВАНИЕ) ===
+local function ApplyMobileScale(guiObject, baseWidth)
+    local uiScale = Instance.new("UIScale")
+    uiScale.Parent = guiObject
+    
+    local function updateScale()
+        local vpSize = workspace.CurrentCamera.ViewportSize
+        if vpSize.X < baseWidth then
+            uiScale.Scale = vpSize.X / (baseWidth + 50) -- Уменьшаем под экран телефона
+        else
+            uiScale.Scale = 1 -- Оставляем как есть на ПК/Планшетах
+        end
+    end
+    updateScale()
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+end
+
+local function MakeDraggableTouch(topbar, mainUI)
+    local dragging, dragInput, dragStart, startPos
+    topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainUI.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    topbar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainUI.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+-- ===================================================
+
 -- === ЛОКАЛИЗАЦИЯ ===
 local currentLang = "ru"
 local translations = {
@@ -231,7 +274,12 @@ local MAX_FLIGHT_SPEED = 150
 -- GUI
 local guiToggleConnection = nil
 
--- === ФУНКЦИИ ===
+-- === ФУНКЦИИ (С ЗАЩИТОЙ ОТ СМЕРТИ) ===
+local function isPlayerAlive()
+    local char = player.Character
+    return char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
+end
+
 local function stopFlight()
 	if flightConnection then
 		flightConnection:Disconnect()
@@ -251,7 +299,7 @@ local function flyTo(targetPos, onComplete)
 	local goalPos = Vector3.new(targetPos.X, targetPos.Y + 20, targetPos.Z)
 
 	flightConnection = RunService.Heartbeat:Connect(function(dt)
-		if not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) then
+		if not isPlayerAlive() then
 			stopFlight()
 			return
 		end
@@ -425,7 +473,7 @@ local function getNearestTarget()
 	return nearest
 end
 
--- === ИСПРАВЛЕННАЯ ЛОГИКА ТЕЛЕПОРТА/УДЕРЖАНИЯ В ВОЗДУХЕ ===
+-- ТЕЛЕПОРТ И УДЕРЖАНИЕ ВОЗЛЕ ВРАГА
 local function flyToTarget(target, yOffset)
 	local character = player.Character
 	if not character then return end
@@ -437,10 +485,7 @@ local function flyToTarget(target, yOffset)
 	local targetPos = targetRoot.Position
 	local flyPos = Vector3.new(targetPos.X, targetPos.Y + yOffset, targetPos.Z)
 	
-	-- Простой телепорт без поворота вниз
 	rootPart.CFrame = CFrame.new(flyPos)
-	
-	-- Сброс скорости, чтобы персонаж не падал из-за гравитации
 	rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 	rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 end
@@ -450,6 +495,12 @@ local function startQuestFarm()
 	isQuestFarming = true
 	spawn(function()
 		while isQuestFarming do
+            -- Проверка на смерть
+            if not isPlayerAlive() then
+                task.wait(2)
+                continue
+            end
+
 			local lvl = getLevelFromGUI()
 			if not lvl then break end
 			local q = findQuestByLevel(lvl)
@@ -459,7 +510,20 @@ local function startQuestFarm()
 
 			local arrived = false
 			flyTo(q.SpawnLocation, function() arrived = true end)
-			repeat task.wait() until arrived or not isQuestFarming
+            
+            -- Безопасное ожидание полета с защитой от смерти
+            while not arrived and isQuestFarming do
+                if not isPlayerAlive() then
+                    stopFlight()
+                    player.CharacterAdded:Wait() -- Ждем пока игрок не возродится
+                    task.wait(1)
+                    if isQuestFarming then
+                        flyTo(q.SpawnLocation, function() arrived = true end)
+                    end
+                end
+                task.wait(0.1)
+            end
+            
 			if not isQuestFarming then break end
 
 			local targets = {[q.Target] = true}
@@ -484,6 +548,12 @@ local function startQuestFarm()
 			end
 
 			while count < maxCount and isQuestFarming do
+                -- Если умер в процессе фарма
+                if not isPlayerAlive() then
+                    task.wait(1)
+                    continue
+                end
+
 				if Workspace:FindFirstChild("Enemies") then
 					for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
 						if targets[enemy.Name] and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and not trackedMobs[enemy] then
@@ -493,10 +563,8 @@ local function startQuestFarm()
 				end
 				local mob = findNearestMobByTable(targets)
 				if mob then
-                    -- Летим непосредственно к самому мобу сверху
 					flyToTarget(mob, 15) 
 				end
-                -- Запускаем обновление каждый кадр, чтобы персонаж не успевал падать
 				RunService.Heartbeat:Wait()
 			end
 		end
@@ -516,21 +584,42 @@ local function startMaterialsFarm(materialType)
 	isMaterialFarming = true
 	spawn(function()
 		while isMaterialFarming do
+            if not isPlayerAlive() then
+                task.wait(2)
+                continue
+            end
+
 			local arrived = false
 			flyTo(matData.spawnLocation, function() arrived = true end)
-			repeat task.wait() until arrived or not isMaterialFarming
+            
+            -- Безопасное ожидание
+            while not arrived and isMaterialFarming do
+                if not isPlayerAlive() then
+                    stopFlight()
+                    player.CharacterAdded:Wait()
+                    task.wait(1)
+                    if isMaterialFarming then
+                        flyTo(matData.spawnLocation, function() arrived = true end)
+                    end
+                end
+                task.wait(0.1)
+            end
+
 			if not isMaterialFarming then break end
 
 			while isMaterialFarming do
+                if not isPlayerAlive() then
+                    task.wait(1)
+                    break -- Выходим из внутреннего цикла, чтобы снова полететь на спавн
+                end
+
 				local mob = findNearestMobByTable(matData.mobs)
 				if mob then
-                    -- Летим к мобу
 					flyToTarget(mob, 15)
 				else
 					task.wait(2)
 					break
 				end
-                -- Тоже обновление каждый кадр для анти-гравитации
 				RunService.Heartbeat:Wait()
 			end
 		end
@@ -547,10 +636,9 @@ local function startFlyingMode1()
 	if flyingMode1Active then return end
 	flyingMode1Active = true
 	flyConnection1 = RunService.Heartbeat:Connect(function()
+        if not isPlayerAlive() then return end
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		
-		-- Постоянно держим позицию +15 стадов и НЕ падаем
 		flyToTarget(target, 15)
 	end)
 end
@@ -565,10 +653,9 @@ local function startFlyingMode2()
 	if flyingMode2Active then return end
 	flyingMode2Active = true
 	flyConnection2 = RunService.Heartbeat:Connect(function()
+        if not isPlayerAlive() then return end
 		local target = getNearestTarget()
 		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		
-		-- Постоянно держим позицию -10 стадов
 		flyToTarget(target, -10)
 	end)
 end
@@ -614,6 +701,7 @@ local function startAimbot()
 	if aimbotActive then return end
 	aimbotActive = true
 	aimbotConnection = RunService.Heartbeat:Connect(function()
+        if not isPlayerAlive() then return end
 		local p = getNearestPlayer()
 		if p and p:FindFirstChild("HumanoidRootPart") then
 			local cam = Workspace.CurrentCamera
@@ -635,6 +723,7 @@ local function startStickToPlayer()
 	if stickToPlayerActive then return end
 	stickToPlayerActive = true
 	stickConnection = RunService.Heartbeat:Connect(function()
+        if not isPlayerAlive() then return end
 		local p = getNearestPlayer()
 		if p and p:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 			local root = player.Character.HumanoidRootPart
@@ -653,15 +742,15 @@ end
 -- === ГЛОБАЛЬНАЯ НЕЗАВИСИМАЯ АТАКА ===
 task.spawn(function()
 	while true do
-		-- Атакуем только если включена хотя бы одна функция, требующая атаки
 		if isQuestFarming or isMaterialFarming or flyingMode1Active or flyingMode2Active or playerAttackEnabled then
-			local target = getNearestTarget()
-			if target then
-				attackTarget(target)
-			end
+            -- Проверка: бьем только если сами живы
+            if isPlayerAlive() then
+                local target = getNearestTarget()
+                if target then
+                    attackTarget(target)
+                end
+            end
 		end
-		-- Задержка 0.1 сек (10 ударов в секунду). Это идеальный тайминг для Blox Fruits, 
-		-- чтобы сервер стабильно регал все удары и не блокировал их.
 		task.wait(0.1)
 	end
 end)
@@ -727,7 +816,7 @@ local function createToggleSwitch(parent, label, initialEnabled, onToggle)
     updateToggle()
     
     switchFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isEnabled = not isEnabled
             onToggle(isEnabled)
             updateToggle()
@@ -755,7 +844,7 @@ local function createMaterialWindow()
 	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 	frame.BorderSizePixel = 0
 	frame.Active = true
-	frame.Draggable = true
+	-- frame.Draggable = true (УДАЛЕНО ДЛЯ МОБИЛОК)
 	frame.Parent = materialWindow
 
 	local corner = Instance.new("UICorner")
@@ -769,7 +858,11 @@ local function createMaterialWindow()
 	title.TextColor3 = Color3.fromRGB(220, 220, 255)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 13 * 1.5
+    title.Active = true
 	title.Parent = frame
+    
+    MakeDraggableTouch(title, frame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ
+    ApplyMobileScale(frame, 500) -- ПРИМЕНЯЕМ МАСШТАБ К ОКНУ МАТЕРИАЛОВ
 
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Size = UDim2.new(1, -10 * 1.5, 1, -35 * 1.5)
@@ -825,24 +918,21 @@ local function rebuildGUI()
     screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGuiMain.Parent = player:WaitForChild("PlayerGui")
     
+    -- ПРИМЕНЯЕМ АДАПТИВНЫЙ МАСШТАБ
+    ApplyMobileScale(screenGuiMain, 1200)
+    
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 800 * 1.5, 0, 500 * 1.5)
     mainFrame.Position = UDim2.new(0.5, -(800 * 1.5)/2, 0.5, -(500 * 1.5)/2)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
-    mainFrame.Draggable = true
+    -- mainFrame.Draggable = true (УДАЛЕНО)
     mainFrame.Parent = screenGuiMain
     
     local mainFrameCorner = Instance.new("UICorner")
     mainFrameCorner.CornerRadius = UDim.new(0, 10 * 1.5)
     mainFrameCorner.Parent = mainFrame
-    
-    local dragDetector = Instance.new("Frame")
-    dragDetector.Size = UDim2.new(1, -50 * 1.5, 1, 0)
-    dragDetector.Position = UDim2.new(0, 0, 0, 0)
-    dragDetector.BackgroundTransparency = 1
-    dragDetector.Parent = mainFrame
     
     local minimizedFrame = Instance.new("Frame")
     minimizedFrame.Size = UDim2.new(0, 100 * 1.5, 0, 30 * 1.5)
@@ -851,8 +941,10 @@ local function rebuildGUI()
     minimizedFrame.BorderSizePixel = 0
     minimizedFrame.Visible = false
     minimizedFrame.Active = true
-    minimizedFrame.Draggable = true
+    -- minimizedFrame.Draggable = true (УДАЛЕНО)
     minimizedFrame.Parent = screenGuiMain
+    
+    MakeDraggableTouch(minimizedFrame, minimizedFrame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ СВЕРНУТОГО
     
     local cornerMinimized = Instance.new("UICorner")
     cornerMinimized.CornerRadius = UDim.new(0, 6 * 1.5)
@@ -868,7 +960,7 @@ local function rebuildGUI()
     minimizedLabel.Parent = minimizedFrame
     
     minimizedFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             mainFrame.Visible = true
             minimizedFrame.Visible = false
         end
@@ -878,7 +970,10 @@ local function rebuildGUI()
     header.Size = UDim2.new(1, 0, 0, 35 * 1.5)
     header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     header.BorderSizePixel = 0
+    header.Active = true
     header.Parent = mainFrame
+    
+    MakeDraggableTouch(header, mainFrame) -- ДОБАВЛЕНО ПЕРЕТАСКИВАНИЕ ОКНА
     
     local cornerHeader = Instance.new("UICorner")
     cornerHeader.CornerRadius = UDim.new(0, 6 * 1.5)
