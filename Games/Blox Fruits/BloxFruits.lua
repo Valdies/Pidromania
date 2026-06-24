@@ -30,11 +30,7 @@ local translations = {
 		mode1Toggle = "Mode1 (+15Y)",
 		mode2Toggle = "Mode2 (-10Y)",
 		aimToggle = "Aim",
-		stickToggle = "Stick",
-		raidFinishedTitle = "Система",
-		raidFinishedMsg = "Фарм закончен",
-		playerJoinedTitle = "Игрок зашёл",
-		friendJoinedTitle = "🌸 Твой друг зашёл! 🌸"
+		stickToggle = "Stick"
 	}
 }
 
@@ -42,7 +38,7 @@ local function T(key)
 	return translations[currentLang][key] or ("???" .. key .. "???")
 end
 
--- === УВЕДОМЛЕНИЯ (СИНЕ-ФИОЛЕТОВЫЕ, УМЕНЬШЕННЫЕ В 2 РАЗА) ===
+-- === НОВЫЕ УВЕДОМЛЕНИЯ В СТИЛЕ PIDROMANIA HUB (ТЕМНЫЕ) ===
 local activeNotifications = {}
 
 local function showNotification(titleText, msgText)
@@ -56,64 +52,52 @@ local function showNotification(titleText, msgText)
 	notificationGui.Parent = game:GetService("CoreGui")
 
 	local frame = Instance.new("Frame")
-	-- Размеры уменьшены ровно в 2 раза (было 480x110)
-	frame.Size = UDim2.new(0, 240, 0, 55)
-	frame.Position = UDim2.new(1, 10, 1, -70) 
+	frame.Size = UDim2.new(0, 380, 0, 100)
+	frame.Position = UDim2.new(1, 10, 1, -120) 
 	frame.BorderSizePixel = 0
-	frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 	frame.Parent = notificationGui
-	
-	-- Сине-фиолетовый градиент
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 100, 255)),  -- Синий
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(130, 40, 255))   -- Фиолетовый
-	})
-	gradient.Rotation = 30
-	gradient.Parent = frame
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 7) -- Уменьшено в 2 раза
+	corner.CornerRadius = UDim.new(0, 14)
 	corner.Parent = frame
 
 	local topLabel = Instance.new("TextLabel")
-	topLabel.Size = UDim2.new(1, -8, 0, 20)
-	topLabel.Position = UDim2.new(0, 4, 0, 4)
+	topLabel.Size = UDim2.new(1, -16, 0, 35)
+	topLabel.Position = UDim2.new(0, 8, 0, 8)
 	topLabel.BackgroundTransparency = 1
 	topLabel.Font = Enum.Font.GothamBold
-	topLabel.TextSize = 11 -- Уменьшено в 2 раза
+	topLabel.TextSize = 20
 	topLabel.TextXAlignment = Enum.TextXAlignment.Center
 	topLabel.Text = titleText
-	topLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	topLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
 	topLabel.Parent = frame
 
 	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, -8, 0, 24)
-	nameLabel.Position = UDim2.new(0, 4, 0, 27)
+	nameLabel.Size = UDim2.new(1, -16, 0, 48)
+	nameLabel.Position = UDim2.new(0, 8, 0, 45)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = msgText
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 15 -- Уменьшено в 2 раза
+	nameLabel.TextSize = 24
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	nameLabel.Parent = frame
 	
-	-- Анимация появления
 	local tweenIn = TweenService:Create(
 		frame,
 		TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-		{ Position = UDim2.new(1, -250, 1, -70) }
+		{ Position = UDim2.new(1, -390, 1, -120) }
 	)
 	tweenIn:Play()
 
-	-- Удаление через 5 секунд
 	task.spawn(function()
-		task.wait(5)
+		task.wait(4)
 		local tweenOut = TweenService:Create(
 			frame,
 			TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = UDim2.new(1, 10, 1, -70) }
+			{ Position = UDim2.new(1, 10, 1, -120) }
 		)
 		tweenOut:Play()
 		tweenOut.Completed:Wait()
@@ -121,16 +105,6 @@ local function showNotification(titleText, msgText)
 		activeNotifications[msgText] = nil
 	end)
 end
-
-Players.PlayerAdded:Connect(function(plr)
-	if plr == Players.LocalPlayer then return end
-	task.wait(0.5)
-	local isFriend = false
-	pcall(function() isFriend = Players.LocalPlayer:IsFriendsWith(plr.UserId) end)
-	
-	local titleText = isFriend and T("friendJoinedTitle") or T("playerJoinedTitle")
-	showNotification(titleText, plr.Name)
-end)
 
 -- === ДАННЫЕ ИГРЫ ===
 local FLOORS = {
@@ -141,7 +115,6 @@ local FLOORS = {
 
 -- === QUEST & MATERIALS ===
 local QUESTList = {
-	-- Первое море
 	{Name = "JungleQuest", Stage = 1, MinLevel = 10, MaxLevel = 14, Target = "Monkey", Count = 6, SpawnLocation = Vector3.new(-1612.6, 37.2, 141.5)},
 	{Name = "JungleQuest", Stage = 2, MinLevel = 15, MaxLevel = 29, Target = "Gorilla", Count = 8, SpawnLocation = Vector3.new(-1307.2, 19.0, -479.4)},
 	{Name = "PirateQuest", Stage = 1, MinLevel = 30, MaxLevel = 39, Target = "Pirate", Count = 8, SpawnLocation = Vector3.new(-1214.9, 5.1, 3910.1)},
@@ -167,8 +140,6 @@ local QUESTList = {
 	{Name = "SkyExp2Quest", Stage = 2, MinLevel = 550, MaxLevel = 624, Target = "Royal Soldier", Count = 8, SpawnLocation = Vector3.new(-7851.8, 5607.3, -1728.9)},
 	{Name = "FountainQuest", Stage = 1, MinLevel = 625, MaxLevel = 649, Target = "Galley Pirate", Count = 8, SpawnLocation = Vector3.new(5698.5, 38.9, 3964.0)},
 	{Name = "FountainQuest", Stage = 2, MinLevel = 650, MaxLevel = 699, Target = "Galley Captain", Count = 9, SpawnLocation = Vector3.new(5503.0, 38.9, 4923.6)},
-
-	-- Второе море
 	{Name = "Area1Quest", Stage = 1, MinLevel = 700, MaxLevel = 724, Target = "Raider", Count = 8, SpawnLocation = Vector3.new(381.62, 39.23, 2347.52)},
 	{Name = "Area1Quest", Stage = 2, MinLevel = 725, MaxLevel = 774, Target = "Mercenary", Count = 8, SpawnLocation = Vector3.new(-1029.28, 73.03, 1413.74)},
 	{Name = "Area2Quest", Stage = 1, MinLevel = 775, MaxLevel = 799, Target = "Swan Pirate", Count = 8, SpawnLocation = Vector3.new(1017.12, 76.82, 1298.27)},
@@ -191,8 +162,6 @@ local QUESTList = {
 	{Name = "FrostQuest", Stage = 2, MinLevel = 1375, MaxLevel = 1424, Target = "Snow Lurker", Count = 8, SpawnLocation = Vector3.new(5491.06, 32.62, -6885.48)},
 	{Name = "ForgottenQuest", Stage = 1, MinLevel = 1425, MaxLevel = 1449, Target = "Sea Soldier", Count = 8, SpawnLocation = Vector3.new(-3374.31, 30.55, -9767.11)},
 	{Name = "ForgottenQuest", Stage = 2, MinLevel = 1450, MaxLevel = 1499, Target = "Water Fighter", Count = 8, SpawnLocation = Vector3.new(-3287.43, 243.20, -10423.24)},
-
-	-- Третье море
 	{Name = "PiratePortQuest", Stage = 1, MinLevel = 1500, MaxLevel = 1524, Target = "Pirate Millionaire", Count = 8, SpawnLocation = Vector3.new(-130.78, 57.35, 5762.56)},
 	{Name = "PiratePortQuest", Stage = 1, MinLevel = 1500, MaxLevel = 1524, Target = "Pirate Millionaire", Count = 8, SpawnLocation = Vector3.new(-638.50, 57.35, 5628.00)},
 	{Name = "PiratePortQuest", Stage = 2, MinLevel = 1525, MaxLevel = 1574, Target = "Pistol Billionaire", Count = 8, SpawnLocation = Vector3.new(-803.98, 85.15, 6028.94)},
@@ -309,7 +278,6 @@ local isAutoRaiding = false
 local selectedMaterialType = nil
 local materialWindow = nil
 
--- Ghost Hunter
 local flyingMode1Active = false
 local flyingMode2Active = false
 local aimbotActive = false
@@ -321,11 +289,8 @@ local flyConnection2 = nil
 local aimbotConnection = nil
 local stickConnection = nil
 
--- Фарм
 local flightConnection = nil
 local MAX_FLIGHT_SPEED = 150
-
--- GUI
 local guiToggleConnection = nil
 
 -- === ФУНКЦИИ ===
@@ -538,9 +503,21 @@ local function flyToTarget(target, yOffset)
 	rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 end
 
+-- === ГЛОБАЛЬНАЯ НЕЗАВИСИМАЯ АТАКА ===
+task.spawn(function()
+	while true do
+		local target = getNearestTarget()
+		if target then
+			attackTarget(target)
+		end
+		task.wait(0.1)
+	end
+end)
+
 -- === ФАРМ КВЕСТОВ ===
 local function startQuestFarm()
 	isQuestFarming = true
+	showNotification("Система", "Фарм квестов начат")
 	spawn(function()
 		while isQuestFarming do
 			local lvl = getLevelFromGUI()
@@ -598,6 +575,7 @@ end
 local function stopQuestFarm()
 	isQuestFarming = false
 	stopFlight()
+	showNotification("Система", "Фарм квестов остановлен")
 end
 
 -- === ФАРМ МАТЕРИАЛОВ ===
@@ -605,6 +583,7 @@ local function startMaterialsFarm(materialType)
 	local matData = MATERIALS[materialType]
 	if not matData then return end
 	isMaterialFarming = true
+	showNotification("Система", "Фарм материалов начат")
 	spawn(function()
 		while isMaterialFarming do
 			local arrived = false
@@ -629,6 +608,7 @@ end
 local function stopMaterialsFarm()
 	isMaterialFarming = false
 	stopFlight()
+	showNotification("Система", "Фарм материалов остановлен")
 end
 
 -- === MODE1 ===
@@ -637,9 +617,9 @@ local function startFlyingMode1()
 	flyingMode1Active = true
 	flyConnection1 = RunService.Heartbeat:Connect(function()
 		local target = getNearestTarget()
-		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		
-		flyToTarget(target, 15)
+		if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+			flyToTarget(target, 15)
+		end
 	end)
 end
 
@@ -654,9 +634,9 @@ local function startFlyingMode2()
 	flyingMode2Active = true
 	flyConnection2 = RunService.Heartbeat:Connect(function()
 		local target = getNearestTarget()
-		if not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 then return end
-		
-		flyToTarget(target, -10)
+		if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+			flyToTarget(target, -10)
+		end
 	end)
 end
 
@@ -665,13 +645,17 @@ local function stopFlyingMode2()
 	flyingMode2Active = false
 end
 
--- === АВТО РЕЙДЫ ===
+-- === ИСПРАВЛЕННЫЕ АВТО РЕЙДЫ ===
 local function getRaidIslandCenter(n)
 	local raidMap = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("RaidMap")
 	if not raidMap then return nil end
 	
 	local island = raidMap:FindFirstChild("RaidIsland" .. tostring(n))
 	if not island then return nil end
+	
+	if island:IsA("Model") and island.PrimaryPart then
+		return island.PrimaryPart.Position
+	end
 	
 	for _, obj in ipairs(island:GetDescendants()) do
 		if obj:IsA("BasePart") then
@@ -683,6 +667,29 @@ end
 
 local function startAutoRaid()
 	isAutoRaiding = true
+	showNotification("Система", "Фарм рейда запущен")
+	
+	-- ПОТОК ОЧИСТКИ ОТ ЛАВЫ (Проверка каждые 10 сек)
+	task.spawn(function()
+		while isAutoRaiding do
+			pcall(function()
+				local raidMap = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("RaidMap")
+				if raidMap then
+					for _, obj in ipairs(raidMap:GetDescendants()) do
+						if obj:IsA("BasePart") then
+							local nameL = obj.Name:lower()
+							if nameL:find("lava") or nameL:find("magma") then
+								obj:Destroy()
+							end
+						end
+					end
+				end
+			end)
+			task.wait(10)
+		end
+	end)
+
+	-- ОСНОВНОЙ ПОТОК РЕЙДА
 	task.spawn(function()
 		local n = 1
 		while isAutoRaiding do
@@ -690,26 +697,40 @@ local function startAutoRaid()
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if not hrp then task.wait(1) continue end
 
-			local island1Pos = getRaidIslandCenter(1)
-			
-			if not island1Pos or (hrp.Position - island1Pos).Magnitude > 3000 then
-				local startPos = Vector3.new(-5005.37, 315.21, -2820.61)
-				local arrived = false
-				flyTo(startPos, function() arrived = true end)
-				repeat task.wait() until arrived or not isAutoRaiding
-				
-				if not isAutoRaiding then break end
-				task.wait(2)
-				continue
-			else
-				if n == 1 and (hrp.Position - island1Pos).Magnitude < 3000 then
-					n = 1 
+			local currentIslandPos = getRaidIslandCenter(n)
+
+			-- Логика начала рейда и цитадели
+			if n == 1 then
+				if not currentIslandPos or (hrp.Position - currentIslandPos).Magnitude > 5000 then
+					local startPos = Vector3.new(-5005.37, 315.21, -2820.61)
+					if (hrp.Position - startPos).Magnitude > 200 then
+						local arrived = false
+						flyTo(startPos, function() arrived = true end)
+						
+						local t = 0
+						while not arrived and isAutoRaiding and t < 15 do
+							task.wait(0.5)
+							t = t + 0.5
+							local checkIsland = getRaidIslandCenter(1)
+							if checkIsland and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+								if (player.Character.HumanoidRootPart.Position - checkIsland).Magnitude < 5000 then
+									stopFlight() 
+									break
+								end
+							end
+						end
+					end
+					task.wait(1)
+					continue
 				end
 			end
 
-			local currentIslandPos = getRaidIslandCenter(n)
-			if not currentIslandPos then task.wait(1) continue end
+			if not currentIslandPos then
+				task.wait(1)
+				continue
+			end
 
+			-- Проверка мобов на текущем острове
 			local hasMobs = false
 			if Workspace:FindFirstChild("Enemies") then
 				for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
@@ -724,31 +745,64 @@ local function startAutoRaid()
 			end
 
 			if not hasMobs then
-				if n >= 5 then
-					showNotification(T("raidFinishedTitle"), T("raidFinishedMsg"))
-					isAutoRaiding = false
-					break
-				else
-					local mode1WasActive = flyingMode1Active
-					stopFlyingMode1()
-					
-					hrp.CFrame = CFrame.new(currentIslandPos.X, currentIslandPos.Y + 25, currentIslandPos.Z)
-					task.wait(0.5)
-
-					n = n + 1
-					local nextIslandPos = getRaidIslandCenter(n)
-					if nextIslandPos then
-						local arrived = false
-						flyTo(Vector3.new(nextIslandPos.X, nextIslandPos.Y + 25, nextIslandPos.Z), function()
-							arrived = true
-						end)
-						repeat task.wait() until arrived or not isAutoRaiding
-						
-						task.wait(1.5)
-						startFlyingMode1()
+				-- ЖДЕМ 3 СЕКУНДЫ ДЛЯ УВЕРЕННОСТИ ЧТО МОБОВ РЕАЛЬНО НЕТ
+				task.wait(3)
+				
+				-- ДЕЛАЕМ ПОВТОРНУЮ ПРОВЕРКУ
+				local hasMobsRecheck = false
+				if Workspace:FindFirstChild("Enemies") then
+					for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
+						if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+							local eRoot = enemy:FindFirstChild("HumanoidRootPart")
+							if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 1000 then
+								hasMobsRecheck = true
+								break
+							end
+						end
 					end
 				end
+				
+				if not hasMobsRecheck then
+					-- Если мобов действительно нет, летим дальше
+					if n >= 5 then
+						showNotification("Рейд", "Рейд закончился!")
+						isAutoRaiding = false
+						break
+					else
+						showNotification("Рейд", n .. " остров очищен")
+						
+						stopFlyingMode1()
+						
+						hrp.CFrame = CFrame.new(currentIslandPos.X, currentIslandPos.Y + 25, currentIslandPos.Z)
+						task.wait(0.5)
+
+						n = n + 1
+						local nextIslandPos = getRaidIslandCenter(n)
+						if nextIslandPos then
+							showNotification("Рейд", "Летим на остров " .. n)
+							local arrived = false
+							flyTo(Vector3.new(nextIslandPos.X, nextIslandPos.Y + 25, nextIslandPos.Z), function()
+								arrived = true
+							end)
+							repeat task.wait() until arrived or not isAutoRaiding
+							
+							if not isAutoRaiding then break end
+							task.wait(1.5)
+							startFlyingMode1()
+						else
+							n = n - 1
+							task.wait(1)
+						end
+					end
+				else
+					-- Мобы все таки появились после 3 сек
+					if not flyingMode1Active and isAutoRaiding then
+						startFlyingMode1()
+					end
+					task.wait(1)
+				end
 			else
+				-- Мобы есть, включаем Mode1 и фармим
 				if not flyingMode1Active and isAutoRaiding then
 					startFlyingMode1()
 				end
@@ -761,6 +815,7 @@ end
 local function stopAutoRaid()
 	isAutoRaiding = false
 	stopFlight()
+	showNotification("Система", "Авто Рейды остановлены")
 end
 
 -- === AIMBOT ===
@@ -834,19 +889,6 @@ local function stopStickToPlayer()
 	if stickConnection then stickConnection:Disconnect() stickConnection = nil end
 	stickToPlayerActive = false
 end
-
--- === ГЛОБАЛЬНАЯ НЕЗАВИСИМАЯ АТАКА ===
-task.spawn(function()
-	while true do
-		if isQuestFarming or isMaterialFarming or isAutoRaiding or flyingMode1Active or flyingMode2Active or playerAttackEnabled then
-			local target = getNearestTarget()
-			if target then
-				attackTarget(target)
-			end
-		end
-		task.wait(0.1)
-	end
-end)
 
 -- === ОБЩИЙ ЭЛЕМЕНТ - ПЕРЕКЛЮЧАТЕЛЬ ===
 local function createToggleSwitch(parent, label, initialEnabled, onToggle)
@@ -1264,7 +1306,7 @@ local function rebuildGUI()
 		questToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
 		yOffset += 35 * 1.5
 
-		-- НОВЫЙ ТУМБЛЕР АВТО РЕЙДОВ
+		-- ТУМБЛЕР АВТО РЕЙДОВ
 		local autoRaidToggleSwitch, _ = createToggleSwitch(contentContainer, T("autoRaidToggle"), isAutoRaiding, function(enabled)
 			if enabled then
 				startAutoRaid()
