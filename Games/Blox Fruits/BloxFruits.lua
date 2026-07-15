@@ -8,7 +8,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
--- === ЛОКАЛИЗАЦИЯ ===
 local currentLang = "ru"
 local translations = {
 	ru = {
@@ -38,7 +37,7 @@ local function T(key)
 	return translations[currentLang][key] or ("???" .. key .. "???")
 end
 
--- === НОВЫЕ УВЕДОМЛЕНИЯ В СТИЛЕ PIDROMANIA HUB (ТЕМНЫЕ) ===
+
 local activeNotifications = {}
 
 local function showNotification(titleText, msgText)
@@ -106,14 +105,12 @@ local function showNotification(titleText, msgText)
 	end)
 end
 
--- === ДАННЫЕ ИГРЫ ===
 local FLOORS = {
 	{1,   "Первое море",        100117331123089},
 	{2,   "Второе море",        79091703265657},
 	{3,   "Третье море",        85211729168715}
 }
 
--- === QUEST & MATERIALS ===
 local QUESTList = {
 	{Name = "JungleQuest", Stage = 1, MinLevel = 10, MaxLevel = 14, Target = "Monkey", Count = 6, SpawnLocation = Vector3.new(-1612.6, 37.2, 141.5)},
 	{Name = "JungleQuest", Stage = 2, MinLevel = 15, MaxLevel = 29, Target = "Gorilla", Count = 8, SpawnLocation = Vector3.new(-1307.2, 19.0, -479.4)},
@@ -293,7 +290,6 @@ local flightConnection = nil
 local MAX_FLIGHT_SPEED = 150
 local guiToggleConnection = nil
 
--- === ФУНКЦИИ ===
 local function stopFlight()
 	if flightConnection then
 		flightConnection:Disconnect()
@@ -645,24 +641,44 @@ local function stopFlyingMode2()
 	flyingMode2Active = false
 end
 
--- === ИСПРАВЛЕННЫЕ АВТО РЕЙДЫ ===
-local function getRaidIslandCenter(n)
+-- === ДИНАМИЧЕСКИЕ АВТО РЕЙДЫ ===
+
+-- Новая функция: находит самый "старший" заспавненный остров и его координаты
+local function getCurrentRaidIsland()
 	local raidMap = Workspace:FindFirstChild("Map") and Workspace.Map:FindFirstChild("RaidMap")
-	if not raidMap then return nil end
-	
-	local island = raidMap:FindFirstChild("RaidIsland" .. tostring(n))
-	if not island then return nil end
-	
-	if island:IsA("Model") and island.PrimaryPart then
-		return island.PrimaryPart.Position
-	end
-	
-	for _, obj in ipairs(island:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			return obj.Position
+	if not raidMap then return nil, nil end
+
+	local maxNum = 0
+	local islandCenter = nil
+
+	-- Ищем все острова в RaidMap
+	for _, child in ipairs(raidMap:GetChildren()) do
+		local numStr = string.match(child.Name, "RaidIsland(%d+)")
+		if numStr then
+			local num = tonumber(numStr)
+			-- Находим остров с максимальным номером, который сейчас заспавнен
+			if num and num > maxNum then
+				maxNum = num
+				
+				-- Пытаемся найти центральную точку острова
+				if child:FindFirstChild("Model") and child.Model:IsA("Model") and child.Model.PrimaryPart then
+					islandCenter = child.Model.PrimaryPart.Position
+				elseif child:IsA("Model") and child.PrimaryPart then
+					islandCenter = child.PrimaryPart.Position
+				else
+					-- Если PrimaryPart нет, берем любую часть острова
+					for _, obj in ipairs(child:GetDescendants()) do
+						if obj:IsA("BasePart") then
+							islandCenter = obj.Position
+							break
+						end
+					end
+				end
+			end
 		end
 	end
-	return nil
+
+	return maxNum, islandCenter
 end
 
 local function startAutoRaid()
@@ -691,52 +707,45 @@ local function startAutoRaid()
 
 	-- ОСНОВНОЙ ПОТОК РЕЙДА
 	task.spawn(function()
-		local n = 1
 		while isAutoRaiding do
 			local char = player.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			if not hrp then task.wait(1) continue end
 
-			local currentIslandPos = getRaidIslandCenter(n)
+			-- Получаем ТЕКУЩИЙ максимальный остров (например, вернет 4, если мы на 4 острове)
+			local currentNum, currentIslandPos = getCurrentRaidIsland()
 
-			-- Логика начала рейда и цитадели
-			if n == 1 then
-				if not currentIslandPos or (hrp.Position - currentIslandPos).Magnitude > 5000 then
-					local startPos = Vector3.new(-5005.37, 315.21, -2820.61)
-					if (hrp.Position - startPos).Magnitude > 200 then
-						local arrived = false
-						flyTo(startPos, function() arrived = true end)
-						
-						local t = 0
-						while not arrived and isAutoRaiding and t < 15 do
-							task.wait(0.5)
-							t = t + 0.5
-							local checkIsland = getRaidIslandCenter(1)
-							if checkIsland and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-								if (player.Character.HumanoidRootPart.Position - checkIsland).Magnitude < 5000 then
-									stopFlight() 
-									break
-								end
-							end
+			-- Если островов вообще нет (мы не в рейде)
+			if not currentIslandPos or currentNum == 0 then
+				local startPos = Vector3.new(-5005.37, 315.21, -2820.61) -- Колбы
+				if (hrp.Position - startPos).Magnitude > 200 then
+					local arrived = false
+					flyTo(startPos, function() arrived = true end)
+					
+					local t = 0
+					while not arrived and isAutoRaiding and t < 15 do
+						task.wait(0.5)
+						t = t + 0.5
+						-- Если во время полета нас телепортировало в рейд, прерываем полет
+						local checkNum, checkPos = getCurrentRaidIsland()
+						if checkPos and (hrp.Position - checkPos).Magnitude < 10000 then
+							stopFlight() 
+							break
 						end
 					end
-					task.wait(1)
-					continue
 				end
-			end
-
-			if not currentIslandPos then
 				task.wait(1)
 				continue
 			end
 
-			-- Проверка мобов на текущем острове
+			-- Если мы на острове, ищем мобов
 			local hasMobs = false
 			if Workspace:FindFirstChild("Enemies") then
 				for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
 					if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
 						local eRoot = enemy:FindFirstChild("HumanoidRootPart")
-						if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 1000 then
+						-- Радиус 2000, т.к. центр острова может смещаться
+						if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 2000 then
 							hasMobs = true
 							break
 						end
@@ -745,16 +754,15 @@ local function startAutoRaid()
 			end
 
 			if not hasMobs then
-				-- ЖДЕМ 3 СЕКУНДЫ ДЛЯ УВЕРЕННОСТИ ЧТО МОБОВ РЕАЛЬНО НЕТ
+				-- Ждем 3 секунды, чтобы мобы успели прогрузиться
 				task.wait(3)
 				
-				-- ДЕЛАЕМ ПОВТОРНУЮ ПРОВЕРКУ
 				local hasMobsRecheck = false
 				if Workspace:FindFirstChild("Enemies") then
 					for _, enemy in ipairs(Workspace.Enemies:GetChildren()) do
 						if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
 							local eRoot = enemy:FindFirstChild("HumanoidRootPart")
-							if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 1000 then
+							if eRoot and (eRoot.Position - currentIslandPos).Magnitude < 2000 then
 								hasMobsRecheck = true
 								break
 							end
@@ -763,25 +771,26 @@ local function startAutoRaid()
 				end
 				
 				if not hasMobsRecheck then
-					-- Если мобов действительно нет, летим дальше
-					if n >= 5 then
+					-- Если мобов точно нет
+					if currentNum >= 5 then
 						showNotification("Рейд", "Рейд закончился!")
 						isAutoRaiding = false
+						stopFlyingMode1()
 						break
 					else
-						showNotification("Рейд", n .. " остров очищен")
-						
+						showNotification("Рейд", currentNum .. " остров очищен")
 						stopFlyingMode1()
 						
-						hrp.CFrame = CFrame.new(currentIslandPos.X, currentIslandPos.Y + 25, currentIslandPos.Z)
-						task.wait(0.5)
+						-- Поднимаемся вверх и ждем спавна следующего острова
+						hrp.CFrame = CFrame.new(currentIslandPos.X, currentIslandPos.Y + 50, currentIslandPos.Z)
+						task.wait(2)
 
-						n = n + 1
-						local nextIslandPos = getRaidIslandCenter(n)
-						if nextIslandPos then
-							showNotification("Рейд", "Летим на остров " .. n)
+						local nextNum, nextPos = getCurrentRaidIsland()
+						-- Если заспавнился новый остров (nextNum стал больше чем currentNum)
+						if nextNum > currentNum and nextPos then
+							showNotification("Рейд", "Летим на остров " .. nextNum)
 							local arrived = false
-							flyTo(Vector3.new(nextIslandPos.X, nextIslandPos.Y + 25, nextIslandPos.Z), function()
+							flyTo(Vector3.new(nextPos.X, nextPos.Y + 50, nextPos.Z), function()
 								arrived = true
 							end)
 							repeat task.wait() until arrived or not isAutoRaiding
@@ -789,20 +798,15 @@ local function startAutoRaid()
 							if not isAutoRaiding then break end
 							task.wait(1.5)
 							startFlyingMode1()
-						else
-							n = n - 1
-							task.wait(1)
 						end
 					end
 				else
-					-- Мобы все таки появились после 3 сек
 					if not flyingMode1Active and isAutoRaiding then
 						startFlyingMode1()
 					end
 					task.wait(1)
 				end
 			else
-				-- Мобы есть, включаем Mode1 и фармим
 				if not flyingMode1Active and isAutoRaiding then
 					startFlyingMode1()
 				end
@@ -815,6 +819,7 @@ end
 local function stopAutoRaid()
 	isAutoRaiding = false
 	stopFlight()
+	stopFlyingMode1()
 	showNotification("Система", "Авто Рейды остановлены")
 end
 
@@ -1306,7 +1311,7 @@ local function rebuildGUI()
 		questToggle.Position = UDim2.new(0, 5 * 1.5, 0, yOffset)
 		yOffset += 35 * 1.5
 
-		-- ТУМБЛЕР АВТО РЕЙДОВ
+		-- ТУМБЛЕР АВТО РЕЙДОВ (ОБНОВЛЕНО)
 		local autoRaidToggleSwitch, _ = createToggleSwitch(contentContainer, T("autoRaidToggle"), isAutoRaiding, function(enabled)
 			if enabled then
 				startAutoRaid()
