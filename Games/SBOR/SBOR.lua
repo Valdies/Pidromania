@@ -18,7 +18,6 @@ local VIM = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
--- === МОБИЛЬНЫЕ ФИКСЫ (МАСШТАБ И ПЕРЕТАСКИВАНИЕ) ===
 local function ApplyMobileScale(guiObject, baseWidth)
     local uiScale = Instance.new("UIScale")
     uiScale.Parent = guiObject
@@ -26,9 +25,9 @@ local function ApplyMobileScale(guiObject, baseWidth)
     local function updateScale()
         local vpSize = workspace.CurrentCamera.ViewportSize
         if vpSize.X < baseWidth then
-            uiScale.Scale = vpSize.X / (baseWidth + 50) -- Уменьшаем под экран телефона
+            uiScale.Scale = vpSize.X / (baseWidth + 50)
         else
-            uiScale.Scale = 1 -- Оставляем как есть на ПК
+            uiScale.Scale = 1
         end
     end
     updateScale()
@@ -499,6 +498,7 @@ local EXTRA_LOCATIONS = {
     [4736649014] = {{"Шахта", 768.75, 204.93, 687.25},{"Вход в башню", -2367.82, 407.96, -1542.97},{"Комната босса", -2219.23, 400.14, -1873.53}},
     [4736759720] = {{"Шахта", -961.40, 193.43, -1390.09},{"Вход в башню", -1343.48, 1132.88, 138.37},{"Комната босса", -1279.13, 1913.99, -426.48}},
     [4737916764] = {{"Вход в башню", 2687.15, -654.41, 470.80},{"Комната босса", 2783.20, -554.00, -1670.30}},
+    [4736984932] = {{"Вход в башню", -196.82, -1572.34, 2326.80},{"Комната босса", -6470.27, -371.00, 9485.21}},
     [4740039076] = {{"Магазин", 1198.64, 951.67, -174.30},{"Вход в первую локацию", -2691.01, 1184.50, 13916.61},{"Вход в башню", 1236.04, 129.95, 11256.65},{"Комната босса", -2620.99, 32.80, 7070.26}},
     [4747247314] = {{"Шахта", -114.55, 20.66, 966.82},{"Вход в башню", -4000.10, -9989.45, -5859.08},{"Комната босса", -3987.15, -9930.00, -6714.68}},
     [5135551944] = {{"Крыша минибосса", -1674.17, 152.01, -5899.82},{"Вход в башню", -10204.24, -479.34, -491.57},{"Комната босса", -9471.52, -474.34, 1500.44}},
@@ -556,8 +556,8 @@ local function setUILocked(isLocked, msg)
         
         local btn = Instance.new("TextButton")
         btn.Name = "EmergencyBtn"
-        btn.Size = UDim2.new(0.8, 0, 0, 50) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
-        btn.Position = UDim2.new(0.1, 0, 0.6, 0) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+        btn.Size = UDim2.new(0.8, 0, 0, 50)
+        btn.Position = UDim2.new(0.1, 0, 0.6, 0)
         btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
@@ -939,20 +939,15 @@ local function setupResurrection()
         if not humanoid or not rootPart then return end
 
         if savedDeathPosition then
-            -- Запоминаем позицию локально и очищаем глобальную, чтобы избежать багов при быстрой смерти
             local posToTeleport = savedDeathPosition
             savedDeathPosition = nil 
             
             task.spawn(function()
-                -- Ждем 1.5 секунды, пока игра завершит свои базовые процессы спавна
                 task.wait(1.5)
                 local currentRoot = character:FindFirstChild("HumanoidRootPart")
                 if currentRoot then
-                    -- Делаем 4 попытки телепортации в течение 2 секунд
-                    -- Это гарантированно перебьет "возврат на спавн" от самой игры
                     for i = 1, 4 do
                         if character and character.Parent and humanoid.Health > 0 then
-                            -- Добавляем +5 к высоте (Y), чтобы персонаж не проваливался под текстуры карты
                             currentRoot.CFrame = posToTeleport + Vector3.new(0, 5, 0)
                         end
                         task.wait(0.5)
@@ -1433,7 +1428,6 @@ end
 local function stopFishFarm() fishFarmActive = false end
 
 local function notify(title, text)
-    -- Всплывающие уведомления отключены по просьбе
 end
 
 local function updateForgeUI(statusText, color)
@@ -1542,7 +1536,6 @@ local function getAvailableProducts(isSCMode)
                 local nameLower = string.lower(btn.Name)
                 if isSCMode then
                     if nameLower == "heavenly ingot" then
-                        -- skip
                     elseif string.find(nameLower, "ingot") 
                         or string.find(nameLower, "fish") 
                         or string.find(nameLower, "candy bar") 
@@ -1753,11 +1746,10 @@ local function createMiniForgeUI()
     
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 260, 0, 130)
-    frame.Position = UDim2.new(0.5, -130, 0, 20) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    frame.Position = UDim2.new(0.5, -130, 0, 20)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     frame.BorderSizePixel = 0
     frame.Active = true
-    -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК (Удалили Draggable)
     frame.Parent = miniForgeGui
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
     
@@ -1768,10 +1760,10 @@ local function createMiniForgeUI()
     header.TextColor3 = Color3.fromRGB(255, 200, 100)
     header.Font = Enum.Font.GothamBold
     header.TextSize = 14
-    header.Active = true -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    header.Active = true
     header.Parent = frame
     
-    MakeDraggableTouch(header, frame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    MakeDraggableTouch(header, frame)
     
     miniForgeStatus = Instance.new("TextLabel")
     miniForgeStatus.Size = UDim2.new(1, -10, 0, 35)
@@ -1985,7 +1977,7 @@ local function rebuildGUI()
     screenGuiMain.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGuiMain.Parent = player:WaitForChild("PlayerGui")
     
-    ApplyMobileScale(screenGuiMain, 1250) -- ПРИМЕНЯЕМ МАСШТАБ
+    ApplyMobileScale(screenGuiMain, 1250)
     
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = UDim2.new(0, 1200, 0, 750)
@@ -1993,14 +1985,11 @@ local function rebuildGUI()
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
-    -- mainFrame.Draggable = true УДАЛЕНО ДЛЯ МОБИЛОК
     mainFrame.Parent = screenGuiMain
     
     local mainFrameCorner = Instance.new("UICorner")
     mainFrameCorner.CornerRadius = UDim.new(0, 15)
     mainFrameCorner.Parent = mainFrame
-    
-    -- DRAG DETECTOR УДАЛЁН (Он блокировал экран)
     
     local minimizedFrame = Instance.new("Frame")
     minimizedFrame.Size = UDim2.new(0, 150, 0, 45)
@@ -2009,17 +1998,16 @@ local function rebuildGUI()
     minimizedFrame.BorderSizePixel = 0
     minimizedFrame.Visible = false
     minimizedFrame.Active = true
-    -- minimizedFrame.Draggable = true УДАЛЕНО ДЛЯ МОБИЛОК
     minimizedFrame.Parent = screenGuiMain
     
-    MakeDraggableTouch(minimizedFrame, minimizedFrame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    MakeDraggableTouch(minimizedFrame, minimizedFrame)
     
     local cornerMinimized = Instance.new("UICorner")
     cornerMinimized.CornerRadius = UDim.new(0, 9)
     cornerMinimized.Parent = minimizedFrame
     
     local minimizedLabel = Instance.new("TextLabel")
-    minimizedLabel.Text = T("hubTitle")
+    minimizedLabel.Text = ("Pidromania Hub")
     minimizedLabel.Size = UDim2.new(1, 0, 1, 0)
     minimizedLabel.BackgroundTransparency = 1
     minimizedLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
@@ -2038,10 +2026,10 @@ local function rebuildGUI()
     header.Size = UDim2.new(1, 0, 0, 52.5)
     header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     header.BorderSizePixel = 0
-    header.Active = true -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    header.Active = true
     header.Parent = mainFrame
     
-    MakeDraggableTouch(header, mainFrame) -- ИСПРАВЛЕНО ДЛЯ МОБИЛОК
+    MakeDraggableTouch(header, mainFrame)
     
     local cornerHeader = Instance.new("UICorner")
     cornerHeader.CornerRadius = UDim.new(0, 9)
