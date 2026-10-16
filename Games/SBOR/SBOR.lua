@@ -452,7 +452,7 @@ local BOSSES = {
     [5136611550] = {{"Tormented Spectrum", -94, 1404, 3187},{"The Tormented Soul", -79, 2267, -114}},
     [4733293091] = {{"Leader Grimm", 8128, 2685, 939},{"Super Luo", 2355, 1716, 2364},{"Elder Celatid", 1859, 1714, -2208},{"Young Celestia", -1407, -1462, 1203}},
     [11987483716] = {{"Raios, Sortiliena and Golgorosso", 458, 30, -1211}},
-    [11987539001] = {{"Goblins", -584.36, 176.52, 3508.82},{"Goblins cave", -578.07, 178.99, 3519.20},{"Two-Headed Giant", 2742.92, 225.58, 7207.78}},
+    [11987539001] = {{"Goblins", -584.36, 176.52, 3508.82},{"Goblins cave", -1305.50, 179.92, 1896.98},{"Two-Headed Giant", 2742.92, 225.58, 7207.78},{"Миник", -1559.62, 176.98, 2563.71}},
     [12632324801] = {{"Captain Sweet the Forever Child", 2940, -815, -1949}},
     [94066307314492] = {{"Mob Save Farm", -272.06, 7.42, 74.08},{"Thug Boss", -1493, 6, 8},{"Loan Shark Boss", -553.70, 1.49, -2088.94},{"The Custodian", -989.97, -1472.43, 6025.40},{"Eidolon the Gilded Omen", -352.27, 1043.52, 1549.13},{"The Arbitrator", -498.26, -1503.60, 5515.60}},
     [130463264320898] = {{"Новый Босс", -3501.16, 153.08, 3534.65},{"kvrst", -4313.40, 131.45, -888.28},{"sunstone", -4331.49, 144.00, 349.18},{"minik", -3224.66, 156.07, -1323.25},{"Пингвины", -2397.24, 156.93, 2185.15},{"Големы", 773.03, 112.48, 1246.18},{"Вендиго", 3546.91, -889.56, 7155.80},{"minik 2 location", 2150.95, -1181.13, 4616.98},{"главный босс", 3796.98, -942.65, 6422.02}}
@@ -2061,7 +2061,7 @@ local function rebuildGUI()
     author.Parent = header
     
     local minimizeBtn = Instance.new("TextButton")
-    minimizeBtn.Text = "--"
+    minimizeBtn.Text = "—"
     minimizeBtn.Size = UDim2.new(0, 37.5, 0, 37.5)
     minimizeBtn.Position = UDim2.new(1, -45, 0, 7.5)
     minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
