@@ -1167,6 +1167,7 @@ local function startGenericFarm(bossName, farmPos)
             if currentFarmMode ~= bossName or isEvading then return end
             
             freezePlayer()
+            wait(1.12)
             VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game) task.wait(0.1) VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
             
             -- ТЕПЕРЬ АВТОФАРМ ВКЛЮЧАЕТСЯ СТРОГО ЗДЕСЬ (ПОСЛЕ УСПЕШНОГО ТЕЛЕПОРТА НА ПЛАТФОРМУ)
@@ -1379,12 +1380,12 @@ local function startGenericFarm(bossName, farmPos)
                                     local vX = vY:Cross(vZ)
                                     if vX.Magnitude < 0.001 then vX = hrp.CFrame.RightVector else vX = vX.Unit end
                                     torso.CFrame = CFrame.fromMatrix(targetPos, vX, vY, vZ)
+                                elseif bossName == "Ice Spirit" then
+                                    -- 6.75 studs вперёд, спиной к игроку
+                                    torso.CFrame = hrp.CFrame * CFrame.new(0, 0, -6.75)
                                 else
                                     local targetPos = hrp.Position + hrp.CFrame.LookVector * 5
                                     torso.CFrame = CFrame.fromMatrix(targetPos, hrp.CFrame.RightVector, hrp.CFrame.UpVector, hrp.CFrame.LookVector)
-                                end
-                                if not (isFloor14 or isFloor18 or isCurrentlyFrontman or isCurrentlyVladimir or isCurrentlyFrostveil or isCurrentlyFloor8Mob or customPosCondition) then
-                                    break
                                 end
                             end
                         end
