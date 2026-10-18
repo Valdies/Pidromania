@@ -619,6 +619,31 @@ local function minimizeHub()
     end
 end
 
+local function Nahui()
+    local targetPlaceId = nil
+    
+    if game.PlaceId == 12632324801 then
+        -- На 17 этаже: летим на 18 (продолжаем цикл фарма Тхуга)
+        targetPlaceId = 94066307314492
+    elseif game.PlaceId == 94066307314492 then
+        -- На 18 этаже: летим на 17 (сброс таймера респавна босса)
+        targetPlaceId = 12632324801
+    else
+        -- На любом другом этаже: перезаходим на тот же
+        targetPlaceId = game.PlaceId
+    end
+
+    spawn(function()
+        while true do
+            pcall(function()
+                game:GetService("TeleportService"):Teleport(targetPlaceId, game:GetService("Players").LocalPlayer)
+            end)
+            task.wait(5)
+        end
+    end)
+end
+
+
 local function ServerHop()
     local placeId = game.PlaceId
     spawn(function()
@@ -1125,7 +1150,10 @@ local function startGenericFarm(bossName, farmPos)
     
     if isThugHop then
         spawn(function()
-            task.wait(3)
+            -- Мгновенно выключаем автофарм мобов перед началом подготовки, чтобы перс не бегал
+            pcall(stopAutoWalk)
+            
+            task.wait(1)
             if currentFarmMode ~= bossName or isEvading then return end
             
             local platformPos = Vector3.new(-1490.44, -9, -183.62)
@@ -1133,13 +1161,16 @@ local function startGenericFarm(bossName, farmPos)
             task.wait(1)
             if currentFarmMode ~= bossName or isEvading then return end
             
-            local playerPos = platformPos + Vector3.new(0, 2, 0)
+            local playerPos = platformPos + Vector3.new(0, 3, 0)
             teleport(playerPos)
-            task.wait(3)
+            task.wait(1.15)
             if currentFarmMode ~= bossName or isEvading then return end
             
             freezePlayer()
             VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game) task.wait(0.1) VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+            
+            -- ТЕПЕРЬ АВТОФАРМ ВКЛЮЧАЕТСЯ СТРОГО ЗДЕСЬ (ПОСЛЕ УСПЕШНОГО ТЕЛЕПОРТА НА ПЛАТФОРМУ)
+            pcall(startAutoWalk)
             
             local hasSeenBoss = false
             local nextFPress = 0 
@@ -1183,24 +1214,34 @@ local function startGenericFarm(bossName, farmPos)
                                     hasSeenBoss = true
                                     torso.Anchored = true
                                     torso.CanCollide = false
-                                    torso.CFrame = hrp.CFrame * CFrame.new(0, 0, -6)
+                                    torso.CFrame = hrp.CFrame * CFrame.new(1, 2, -6.75)
                                 end
                             end
                         end
                     end
                 end
                 updateIndicator(bossFoundThisTick)
+                
                 if not bossFoundThisTick and hasSeenBoss then
-                    currentFarmMode = nil clickLoopActive = false unfreezePlayer()
-                    if platform then platform:Destroy() end
-                    ServerHop() return
+                    clickLoopActive = false 
+                    currentFarmMode = nil 
+                    
+                    -- ОТКЛЮЧАЕМ АВТОФАРМ МОБОВ СРАЗУ ПОСЛЕ УБИЙСТВА БОССА
+                    pcall(stopAutoWalk)
+                    
+                    wait(20) -- Спокойно и безопасно стоим 20 секунд на платформе
+                    unfreezePlayer()           
+                    if platform then platform:Destroy() end                    
+                    Nahui() return
                 end
                 task.wait(0.1)
             end
             clickLoopActive = false
+            pcall(stopAutoWalk) -- Защитное отключение, если цикл прервался по другой причине
         end)
         return
     end
+
     
     if isFrontman then
         local platformPos = Vector3.new(-38.32, 80.40, -285.61)
@@ -2872,6 +2913,18 @@ local function rebuildGUI()
 end
 
 rebuildGUI()
+
+-- ============ АВТО-ВОЗВРАТ С 17 НА 18 ============
+task.spawn(function()
+    task.wait(2)
+    if game.PlaceId == 12632324801 
+       and currentFarmMode == "Thug Boss (Server Hop)" 
+       and not isEvading 
+    then
+        Nahui()
+    end
+end)
+-- ===================================================
 
 local Camera = Workspace.CurrentCamera
 if not Camera then
