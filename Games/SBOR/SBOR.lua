@@ -1095,7 +1095,7 @@ local function startAutoWalk()
                                 else
                                     humanoid:MoveTo(hrp.Position)
                                 end
-                                task.wait(math.random(850, 900) / 1000) 
+                                task.wait(math.random(200, 220) / 1000) 
                             end
                         end
                     end
